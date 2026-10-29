@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.cache/
+.env
+.env.*
+!.env.example
+data/
+inputs/*
+!inputs/.gitkeep
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm

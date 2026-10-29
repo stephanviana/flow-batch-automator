@@ -1,0 +1,23 @@
+{
+  "name": "@flow-batch/protocol",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc -p tsconfig.test.json && node --test .cache/test/test/*.test.js"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "@flow-batch/extension",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@flow-batch/protocol": "workspace:*",
+    "zod": "4.6.7"
+  }
+}
