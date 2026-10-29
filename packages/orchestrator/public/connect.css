@@ -1,0 +1,33 @@
+:root {
+  font:
+    16px system-ui,
+    sans-serif;
+  color: #182329;
+  background: #f4f7f8;
+}
+main {
+  max-width: 700px;
+  margin: 40px auto;
+  padding: 24px;
+}
+article {
+  background: white;
+  border: 1px solid #ced9dc;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 12px 0;
+}
+button {
+  padding: 10px 16px;
+  margin: 8px 8px 0 0;
+  cursor: pointer;
+  font: inherit;
+}
+.code {
+  font: bold 32px monospace;
+  letter-spacing: 5px;
+}
+p {
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}

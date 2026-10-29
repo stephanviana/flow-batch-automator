@@ -1,0 +1,59 @@
+import { readFileSync } from 'node:fs';
+import type { FastifyInstance } from 'fastify';
+import { z } from 'zod';
+import type { ClientStore } from '../persistence/clients.js';
+import type { ConnectionHub } from '../communication/sockets.js';
+import { LocalSessions } from '../security/local-session.js';
+
+export function registerManagement(
+  app: FastifyInstance,
+  clients: ClientStore,
+  hub: ConnectionHub,
+  assets: URL,
+): void {
+  const sessions = new LocalSessions();
+  const files = new Map<string, readonly [string, string]>([
+    ['/connect', ['connect.html', 'text/html; charset=utf-8']],
+    ['/connect.js', ['connect.js', 'text/javascript; charset=utf-8']],
+    ['/connect.css', ['connect.css', 'text/css; charset=utf-8']],
+  ]);
+  for (const [route, [filename, contentType]] of files) {
+    const contents = readFileSync(new URL(filename, assets));
+    app.get(route, async (request, reply): Promise<Buffer> => {
+      if (route === '/connect') sessions.open(request, reply);
+      reply.header(
+        'Content-Security-Policy',
+        "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+      );
+      reply.type(contentType ?? 'text/plain');
+      return contents;
+    });
+  }
+  app.get('/manage/status', async (request) => {
+    sessions.require(request);
+    const status = clients.managementStatus();
+    return {
+      ...status,
+      clients: (status.clients as { id: string }[]).map((client) => ({
+        ...client,
+        connected: hub.connected(client.id),
+      })),
+    };
+  });
+  app.post('/manage/requests/:id', async (request) => {
+    sessions.require(request);
+    const { id } = z.object({ id: z.uuid() }).parse(request.params);
+    const { approve } = z
+      .strictObject({ approve: z.boolean() })
+      .parse(request.body);
+    clients.decide(id, approve);
+    return { ok: true };
+  });
+  app.post('/manage/clients/:id/revoke', async (request) => {
+    sessions.require(request);
+    const { id } = z.object({ id: z.uuid() }).parse(request.params);
+    clients.revoke(id);
+    hub.revoke(id);
+    return { ok: true };
+  });
+}

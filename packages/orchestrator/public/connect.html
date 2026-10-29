@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Conectar ao Flow Batch</title>
+    <link rel="stylesheet" href="/connect.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Conectar ao Flow Batch</h1>
+      <p>
+        Compare o código abaixo com o código no popup da extensão. Confirme
+        somente a solicitação que você iniciou.
+      </p>
+      <p id="status" role="status"></p>
+      <h2>Solicitações pendentes</h2>
+      <section id="pending"></section>
+      <h2>Conexões autorizadas</h2>
+      <section id="clients"></section>
+      <p>
+        A revogação bloqueia o acesso e encerra a conexão. Uma nova autorização
+        exige sua confirmação.
+      </p>
+    </main>
+    <script src="/connect.js" type="module"></script>
+  </body>
+</html>
