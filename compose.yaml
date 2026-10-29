@@ -1,0 +1,68 @@
+name: flow-batch-automator
+
+services:
+  sync-extension:
+    image: flow-batch-automator-sync-extension:0.2.0
+    build:
+      context: .
+      target: sync-extension
+    network_mode: none
+    read_only: true
+    user: '1000:1000'
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: 'no'
+    cpus: 0.25
+    mem_limit: 128m
+    pids_limit: 32
+    volumes:
+      - type: bind
+        source: ${WIN_EXTENSION_DIR:-/mnt/c/Users/stephan/flow-batch-extension}
+        target: /destination
+        bind:
+          create_host_path: false
+    logging:
+      driver: json-file
+      options: { max-size: '5m', max-file: '2' }
+
+  orchestrator:
+    image: flow-batch-automator-orchestrator:0.2.0
+    build:
+      context: .
+      target: orchestrator
+    depends_on:
+      sync-extension:
+        condition: service_completed_successfully
+    init: true
+    user: '1000:1000'
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      HOST: 0.0.0.0
+      PORT: 4319
+      DATABASE_PATH: /data/flow-batch.sqlite
+      INPUT_DIR: /inputs
+      SQLITE_BUSY_TIMEOUT_MS: 3000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - '127.0.0.1:4319:4319'
+    volumes:
+      - sqlite_data:/data
+      - type: bind
+        source: ${INPUT_DIR:-./inputs}
+        target: /inputs
+        read_only: true
+        bind:
+          create_host_path: false
+    restart: unless-stopped
+    stop_grace_period: 10s
+    cpus: 0.5
+    mem_limit: 256m
+    pids_limit: 64
+    logging:
+      driver: json-file
+      options: { max-size: '5m', max-file: '2' }
+
+volumes:
+  sqlite_data:
