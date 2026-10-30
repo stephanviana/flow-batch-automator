@@ -3,6 +3,7 @@ import {
   type FlowDraft,
   type PopupRequest,
   type popupReplySchema,
+  resolveOmniVideoModel,
 } from '@flow-batch/protocol';
 import type { z } from 'zod';
 
@@ -12,6 +13,10 @@ const form = document.querySelector<HTMLFormElement>('#flow-form');
 const feedback = document.querySelector<HTMLParagraphElement>('#flow-feedback');
 const submit = document.querySelector<HTMLButtonElement>('#flow-submit');
 const approval = document.querySelector<HTMLInputElement>('#flow-approval');
+const videoModel = document.querySelector<HTMLSelectElement>(
+  '[name="videoModel"]',
+);
+const omniOptions = document.querySelector<HTMLDivElement>('#omni-options');
 let projectId: string | null = null;
 let connected = false;
 let busy = false;
@@ -53,7 +58,13 @@ async function draft(): Promise<FlowDraft> {
       copy: fields.get('copy'),
     },
     imageModel: fields.get('imageModel'),
-    videoModel: fields.get('videoModel'),
+    videoModel:
+      fields.get('videoModel') === 'omni_flash'
+        ? resolveOmniVideoModel(
+            Number(fields.get('videoDuration')),
+            fields.get('videoResolution'),
+          )
+        : fields.get('videoModel'),
     aspect: fields.get('aspect'),
     seed: (crypto.getRandomValues(new Uint32Array(1))[0]! % 1_000_000_000) + 1,
     approval: {
@@ -79,8 +90,18 @@ export function renderFlowForm(reply: PanelReply): void {
   if (submit) submit.disabled = busy || !connected || !projectId;
 }
 export function initializeFlowForm(send: Send): void {
-  if (!form || !feedback || !submit || !approval)
+  if (!form || !feedback || !submit || !approval || !videoModel || !omniOptions)
     throw new Error('Flow form elements missing');
+  const updateVideoOptions = (): void => {
+    const omni = videoModel.value === 'omni_flash';
+    omniOptions.hidden = !omni;
+    for (const field of omniOptions.querySelectorAll<HTMLSelectElement>(
+      'select',
+    ))
+      field.disabled = !omni;
+  };
+  videoModel.addEventListener('change', updateVideoOptions);
+  updateVideoOptions();
   form.addEventListener('input', (event): void => {
     pending = undefined;
     if (event.target !== approval) approval.checked = false;

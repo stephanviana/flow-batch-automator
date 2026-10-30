@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { flowVideoModelSchema, imageSelectionSchema } from './flow-models.js';
 
 export const flowInspectionSchema = z.strictObject({
   phase: z.enum(['no-tab', 'not-ready', 'ready', 'error']),
@@ -46,11 +47,7 @@ export const originalPromptsSchema = z.strictObject({
 export const flowSettingsSchema = z.strictObject({
   projectId: z.uuid(),
   imageModel: z.enum(['GEM_PIX_2', 'BELUGA', 'HARBOR_SEAL']),
-  videoModel: z.enum([
-    'veo_3_1_i2v_lite',
-    'veo_3_1_i2v_lite_low_priority',
-    'veo_3_1_i2v_s_fast_ultra',
-  ]),
+  videoModel: flowVideoModelSchema,
   aspect: z.enum(['9:16', '16:9']),
   seed: z.number().int().min(1).max(1_000_000_000),
   reference: flowReferenceSchema,
@@ -73,7 +70,7 @@ export const flowDraftSchema = z.strictObject({
       prompts.imagePrompt.trim().length > 0 &&
       prompts.videoPrompt.trim().length > 0,
   ),
-  imageModel: flowSettingsSchema.shape.imageModel,
+  imageModel: imageSelectionSchema,
   videoModel: flowSettingsSchema.shape.videoModel,
   aspect: flowSettingsSchema.shape.aspect,
   seed: flowSettingsSchema.shape.seed,

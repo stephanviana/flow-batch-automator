@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Flow Batch",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "minimum_chrome_version": "120",
-  "description": "Geração de imagem e vídeo no Google Flow, fila local e download de MP4.",
+  "description": "Nano Banana Pro/2.1 e Omni 1.1 Flash com Frames, fila local e download pelo Google Flow.",
   "permissions": ["storage", "alarms", "sidePanel", "scripting", "downloads"],
   "host_permissions": [
     "http://127.0.0.1/*",

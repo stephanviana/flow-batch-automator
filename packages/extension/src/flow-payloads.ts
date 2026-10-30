@@ -1,5 +1,5 @@
 // Payloads ported from FlowKit agent/services/flow_batch.py (MIT).
-import type { FlowSettings } from '@flow-batch/protocol';
+import { isOmniVideoModel, type FlowSettings } from '@flow-batch/protocol';
 import type { FlowRpcRequest } from './flow-rpc-page.js';
 
 function context(projectId: string): unknown[] {
@@ -85,6 +85,9 @@ export function videoRequest(
     [null, imageId, null, null, null, [null, null, 1, 1]],
     [null, null, null, null, uuid(), uuid()],
   ];
+  // Omni Frames 360p uses slot 9, unlike the text-to-video payload.
+  if (isOmniVideoModel(flow.videoModel) && flow.videoModel.endsWith('_360p'))
+    item.push(null, null, null, [4]);
   return {
     rpcId: 'eb1hJf',
     projectId: flow.projectId,

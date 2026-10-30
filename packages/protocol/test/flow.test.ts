@@ -6,6 +6,8 @@ import {
   taskInputSchema,
   queueResultSchema,
   popupRequestSchema,
+  resolveOmniVideoModel,
+  flowDraftSchema,
 } from '../src/index.js';
 
 test('Flow inputs bind approval to one image, one video, supported models and an immutable local reference', () => {
@@ -95,5 +97,72 @@ test('Flow inputs bind approval to one image, one video, supported models and an
   assert.equal(
     popupRequestSchema.safeParse({ type: 'enqueue-flow' }).success,
     false,
+  );
+});
+
+test('Omni Frames accepts only supported model encodings and preserves existing Veo records', () => {
+  const reference = {
+    assetId: randomUUID(),
+    name: 'original.png',
+    mime: 'image/png',
+    bytes: 12,
+    sha256: 'a'.repeat(64),
+  };
+  const settings = {
+    projectId: randomUUID(),
+    imageModel: 'GEM_PIX_2',
+    videoModel: 'veo_3_1_i2v_lite',
+    aspect: '9:16',
+    seed: 1,
+    reference,
+    approval: {
+      approvedAt: Date.now(),
+      imageGenerations: 1,
+      videoGenerations: 1,
+    },
+  };
+  assert.deepEqual(flowSettingsSchema.parse(settings), settings);
+  for (const duration of [4, 6, 8, 10])
+    for (const resolution of ['360p', '720p']) {
+      assert.equal(
+        flowSettingsSchema.parse({
+          ...settings,
+          videoModel: resolveOmniVideoModel(duration, resolution),
+        }).videoModel,
+        `abra_i2v_${duration}s${resolution === '360p' ? '_360p' : ''}`,
+      );
+    }
+  for (const duration of [0, 5, 12, '8'])
+    assert.throws(() => resolveOmniVideoModel(duration, '720p'));
+  assert.throws(() => resolveOmniVideoModel(8, '1080p'));
+  assert.equal(
+    flowSettingsSchema.safeParse({ ...settings, videoModel: 'abra_r2v_8s' })
+      .success,
+    false,
+  );
+  const draft = {
+    ...settings,
+    requestId: randomUUID(),
+    taskKey: randomUUID(),
+    product: 'Product',
+    video: 'Video',
+    take: 'Hook',
+    original: { imagePrompt: 'Image', videoPrompt: 'Video', copy: '' },
+    reference: { name: 'original.png', mime: 'image/png', base64: 'AAAA' },
+  };
+  for (const imageModel of ['GEM_PIX_2', 'BELUGA'])
+    assert.equal(
+      flowDraftSchema.safeParse({ ...draft, imageModel }).success,
+      true,
+    );
+  assert.equal(
+    flowDraftSchema.safeParse({ ...draft, imageModel: 'HARBOR_SEAL' }).success,
+    false,
+  );
+  // Historical Lite tasks still deserialize; the new form offers Pro and 2.1.
+  assert.equal(
+    flowSettingsSchema.safeParse({ ...settings, imageModel: 'HARBOR_SEAL' })
+      .success,
+    true,
   );
 });

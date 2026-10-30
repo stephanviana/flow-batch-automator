@@ -3,7 +3,7 @@
 Ferramenta local para futura geração de imagens e vídeos em lote no Google Flow,
 com Chrome no Windows e orquestrador no Docker Engine do WSL2.
 
-**Versão 0.4.0.** Referência → imagem → vídeo → MP4, com autorização para uma imagem e um vídeo.
+**Versão 0.4.1.** Omni 1.1 Flash Frames com Nano Banana Pro/2.1 e preservação dos takes antigos.
 
 ## Arquitetura
 
@@ -74,7 +74,7 @@ cópia inteira não é uma transação. Recarregue a extensão somente após suc
 1. Abra `chrome://extensions` no Chrome do Windows e ative o modo desenvolvedor.
 2. Use **Carregar sem compactação** e escolha a pasta acima; se já instalada,
    clique em **Recarregar** depois de cada atualização dos arquivos.
-3. A versão desta fase é **0.4.0**, identificada como **Flow Batch — Comunicação local**.
+3. A versão desta fase é **0.4.1**, identificada como **Flow Batch — Comunicação local**.
 
 O caminho estável preserva o ID da extensão e seu IndexedDB entre atualizações.
 Remover a extensão ou apagar seus dados pode eliminar sua identidade e exigir nova
@@ -289,3 +289,7 @@ O painel lateral substitui o popup, integra a fila e consulta o projeto na sess�
 ## Geração de take e download MP4
 
 Referência local → imagem → vídeo → MP4. Referências ficam no IndexedDB com SHA-256, prompts preservados, uma imagem e um vídeo por autorização, tentativa única e cinco checkpoints. Conclusão exige download real confirmado pelo Chrome. O usuário confirmou: “Concluiu e baixou o MP4”.
+
+## Omni Flash e Frames
+
+Novos takes usam Omni 1.1 Flash em Frames, somente frame inicial, 8 s/720p/9:16, com Nano Banana Pro ou 2.1. Durações 4/6/8/10 s e resoluções 360p/720p; Veo e parâmetros históricos preservados. O usuário confirmou: “Gerei com Omni e baixou o MP4”, referente a 8 s/720p; outras opções têm fixtures.

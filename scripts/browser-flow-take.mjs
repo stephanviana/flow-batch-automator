@@ -32,8 +32,8 @@ export async function validateFlowTake({
   const captchaTokens = new Set();
   let held, release;
   let mode = 'success';
-  const expectedVideoModel = 'veo_3_1_i2v_lite';
-  const expectedImageModel = 'GEM_PIX_2';
+  let expectedVideoModel = 'abra_i2v_8s';
+  let expectedImageModel = 'GEM_PIX_2';
   await browser.route('https://flow.google.com/**', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -198,6 +198,28 @@ export async function validateFlowTake({
       'function',
     );
     await inspect();
+    assert.equal(
+      await panel.locator('[name="videoModel"]').inputValue(),
+      'omni_flash',
+    );
+    assert.equal(
+      await panel.locator('[name="videoMode"]').inputValue(),
+      'frames',
+    );
+    assert.equal(
+      await panel.locator('[name="videoDuration"]').inputValue(),
+      '8',
+    );
+    assert.equal(
+      await panel.locator('[name="videoResolution"]').inputValue(),
+      '720p',
+    );
+    assert.deepEqual(
+      await panel
+        .locator('[name="imageModel"] option')
+        .evaluateAll((options) => options.map((option) => option.value)),
+      ['GEM_PIX_2', 'BELUGA'],
+    );
     if (!(await panel.locator('[data-action="queue-pause"]').isDisabled()))
       await panel.locator('[data-action="queue-pause"]').click();
     const complete = await enqueue('Take completo');
@@ -251,6 +273,15 @@ export async function validateFlowTake({
     );
 
     await panel.locator('[data-action="queue-pause"]').click();
+    await panel.locator('#flow-approval').check();
+    await panel.locator('[name="videoModel"]').selectOption('veo_3_1_i2v_lite');
+    assert.equal(await panel.locator('#flow-approval').isChecked(), false);
+    assert.equal(await panel.locator('#omni-options').isHidden(), true);
+    assert.equal(
+      await panel.locator('[name="videoDuration"]').isDisabled(),
+      true,
+    );
+    expectedVideoModel = 'veo_3_1_i2v_lite';
     mode = 'hold-image';
     const interrupted = await enqueue('Take interrompido');
     await panel.locator('[data-action="queue-start"]').click();
@@ -292,6 +323,13 @@ export async function validateFlowTake({
       globalThis.__fixtureCaptchaFailure = false;
     });
 
+    await panel.locator('[name="videoModel"]').selectOption('omni_flash');
+    await panel.locator('[name="videoDuration"]').selectOption('4');
+    await panel.locator('[name="videoResolution"]').selectOption('360p');
+    await panel.locator('[name="imageModel"]').selectOption('BELUGA');
+    assert.equal(await panel.locator('#omni-options').isHidden(), false);
+    expectedVideoModel = 'abra_i2v_4s_360p';
+    expectedImageModel = 'BELUGA';
     mode = 'html-download';
     const invalidDownload = await enqueue('Download inválido');
     await eventually(
@@ -308,7 +346,7 @@ export async function validateFlowTake({
     );
     await inspect();
     console.log(
-      'Flow image-to-video pipeline against local fixtures: original reference/prompts, explicit approval, fresh page-only CAPTCHA tokens, one image and video, operation/media correlation, actual Chrome MP4 download and byte comparison, restart without resubmission, CAPTCHA failure and HTML download rejection passed. No live Google Flow generation.',
+      'Omni 1.1 Flash Frames pipeline (8s/720p and 4s/360p, Nano Banana Pro/2.1) against local fixtures: original reference/prompts, explicit approval, fresh page-only CAPTCHA tokens, one image and video, operation/media correlation, actual Chrome MP4 download and byte comparison, restart without resubmission, CAPTCHA failure and HTML download rejection passed. No live Google Flow generation.',
     );
   } finally {
     media.releaseDownload();

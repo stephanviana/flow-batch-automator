@@ -101,7 +101,7 @@
           <label
             >Modelo de imagem<select name="imageModel">
               <option value="GEM_PIX_2">Nano Banana Pro</option>
-              <option value="HARBOR_SEAL">Nano Banana Lite</option>
+              <option value="BELUGA">Nano Banana 2.1</option>
             </select></label
           >
           <label
@@ -115,6 +115,7 @@
           </label>
           <label
             >Modelo de vídeo<select name="videoModel">
+              <option value="omni_flash">Omni 1.1 Flash</option>
               <option value="veo_3_1_i2v_lite">Veo 3.1 · Fast</option>
               <option value="veo_3_1_i2v_lite_low_priority">
                 Veo 3.1 · baixa prioridade
@@ -124,6 +125,31 @@
               </option>
             </select></label
           >
+          <label
+            >Modo de vídeo<select name="videoMode">
+              <option value="frames">Frames · frame inicial</option>
+            </select></label
+          >
+          <p class="hint">
+            A imagem gerada pelo Nano Banana é usada como frame inicial do
+            vídeo.
+          </p>
+          <div id="omni-options" class="actions">
+            <label
+              >Duração<select name="videoDuration">
+                <option value="4">4 segundos</option>
+                <option value="6">6 segundos</option>
+                <option value="8" selected>8 segundos</option>
+                <option value="10">10 segundos</option>
+              </select></label
+            >
+            <label
+              >Resolução<select name="videoResolution">
+                <option value="720p">720p</option>
+                <option value="360p">360p</option>
+              </select></label
+            >
+          </div>
           <label
             >Prompt do vídeo<textarea
               name="videoPrompt"
