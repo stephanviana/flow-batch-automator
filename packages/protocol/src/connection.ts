@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { flowInspectionSchema } from './flow.js';
 import {
   queueExecuteSchema,
   queueProgressSchema,
@@ -114,6 +115,8 @@ export type ServerMessage = z.infer<typeof serverMessageSchema>;
 export const popupRequestSchema = z.strictObject({
   type: z.enum([
     'status',
+    'flow-open',
+    'flow-inspect',
     'connect',
     'disconnect',
     'reconnect',
@@ -151,8 +154,9 @@ export const extensionStateSchema = z.strictObject({
 export const popupReplySchema = z.strictObject({
   state: extensionStateSchema,
   simulations: z.array(simulationSchema),
-  queue: queueSnapshotSchema.nullable().default(null),
-  inspection: taskDetailSchema.nullable().default(null),
-  operationError: z.string().nullable().default(null),
+  queue: queueSnapshotSchema.nullable(),
+  inspection: taskDetailSchema.nullable(),
+  operationError: z.string().nullable(),
+  flow: flowInspectionSchema.nullable(),
 });
 export type ExtensionState = z.infer<typeof extensionStateSchema>;

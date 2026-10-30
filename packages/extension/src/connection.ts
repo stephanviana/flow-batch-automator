@@ -5,8 +5,10 @@ import {
 } from '@flow-batch/protocol';
 import { ApiError, beginPairing, proof, signedRequest } from './api.js';
 import { preferences, savePreferences, setState } from './state.js';
+import { QueueExecutor } from './queue-executor.js';
 
 export class ExtensionConnection {
+  private readonly queueExecutor = new QueueExecutor();
   private socket: WebSocket | undefined;
   private heartbeat: ReturnType<typeof setInterval> | undefined;
   private retryTimer: ReturnType<typeof setTimeout> | undefined;
@@ -127,6 +129,7 @@ export class ExtensionConnection {
           clientId,
           challengeId: signed.challenge.challengeId,
           signature: signed.signature,
+          protocolVersion: 3,
         }),
       );
     socket.onmessage = (event: MessageEvent<string>): void => {
@@ -153,6 +156,10 @@ export class ExtensionConnection {
     const message = serverMessageSchema.parse(JSON.parse(raw));
     if (message.type === 'revoked') {
       void this.revoked();
+      return;
+    }
+    if (message.type === 'queue-execute') {
+      this.queueExecutor.run(message, socket);
       return;
     }
     if (message.type === 'authenticated') {
@@ -253,6 +260,7 @@ export class ExtensionConnection {
   }
 
   private stop(): void {
+    this.queueExecutor.stop();
     this.generation++;
     const previous = this.socket;
     this.socket = undefined;

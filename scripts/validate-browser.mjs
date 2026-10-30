@@ -6,6 +6,8 @@ import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { chromium } from 'playwright';
+import { validateQueue } from './browser-queue.mjs';
+import { validateFlow } from './browser-flow.mjs';
 
 const directory = resolve('.cache', `browser-${randomUUID()}`);
 await mkdir(directory, { recursive: true });
@@ -61,6 +63,8 @@ async function openBrowser() {
     {
       channel: 'chromium',
       headless: true,
+      viewport: { width: 380, height: 1000 },
+      downloadsPath: resolve(directory, 'downloads'),
       args: [
         `--disable-extensions-except=${resolve('packages/extension/dist')}`,
         `--load-extension=${resolve('packages/extension/dist')}`,
@@ -72,7 +76,15 @@ async function openBrowser() {
   worker ??= await browser.waitForEvent('serviceworker');
   extensionId = new URL(worker.url()).host;
   popup = await browser.newPage();
-  await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  const downloadSession = await browser.newCDPSession(popup);
+  await downloadSession.send('Browser.setDownloadBehavior', {
+    behavior: 'default',
+    eventsEnabled: true,
+  });
+  await downloadSession.detach();
+  await popup.goto(`chrome-extension://${extensionId}/sidepanel.html`);
+  await popup.locator('#connection-options summary').click();
+  await popup.locator('#diagnostics summary').click();
 }
 async function assertNonExportableIdentity() {
   const worker = browser.serviceWorkers()[0];
@@ -149,68 +161,88 @@ try {
   await openBrowser();
   await connect();
   const identity = await assertNonExportableIdentity();
-  await popup
-    .getByRole('button', { name: 'Enviar teste simulado (5 s)' })
-    .click();
-  await eventually(async () =>
-    (await popup.locator('#history').textContent()).includes('Concluída'),
-  );
-  // A heartbeat must keep the real MV3 worker and authenticated socket alive.
-  const heartbeatWorker = browser.serviceWorkers()[0];
-  await popup.close();
-  popup = undefined;
-  await delay(42000);
-  assert.equal(await heartbeatWorker.evaluate(() => true), true);
-  popup = await browser.newPage();
-  await popup.goto(`chrome-extension://${extensionId}/popup.html`);
-  await eventually(() => statusContains('Conectada e autenticada'));
-  assert.equal(await statusContains('Conectada e autenticada'), true);
-
-  await popup
-    .getByRole('button', { name: 'Enviar teste simulado (5 s)' })
-    .click();
-  await eventually(async () =>
-    (await popup.locator('#history').textContent()).includes('Em execução'),
-  );
-  await stopServer();
-  await startServer();
-  await eventually(() => statusContains('Conectada e autenticada'), 40000);
-  await eventually(async () =>
-    (await popup.locator('#history').textContent()).includes('Interrompida'),
-  );
-  assert.equal(await popup.locator('#history li').count(), 2);
-
-  // Close the entire isolated browser and reopen the same test profile.
-  await browser.close();
-  browser = undefined;
-  await openBrowser();
-  await eventually(() => statusContains('Conectada e autenticada'), 40000);
-  assert.equal(await assertNonExportableIdentity(), identity);
-  assert.equal(await popup.locator('#history li').count(), 2);
-  management = await browser.newPage();
-  await management.goto('http://127.0.0.1:4319/connect');
-  await management.getByRole('button', { name: 'Revogar acesso' }).click();
-  await eventually(() => statusContains('Acesso revogado'));
-  await popup.getByRole('button', { name: 'Reconectar', exact: true }).click();
-  await eventually(() => statusContains('confirme uma nova autorização'));
-  assert.equal(
-    await popup.locator('[data-action="simulate"]').isDisabled(),
-    true,
-  );
-  const state = await browser
-    .serviceWorkers()[0]
-    .evaluate(
-      async () => (await chrome.storage.local.get('connection')).connection,
+  if (
+    !process.argv.includes('--queue-only') &&
+    !process.argv.includes('--flow-only')
+  ) {
+    await popup
+      .getByRole('button', { name: 'Enviar teste simulado (5 s)' })
+      .click();
+    await eventually(async () =>
+      (await popup.locator('#history').textContent()).includes('Concluída'),
     );
-  assert.equal(state.enabled, false);
-  assert.equal(state.revoked, true);
-  await connect();
-  assert.equal(await assertNonExportableIdentity(), identity);
+    // A heartbeat must keep the real MV3 worker and authenticated socket alive.
+    const heartbeatWorker = browser.serviceWorkers()[0];
+    await popup.close();
+    popup = undefined;
+    await delay(42000);
+    assert.equal(await heartbeatWorker.evaluate(() => true), true);
+    popup = await browser.newPage();
+    await popup.goto(`chrome-extension://${extensionId}/sidepanel.html`);
+    await popup.locator('#connection-options summary').click();
+    await popup.locator('#diagnostics summary').click();
+    await eventually(() => statusContains('Conectada e autenticada'));
+    assert.equal(await statusContains('Conectada e autenticada'), true);
+
+    await popup
+      .getByRole('button', { name: 'Enviar teste simulado (5 s)' })
+      .click();
+    await eventually(async () =>
+      (await popup.locator('#history').textContent()).includes('Em execução'),
+    );
+    await stopServer();
+    await startServer();
+    await eventually(() => statusContains('Conectada e autenticada'), 40000);
+    await eventually(async () =>
+      (await popup.locator('#history').textContent()).includes('Interrompida'),
+    );
+    assert.equal(await popup.locator('#history li').count(), 2);
+
+    // Close the entire isolated browser and reopen the same test profile.
+    await browser.close();
+    browser = undefined;
+    await openBrowser();
+    await eventually(() => statusContains('Conectada e autenticada'), 40000);
+    assert.equal(await assertNonExportableIdentity(), identity);
+    assert.equal(await popup.locator('#history li').count(), 2);
+    management = await browser.newPage();
+    await management.goto('http://127.0.0.1:4319/connect');
+    await management.getByRole('button', { name: 'Revogar acesso' }).click();
+    await eventually(() => statusContains('Acesso revogado'));
+    await popup
+      .getByRole('button', { name: 'Reconectar', exact: true })
+      .click();
+    await eventually(() => statusContains('confirme uma nova autorização'));
+    assert.equal(
+      await popup.locator('[data-action="simulate"]').isDisabled(),
+      true,
+    );
+    const state = await browser
+      .serviceWorkers()[0]
+      .evaluate(
+        async () => (await chrome.storage.local.get('connection')).connection,
+      );
+    assert.equal(state.enabled, false);
+    assert.equal(state.revoked, true);
+    await connect();
+    assert.equal(await assertNonExportableIdentity(), identity);
+  }
+  await validateFlow({ browser, panel: popup, eventually });
+  if (!process.argv.includes('--flow-only'))
+    await validateQueue({ popup, eventually, stopServer, startServer });
+  await management.goto('http://127.0.0.1:4319/connect');
   console.log(
-    'Real Chrome for Testing: matching codes, explicit confirmation, non-exportable persistent identity, simulation, heartbeat, server/browser restart, no resend, revocation and explicit reauthorization passed.',
+    process.argv.includes('--flow-only')
+      ? 'Real Chrome for Testing: pairing, side panel, Flow transport and executor validated against local fixtures.'
+      : process.argv.includes('--queue-only')
+        ? 'Real Chrome for Testing: pairing, non-exportable identity and queue flow passed.'
+        : 'Real Chrome for Testing: matching codes, explicit confirmation, non-exportable persistent identity, simulation, heartbeat, server/browser restart, no resend, revocation, explicit reauthorization and queue flow passed.',
   );
   console.log(`Isolated evidence: ${directory}`);
-  await popup.screenshot({ path: resolve(directory, 'popup.png') });
+  await popup.screenshot({
+    path: resolve(directory, 'sidepanel.png'),
+    fullPage: true,
+  });
   await management.screenshot({ path: resolve(directory, 'connect.png') });
 } catch (error) {
   if (popup)

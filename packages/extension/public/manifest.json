@@ -1,15 +1,24 @@
 {
   "manifest_version": 3,
-  "name": "Flow Batch — Comunicação local",
-  "version": "0.3.0",
+  "name": "Flow Batch",
+  "version": "0.3.1",
   "minimum_chrome_version": "120",
-  "description": "Conexão autorizada e simulações locais. Sem ações no Google Flow.",
-  "permissions": ["storage", "alarms"],
-  "host_permissions": ["http://127.0.0.1/*"],
-  "background": { "service_worker": "worker.js", "type": "module" },
+  "description": "Fila local e leitura do projeto no Google Flow pelo painel lateral.",
+  "permissions": ["storage", "alarms", "sidePanel", "scripting"],
+  "host_permissions": [
+    "http://127.0.0.1/*",
+    "https://flow.google.com/*",
+    "https://labs.google/fx/*"
+  ],
+  "background": {
+    "service_worker": "worker.js",
+    "type": "module"
+  },
   "action": {
-    "default_popup": "popup.html",
-    "default_title": "Flow Batch — Comunicação local"
+    "default_title": "Abrir Flow Batch"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'none'; connect-src http://127.0.0.1:4319 ws://127.0.0.1:4319"

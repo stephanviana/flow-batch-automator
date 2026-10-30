@@ -6,7 +6,7 @@ const outputDirectory = new URL('./dist/', import.meta.url);
 await rm(outputDirectory, { recursive: true, force: true });
 await mkdir(outputDirectory, { recursive: true });
 await build({
-  entryPoints: ['src/worker.ts', 'src/popup.ts'],
+  entryPoints: ['src/worker.ts', 'src/sidepanel.ts'],
   outdir: 'dist',
   bundle: true,
   format: 'esm',

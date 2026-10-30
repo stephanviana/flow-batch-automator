@@ -3,7 +3,7 @@
 Ferramenta local para futura geração de imagens e vídeos em lote no Google Flow,
 com Chrome no Windows e orquestrador no Docker Engine do WSL2.
 
-**Versão 0.3.0.** Fila persistente e execução sequencial simulada.
+**Versão 0.3.1.** Painel lateral, fila e leitura do projeto na sessão do Flow.
 
 ## Arquitetura
 
@@ -74,7 +74,7 @@ cópia inteira não é uma transação. Recarregue a extensão somente após suc
 1. Abra `chrome://extensions` no Chrome do Windows e ative o modo desenvolvedor.
 2. Use **Carregar sem compactação** e escolha a pasta acima; se já instalada,
    clique em **Recarregar** depois de cada atualização dos arquivos.
-3. A versão desta fase é **0.3.0**, identificada como **Flow Batch — Comunicação local**.
+3. A versão desta fase é **0.3.1**, identificada como **Flow Batch — Comunicação local**.
 
 O caminho estável preserva o ID da extensão e seu IndexedDB entre atualizações.
 Remover a extensão ou apagar seus dados pode eliminar sua identidade e exigir nova
@@ -281,3 +281,7 @@ e [ordem de inicialização do Compose](https://docs.docker.com/compose/how-tos/
 ## Fila persistente
 
 Fila SQLite com entrada imutável, execução simulada sequencial, pausa, histórico, cancelamento, repetição segura e revisão de resultados incertos. Rotas assinadas e WebSocket com capacidade de fila; migração 3 preserva autorizações anteriores. A interface da fila será integrada no painel lateral.
+
+## Painel lateral e leitura do Flow
+
+O painel lateral substitui o popup, integra a fila e consulta o projeto na sessão autenticada do Flow. A leitura não gera mídia. O usuário autorizou a abordagem do FlowKit para simplificar a automação; credenciais permanecem na página e gerações pagas continuam exigindo autorização.

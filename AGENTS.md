@@ -6,7 +6,7 @@ camada continuam válidas dentro dela, respeitando as instruções do usuário.
 ## O que é este projeto
 
 Ferramenta local para gerar vídeos em lote no Google Flow. Estado desta entrega:
-Fila persistente e execução sequencial simulada.
+Painel lateral, fila e leitura do projeto na sessão do Flow.
 Gerações que consomem créditos exigem autorização explícita. Não ampliar serviços,
 provedores, dashboard ou TTS. O importador da Fase 5 permanece pendente.
 
@@ -22,9 +22,9 @@ validações de outros projetos, inclusive daqueles com nomes semelhantes.
   Node de execução; não antecipar contratos de fases futuras.
 - `packages/orchestrator`: Fastify, configuração Zod, persistência `node:sqlite`
   e rotas HTTP. Separe configuração, persistência, comunicação e segurança.
-- `packages/extension`: Chrome Manifest V3, Chrome 120+, popup e service worker
+- `packages/extension`: Chrome Manifest V3, Chrome 120+, side panel e service worker
   empacotados com esbuild. Identidade em IndexedDB; storage e alarms para estado
-  de conexão e recuperação. Sem automação da interface do Flow.
+  de conexão e recuperação. Integração com a sessão autenticada; credenciais permanecem no navegador.
 - Docker Compose: orquestrador e serviço temporário `sync-extension`. Sem Redis,
   PostgreSQL, dashboard completo ou serviços externos adicionais.
 - Antes de implementar, confira o estado real do repositório e os contratos
@@ -168,3 +168,7 @@ Use Conventional Commits com mensagens em inglês:
 ## Fila persistente
 
 Fila SQLite com entrada imutável, execução simulada sequencial, pausa, histórico, cancelamento, repetição segura e revisão de resultados incertos. Rotas assinadas e WebSocket com capacidade de fila; migração 3 preserva autorizações anteriores. A interface da fila será integrada no painel lateral.
+
+## Painel lateral e leitura do Flow
+
+O painel lateral substitui o popup, integra a fila e consulta o projeto na sessão autenticada do Flow. A leitura não gera mídia. O usuário autorizou a abordagem do FlowKit para simplificar a automação; credenciais permanecem na página e gerações pagas continuam exigindo autorização.

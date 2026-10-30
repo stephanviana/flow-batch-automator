@@ -98,7 +98,7 @@ export async function proof(
 export async function signedRequest(
   clientId: string,
   method: 'GET' | 'POST',
-  target: '/api/identity' | '/api/simulations',
+  target: Exclude<Challenge['target'], '/ws'>,
   payload?: unknown,
 ): Promise<unknown> {
   const body = payload === undefined ? '' : JSON.stringify(payload);
