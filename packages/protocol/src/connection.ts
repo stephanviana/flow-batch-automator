@@ -1,4 +1,10 @@
 import { z } from 'zod';
+import {
+  queueExecuteSchema,
+  queueProgressSchema,
+  queueSnapshotSchema,
+  taskDetailSchema,
+} from './queue.js';
 
 export const extensionIdSchema = z.string().regex(/^[a-p]{32}$/);
 export const publicKeySchema = z.strictObject({
@@ -19,7 +25,15 @@ export const pairingReceiptSchema = z.strictObject({
 export const challengeRequestSchema = z.strictObject({
   clientId: z.uuid(),
   method: z.enum(['GET', 'POST']),
-  target: z.enum(['/api/identity', '/api/simulations', '/ws']),
+  target: z.enum([
+    '/api/identity',
+    '/api/simulations',
+    '/api/queue',
+    '/api/queue/control',
+    '/api/queue/actions',
+    '/api/queue/task',
+    '/ws',
+  ]),
   bodyDigest: z.string().regex(/^[a-f0-9]{64}$/),
 });
 export const challengeSchema = challengeRequestSchema.extend({
@@ -78,15 +92,18 @@ export const clientMessageSchema = z.discriminatedUnion('type', [
     clientId: z.uuid(),
     challengeId: z.uuid(),
     signature: z.string().regex(/^[A-Za-z0-9_-]{86}$/),
+    protocolVersion: z.literal(3).optional(),
   }),
   z.strictObject({ type: z.literal('ping') }),
   z.strictObject({ type: z.literal('simulation-started'), id: z.uuid() }),
   z.strictObject({ type: z.literal('simulation-completed'), id: z.uuid() }),
+  queueProgressSchema,
 ]);
 export const serverMessageSchema = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('authenticated') }),
   z.strictObject({ type: z.literal('pong') }),
   z.strictObject({ type: z.literal('revoked') }),
+  queueExecuteSchema,
   z.strictObject({
     type: z.literal('simulate'),
     id: z.uuid(),
@@ -95,8 +112,28 @@ export const serverMessageSchema = z.discriminatedUnion('type', [
 ]);
 export type ServerMessage = z.infer<typeof serverMessageSchema>;
 export const popupRequestSchema = z.strictObject({
-  type: z.enum(['status', 'connect', 'disconnect', 'reconnect', 'simulate']),
+  type: z.enum([
+    'status',
+    'connect',
+    'disconnect',
+    'reconnect',
+    'simulate',
+    'enqueue-demo',
+    'enqueue-retry-demo',
+    'enqueue-stall-demo',
+    'queue-start',
+    'queue-pause',
+    'queue-retry',
+    'queue-resolve',
+    'queue-cancel',
+    'queue-inspect',
+  ]),
+  note: z.string().trim().min(1).max(500).optional(),
+  reviewOutcome: z.enum(['not_submitted', 'failed']).optional(),
+  taskId: z.uuid().optional(),
+  expectedRevision: z.number().int().min(0).optional(),
 });
+export type PopupRequest = z.infer<typeof popupRequestSchema>;
 export const extensionStateSchema = z.strictObject({
   phase: z.enum([
     'disconnected',
@@ -114,5 +151,8 @@ export const extensionStateSchema = z.strictObject({
 export const popupReplySchema = z.strictObject({
   state: extensionStateSchema,
   simulations: z.array(simulationSchema),
+  queue: queueSnapshotSchema.nullable().default(null),
+  inspection: taskDetailSchema.nullable().default(null),
+  operationError: z.string().nullable().default(null),
 });
 export type ExtensionState = z.infer<typeof extensionStateSchema>;

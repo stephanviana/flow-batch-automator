@@ -10,6 +10,11 @@ import { registerJsonHandling } from './http/json.js';
 import { ConnectionHub } from './communication/sockets.js';
 import { registerManagement } from './http/management.js';
 import { registerConnectionRoutes } from './http/connection.js';
+import { registerQueueRoutes } from './http/queue.js';
+import { QueueDatabase } from './queue/database.js';
+import { QueueRepository } from './queue/repository.js';
+import { QueueMutations } from './queue/mutations.js';
+import { QueueEngine } from './queue/engine.js';
 
 export function createApp(config: AppConfig): FastifyInstance {
   const database = openDatabase(config.databasePath, config.busyTimeoutMs);
@@ -19,7 +24,7 @@ export function createApp(config: AppConfig): FastifyInstance {
       redact: ['req.headers.cookie', 'req.headers.authorization'],
     },
     logController: new LogController({ disableRequestLogging: true }),
-    bodyLimit: 16384,
+    bodyLimit: 65536,
     requestTimeout: 10000,
     connectionTimeout: 10000,
     forceCloseConnections: true,
@@ -30,6 +35,15 @@ export function createApp(config: AppConfig): FastifyInstance {
   simulations.interrupt(undefined, 'server-restart');
   const signatures = new SignatureService(database, clients);
   const hub = new ConnectionHub(clients, signatures, simulations);
+  const queueDatabase = new QueueDatabase(database);
+  const queueRepository = new QueueRepository(queueDatabase);
+  const queueMutations = new QueueMutations(queueDatabase);
+  queueMutations.interrupt(undefined, 'server-restart');
+  const queueEngine = new QueueEngine(queueRepository, queueMutations, hub);
+  hub.attachQueue(queueEngine);
+  app.addHook('preClose', async (): Promise<void> => {
+    queueEngine.stop();
+  });
   registerJsonHandling(app);
   app.addHook('onClose', async (): Promise<void> => {
     database.close();
@@ -39,5 +53,13 @@ export function createApp(config: AppConfig): FastifyInstance {
   hub.register(app, config.port);
   registerManagement(app, clients, hub, new URL('./public/', import.meta.url));
   registerConnectionRoutes(app, clients, signatures, simulations, hub);
+  registerQueueRoutes(
+    app,
+    signatures,
+    clients,
+    queueRepository,
+    queueMutations,
+    queueEngine,
+  );
   return app;
 }

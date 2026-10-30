@@ -1,4 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
+import { queueMigration } from './queue-migration.js';
 
 export interface Migration {
   version: number;
@@ -45,6 +46,7 @@ export const migrations: readonly Migration[] = [
     CREATE INDEX pairing_expiry ON pairing_requests(expires_at);
     CREATE INDEX challenge_expiry ON challenges(expires_at);`,
   },
+  { version: 3, sql: queueMigration },
 ];
 
 export function migrate(

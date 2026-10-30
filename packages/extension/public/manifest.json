@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Flow Batch — Comunicação local",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "minimum_chrome_version": "120",
   "description": "Conexão autorizada e simulações locais. Sem ações no Google Flow.",
   "permissions": ["storage", "alarms"],

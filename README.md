@@ -3,11 +3,7 @@
 Ferramenta local para futura geração de imagens e vídeos em lote no Google Flow,
 com Chrome no Windows e orquestrador no Docker Engine do WSL2.
 
-**Estado: Fase 2 — Conexão e comunicação.** A Fase 1 foi verificada e aprovada pelo
-usuário. Esta entrega implementa autorização explícita, identidade persistente,
-autenticação HTTP/WebSocket, heartbeat, reconexão, revogação e tarefas simuladas.
-Não há fila de produção, integração de IA, downloads, ações no Flow ou chamadas pagas.
-A Fase 3 depende de aprovação do usuário.
+**Versão 0.3.0.** Fila persistente e execução sequencial simulada.
 
 ## Arquitetura
 
@@ -78,7 +74,7 @@ cópia inteira não é uma transação. Recarregue a extensão somente após suc
 1. Abra `chrome://extensions` no Chrome do Windows e ative o modo desenvolvedor.
 2. Use **Carregar sem compactação** e escolha a pasta acima; se já instalada,
    clique em **Recarregar** depois de cada atualização dos arquivos.
-3. A versão desta fase é **0.2.0**, identificada como **Flow Batch — Comunicação local**.
+3. A versão desta fase é **0.3.0**, identificada como **Flow Batch — Comunicação local**.
 
 O caminho estável preserva o ID da extensão e seu IndexedDB entre atualizações.
 Remover a extensão ou apagar seus dados pode eliminar sua identidade e exigir nova
@@ -281,3 +277,7 @@ Referências: [WebCrypto](https://www.w3.org/TR/WebCryptoAPI/),
 [WebSocket em service workers](https://developer.chrome.com/docs/extensions/how-to/web-platform/websockets),
 [ciclo de vida de workers](https://developer.chrome.com/docs/extensions/develop/concepts/service-workers/lifecycle)
 e [ordem de inicialização do Compose](https://docs.docker.com/compose/how-tos/startup-order/).
+
+## Fila persistente
+
+Fila SQLite com entrada imutável, execução simulada sequencial, pausa, histórico, cancelamento, repetição segura e revisão de resultados incertos. Rotas assinadas e WebSocket com capacidade de fila; migração 3 preserva autorizações anteriores. A interface da fila será integrada no painel lateral.

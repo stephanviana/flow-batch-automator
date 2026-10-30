@@ -5,12 +5,10 @@ camada continuam válidas dentro dela, respeitando as instruções do usuário.
 
 ## O que é este projeto
 
-Ferramenta local para preparar e futuramente executar gerações em lote no Google
-Flow. A Fase 1 foi verificada e aprovada pelo usuário. O escopo autorizado agora
-é a **Fase 2 — Conexão e comunicação**: identidade persistente, confirmação local,
-autenticação HTTP/WebSocket, heartbeat, reconexão, revogação e tarefas simuladas.
-Não implementar fila de produção, provedores de IA, downloads ou ações no Flow.
-A Fase 3 e ações que consumam créditos exigem aprovação explícita do usuário.
+Ferramenta local para gerar vídeos em lote no Google Flow. Estado desta entrega:
+Fila persistente e execução sequencial simulada.
+Gerações que consomem créditos exigem autorização explícita. Não ampliar serviços,
+provedores, dashboard ou TTS. O importador da Fase 5 permanece pendente.
 
 Use projetos e sessões anteriores como referência de organização e qualidade.
 Não atribua a este repositório funcionalidades, dependências, autorizações ou
@@ -166,3 +164,7 @@ Use Conventional Commits com mensagens em inglês:
 - `test:` alterações de testes.
 - `docs:` documentação.
 - `chore:` manutenção e configuração.
+
+## Fila persistente
+
+Fila SQLite com entrada imutável, execução simulada sequencial, pausa, histórico, cancelamento, repetição segura e revisão de resultados incertos. Rotas assinadas e WebSocket com capacidade de fila; migração 3 preserva autorizações anteriores. A interface da fila será integrada no painel lateral.

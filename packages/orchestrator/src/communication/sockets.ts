@@ -6,7 +6,9 @@ import {
   extensionIdSchema,
   type ServerMessage,
   type Simulation,
+  type QueueExecute,
 } from '@flow-batch/protocol';
+import type { QueueTransport, QueueEvents } from '../queue/ports.js';
 import type { ClientStore } from '../persistence/clients.js';
 import type { SimulationStore } from '../persistence/simulations.js';
 import type { SignatureService } from '../security/signatures.js';
@@ -20,13 +22,16 @@ interface Session {
   clientId?: string;
   verifying: boolean;
   lastSeen: number;
+  queueCapable: boolean;
+  flowCapable: boolean;
 }
 
-export class ConnectionHub {
+export class ConnectionHub implements QueueTransport {
+  private queue: QueueEvents | undefined;
   private readonly sessions = new Map<string, Session>();
   private readonly server = new WebSocketServer({
     noServer: true,
-    maxPayload: 16384,
+    maxPayload: 65536,
     perMessageDeflate: false,
   });
   private watchdog?: ReturnType<typeof setInterval>;
@@ -36,6 +41,57 @@ export class ConnectionHub {
     private readonly signatures: SignatureService,
     private readonly simulations: SimulationStore,
   ) {}
+
+  attachQueue(queue: QueueEvents): void {
+    this.queue = queue;
+  }
+  queueConnections(): {
+    clientId: string;
+    connectionId: string;
+    flowCapable: boolean;
+  }[] {
+    const connections: {
+      clientId: string;
+      connectionId: string;
+      flowCapable: boolean;
+    }[] = [];
+    for (const session of this.sessions.values()) {
+      if (
+        !session.clientId ||
+        !session.queueCapable ||
+        session.socket.readyState !== WebSocket.OPEN
+      )
+        continue;
+      try {
+        this.clients.authorized(session.clientId, session.extensionId);
+        connections.push({
+          clientId: session.clientId,
+          connectionId: session.id,
+          flowCapable: session.flowCapable,
+        });
+      } catch {
+        continue;
+      }
+    }
+    return connections;
+  }
+  sendQueue(connectionId: string, message: QueueExecute): boolean {
+    const session = this.sessions.get(connectionId);
+    if (
+      !session?.clientId ||
+      !session.queueCapable ||
+      session.socket.readyState !== WebSocket.OPEN
+    )
+      return false;
+    this.clients.authorized(session.clientId, session.extensionId);
+    this.send(session, message);
+    return true;
+  }
+  closeQueue(connectionId: string): void {
+    this.sessions
+      .get(connectionId)
+      ?.socket.close(4008, 'Queue attempt timeout');
+  }
 
   register(app: FastifyInstance, port: number): void {
     app.server.on('upgrade', (request, socket, head): void => {
@@ -66,6 +122,7 @@ export class ConnectionHub {
       clearInterval(this.watchdog);
       for (const session of this.sessions.values()) {
         this.simulations.interrupt(session.id, 'server-shutdown');
+        this.queue?.disconnected(session.id, 'server-shutdown');
         session.socket.terminate();
       }
       await new Promise<void>((resolve) => {
@@ -109,6 +166,7 @@ export class ConnectionHub {
     for (const session of this.sessions.values()) {
       if (session.clientId !== clientId) continue;
       this.simulations.interrupt(session.id, 'authorization-revoked');
+      this.queue?.disconnected(session.id, 'authorization-revoked');
       this.send(session, { type: 'revoked' });
       session.socket.close(4003, 'Revoked');
     }
@@ -126,6 +184,8 @@ export class ConnectionHub {
       authority,
       verifying: false,
       lastSeen: Date.now(),
+      queueCapable: false,
+      flowCapable: false,
     };
     this.sessions.set(session.id, session);
     const deadline = setTimeout((): void => {
@@ -146,6 +206,7 @@ export class ConnectionHub {
     socket.once('close', (): void => {
       clearTimeout(deadline);
       this.simulations.interrupt(session.id);
+      this.queue?.disconnected(session.id);
       this.sessions.delete(session.id);
     });
   }
@@ -172,7 +233,10 @@ export class ConnectionHub {
         if (previous.clientId === client.id)
           previous.socket.close(4000, 'Replaced by reconnect');
       session.clientId = client.id;
+      session.queueCapable = message.protocolVersion === 3;
+      session.flowCapable = false;
       this.send(session, { type: 'authenticated' });
+      this.queue?.connected();
       return;
     }
     this.clients.authorized(session.clientId, session.extensionId);
@@ -182,6 +246,8 @@ export class ConnectionHub {
       this.simulations.transition(message.id, session.id, 'running');
     else if (message.type === 'simulation-completed')
       this.simulations.transition(message.id, session.id, 'completed');
+    else if (message.type === 'queue-progress' && session.queueCapable)
+      this.queue?.progress(session.clientId, session.id, message);
     else throw new HttpError(400, 'Unexpected authentication');
   }
 
@@ -190,6 +256,7 @@ export class ConnectionHub {
     session.socket.send(JSON.stringify(message), (error): void => {
       if (error) {
         this.simulations.interrupt(session.id, 'send-failed');
+        this.queue?.disconnected(session.id, 'send-failed');
         session.socket.terminate();
       }
     });

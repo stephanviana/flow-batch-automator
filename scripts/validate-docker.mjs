@@ -104,6 +104,27 @@ try {
   );
   const build = JSON.parse(readFileSync(marker, 'utf8')).build;
 
+  // Synthetic queue state in this test project's own SQLite volume only.
+  executeNode(`import { DatabaseSync } from 'node:sqlite';
+    import { randomUUID,webcrypto } from 'node:crypto';
+    import { taskInputSchema } from '@flow-batch/protocol';
+    import { ClientStore } from './dist/persistence/clients.js';
+    import { QueueDatabase } from './dist/queue/database.js';
+    import { QueueRepository } from './dist/queue/repository.js';
+    const db=new DatabaseSync('/data/flow-batch.sqlite');
+    const keys=await webcrypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},false,['sign','verify']);
+    const jwk=await webcrypto.subtle.exportKey('jwk',keys.publicKey);
+    const clients=new ClientStore(db);
+    const receipt=await clients.request('a'.repeat(32),{kty:'EC',crv:'P-256',x:jwk.x,y:jwk.y});
+    clients.decide(receipt.requestId,true);
+    const repository=new QueueRepository(new QueueDatabase(db));
+    const makeTask=(take)=>taskInputSchema.parse({taskKey:randomUUID(),product:'Docker fixture',video:'Queue restart',format:'9:16',take,references:[],original:{imagePrompt:'original prompt',videoPrompt:'video prompt',copy:'  original copy  '},executor:'simulation',simulation:{durationMs:100,scenario:'success'},maxAttempts:3});
+    const tasks=repository.enqueue(receipt.clientId,randomUUID(),[makeTask('Hook'),makeTask('CTA')]);
+    repository.control(receipt.clientId,true);
+    if(!repository.claim(tasks[0].id,randomUUID())) throw new Error('Could not persist dispatch intent');
+    console.log('Synthetic queue dispatch intent and unsent task persisted');
+    db.close();`);
+
   compose('down'); // Deliberately preserve SQLite across container recreation.
   docker(['volume', 'inspect', `${project}_sqlite_data`]);
   compose('up', '-d', '--wait', '--wait-timeout', '60');
@@ -117,8 +138,21 @@ try {
     console.log(db.prepare("SELECT value FROM application_metadata WHERE key = 'container-test'").get().value);
     db.close();`);
   assert.equal(persisted, 'preserved');
+  const queue = JSON.parse(
+    executeNode(`import { DatabaseSync } from 'node:sqlite';
+    const db=new DatabaseSync('/data/flow-batch.sqlite',{readOnly:true});
+    const rows=db.prepare('SELECT state,input,attempt_count FROM queue_tasks ORDER BY sequence').all();
+    console.log(JSON.stringify({states:rows.map(row=>row.state),attempts:rows.map(row=>row.attempt_count),copies:rows.map(row=>JSON.parse(row.input).original.copy),running:db.prepare('SELECT running FROM queue_controls').get().running}));
+    db.close();`),
+  );
+  assert.deepEqual(queue, {
+    states: ['uncertain', 'queued'],
+    attempts: [1, 0],
+    copies: ['  original copy  ', '  original copy  '],
+    running: 0,
+  });
   console.log(
-    'Docker: build, health, loopback, isolation, sync on both starts and SQLite persistence passed.',
+    'Docker: build, health, loopback, isolation, sync on both starts, SQLite persistence and uncertain/pending queue recovery passed.',
   );
   console.log(`Synthetic test volume preserved: ${project}_sqlite_data`);
   console.log(`Logs and extension: ${directory}`);

@@ -2,7 +2,7 @@ name: flow-batch-automator
 
 services:
   sync-extension:
-    image: flow-batch-automator-sync-extension:0.2.0
+    image: flow-batch-automator-sync-extension:0.3.0
     build:
       context: .
       target: sync-extension
@@ -26,7 +26,7 @@ services:
       options: { max-size: '5m', max-file: '2' }
 
   orchestrator:
-    image: flow-batch-automator-orchestrator:0.2.0
+    image: flow-batch-automator-orchestrator:0.3.0
     build:
       context: .
       target: orchestrator

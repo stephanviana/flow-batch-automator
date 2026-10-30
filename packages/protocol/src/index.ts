@@ -1,5 +1,6 @@
 import { z } from 'zod';
 export * from './connection.js';
+export * from './queue.js';
 
 export const DEFAULT_PORT = 4319;
 export const LOCAL_SERVER_URL = `http://127.0.0.1:${DEFAULT_PORT}`;
