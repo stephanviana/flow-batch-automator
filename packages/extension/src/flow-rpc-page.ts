@@ -1,7 +1,8 @@
 // Adapted from FlowKit's browser transport and response readers (MIT).
 // Serialized into MAIN world: runtime helpers must remain inside this function.
 export interface FlowRpcRequest {
-  rpcId: 'maseQ' | 'ogiZ0b' | 'eb1hJf' | 'jwpduf' | 'Zzl0ze' | 'as29s';
+  rpcId:
+    'maseQ' | 'ogiZ0b' | 'eb1hJf' | 'jwpduf' | 'Zzl0ze' | 'as29s' | 'jHPbke';
   projectId: string;
   payload: unknown[];
   captchaAction?: 'IMAGE_GENERATION' | 'VIDEO_GENERATION';
@@ -9,6 +10,8 @@ export interface FlowRpcRequest {
   mediaId?: string;
 }
 export interface FlowRpcValue {
+  projectId?: string;
+  projectTitle?: string;
   mediaId?: string | null | undefined;
   operationId?: string | undefined;
   status?: string | undefined;
@@ -33,17 +36,24 @@ export async function flowRpcPage(
     typeof value === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(value);
   if (
     location.origin !== 'https://flow.google.com' ||
-    location.pathname.match(/\/project\/([a-zA-Z0-9_-]+)(?:\/|$)/)?.[1] !==
-      request.projectId
+    (request.rpcId !== 'jHPbke' &&
+      location.pathname.match(/\/project\/([a-zA-Z0-9_-]+)(?:\/|$)/)?.[1] !==
+        request.projectId)
   )
     return fail(
       'flow_project_changed',
       'Abra o projeto selecionado no Flow e verifique novamente.',
     );
   if (
-    !['maseQ', 'ogiZ0b', 'eb1hJf', 'jwpduf', 'Zzl0ze', 'as29s'].includes(
-      request.rpcId,
-    )
+    ![
+      'maseQ',
+      'ogiZ0b',
+      'eb1hJf',
+      'jwpduf',
+      'Zzl0ze',
+      'as29s',
+      'jHPbke',
+    ].includes(request.rpcId)
   )
     return fail('flow_rpc_invalid', 'Chamada Flow não reconhecida.');
   const page = globalThis as typeof globalThis & {
@@ -224,6 +234,25 @@ export async function flowRpcPage(
         'flow_response_invalid',
         'Resposta do Flow incompatível com o adaptador.',
       );
+    if (request.rpcId === 'jHPbke') {
+      const title: unknown = Array.isArray(payload[1])
+        ? payload[1][0]
+        : undefined;
+      if (typeof payload[0] === 'string' && /^[a-f0-9-]{36}$/i.test(payload[0]))
+        return {
+          ok: true,
+          value: {
+            projectId: payload[0],
+            ...(typeof title === 'string'
+              ? { projectTitle: title.slice(0, 160) }
+              : {}),
+          },
+        };
+      return fail(
+        'flow_response_invalid',
+        'Não foi possível confirmar o projeto criado. Confira o Flow antes de continuar.',
+      );
+    }
     const nodes: unknown[] = [payload];
     const strings: string[] = [];
     let mediaId: string | null = null;

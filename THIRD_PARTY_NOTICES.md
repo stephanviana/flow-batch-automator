@@ -4,7 +4,8 @@
 
 The page-context batchexecute transport in
 `packages/extension/src/flow-rpc-page.ts` and
-`packages/extension/src/flow-payloads.ts` is adapted from
+`packages/extension/src/flow-payloads.ts`, together with project creation in
+`packages/extension/src/flow-projects.ts`, are adapted from
 [`crisng95/flowkit`](https://github.com/crisng95/flowkit), commit
 `19cb87d6840759f0c0be1739f84ffd6ce59f985a`, specifically
 `extension/background.js` and `agent/services/flow_batch.py`.

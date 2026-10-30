@@ -9,6 +9,7 @@ import {
 } from '@flow-batch/protocol';
 import type { QueueDatabase, TaskRecord } from './database.js';
 import { HttpError } from '../security/errors.js';
+import { BatchStore } from '../persistence/batches.js';
 
 export function queueHash(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -66,9 +67,16 @@ export class QueueRepository {
       return String(existing.id);
     }
     const id = randomUUID();
+    const batchId =
+      input.executor === 'google-flow' ? input.flow.batchId : undefined;
+    if (batchId && input.executor === 'google-flow') {
+      const batch = new BatchStore(sql).get(clientId, batchId);
+      if (batch.status !== 'ready' || batch.projectId !== input.flow.projectId)
+        throw new HttpError(409, 'Batch project does not match task');
+    }
     sql
       .prepare(
-        "INSERT INTO queue_tasks (id,client_id,task_key,input,input_hash,state,max_attempts,created_at,updated_at,next_attempt_at) VALUES (?,?,?,?,?,'queued',?,?,?,?)",
+        "INSERT INTO queue_tasks (id,client_id,task_key,input,input_hash,state,max_attempts,created_at,updated_at,next_attempt_at,batch_id) VALUES (?,?,?,?,?,'queued',?,?,?,?,?)",
       )
       .run(
         id,
@@ -80,6 +88,7 @@ export class QueueRepository {
         now,
         now,
         now,
+        batchId ?? null,
       );
     this.database.event(id, 'queued', now, null, 'enqueued');
     return id;

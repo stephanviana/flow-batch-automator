@@ -7,6 +7,7 @@ import {
   renderQueueActivity,
 } from './queue-activity.js';
 import { initializeFlowForm, renderFlowForm } from './flow-form.js';
+import { initializeBatchForm, renderBatchForm } from './batch-form.js';
 
 const status = document.querySelector<HTMLParagraphElement>('#status');
 const code = document.querySelector<HTMLParagraphElement>('#code');
@@ -60,6 +61,7 @@ async function refresh(
     }
     renderQueue(data.queue, data.inspection, data.operationError, refresh);
     renderFlowForm(data);
+    renderBatchForm(data);
     const nextSimulationStamp = JSON.stringify(data.simulations);
     if (nextSimulationStamp === simulationStamp) return data;
     simulationStamp = nextSimulationStamp;
@@ -87,6 +89,7 @@ async function refresh(
   }
 }
 initializeFlowForm(refresh);
+initializeBatchForm(refresh);
 for (const button of document.querySelectorAll<HTMLButtonElement>(
   '[data-action]',
 )) {

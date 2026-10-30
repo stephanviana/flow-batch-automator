@@ -7,6 +7,7 @@ import {
   type QueueSnapshot,
   type TaskDetail,
   type FlowInspection,
+  type Batch,
 } from '@flow-batch/protocol';
 import { z } from 'zod';
 import { ExtensionConnection } from './connection.js';
@@ -16,6 +17,7 @@ import { ApiError } from './api.js';
 import { queueCommand } from './queue-client.js';
 import { inspectFlow, openFlow } from './flow.js';
 import { FlowInputError } from './flow-errors.js';
+import { batchSnapshot, batchCommand } from './batch-client.js';
 
 const connection = new ExtensionConnection();
 let pendingCommand: Promise<unknown> = Promise.resolve();
@@ -30,12 +32,16 @@ async function snapshot(): Promise<{
   inspection: TaskDetail | null;
   operationError: string | null;
   flow: FlowInspection | null;
+  batches: Batch[];
+  activeBatchId: string | null;
 }> {
   const state = await readState();
   const config = await preferences();
   let simulations: Simulation[] = [];
   let queue: QueueSnapshot | null = null;
   let inspection: TaskDetail | null = null;
+  let batches: Batch[] = [];
+  let activeBatchId: string | null = null;
   if (config.clientId && !config.revoked && state.phase === 'connected') {
     try {
       simulations = z
@@ -52,6 +58,11 @@ async function snapshot(): Promise<{
       );
     } catch {
       /* Keep the connection status independent from queue availability. */
+    }
+    try {
+      ({ batches, activeBatchId } = await batchSnapshot(config.clientId));
+    } catch {
+      /* Never authorize a take using an unconfirmed batch binding. */
     }
     if (inspectedTaskId) {
       try {
@@ -72,6 +83,8 @@ async function snapshot(): Promise<{
     inspection,
     operationError,
     flow,
+    batches,
+    activeBatchId,
   };
 }
 
@@ -97,6 +110,11 @@ async function command(
     });
   } else if (message.type === 'queue-inspect') {
     inspectedTaskId = message.taskId;
+  } else if (message.type.startsWith('batch-')) {
+    const config = await preferences();
+    if (!config.clientId || config.revoked)
+      throw new FlowInputError('Conecte a extensão primeiro.');
+    flow = await batchCommand(config.clientId, message);
   } else if (
     message.type.startsWith('queue-') ||
     message.type.startsWith('enqueue-')
@@ -131,6 +149,7 @@ chrome.runtime.onMessage.addListener(
       .catch(async (error: unknown): Promise<void> => {
         if (
           parsed.data.type.startsWith('queue-') ||
+          parsed.data.type.startsWith('batch-') ||
           parsed.data.type.startsWith('enqueue-')
         ) {
           operationError =
@@ -138,7 +157,9 @@ chrome.runtime.onMessage.addListener(
               ? error.message
               : error instanceof ApiError && error.status === 409
                 ? 'O registro mudou ou a ação exige revisão. Confira o lote e o histórico antes de continuar.'
-                : 'Não foi possível operar a fila. Verifique a conexão e tente novamente.';
+                : parsed.data.type.startsWith('batch-')
+                  ? 'Não foi possível confirmar o lote. Use “Abrir lote” no mesmo registro para recuperar seu estado antes de criar outro.'
+                  : 'Não foi possível operar a fila. Verifique a conexão e tente novamente.';
         } else if (parsed.data.type.startsWith('flow-')) {
           flow = {
             phase: 'error',

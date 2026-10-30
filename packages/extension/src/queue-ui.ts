@@ -52,7 +52,7 @@ function taskRow(task: TaskSummary, send: Send): HTMLLIElement {
   row.dataset.attemptCount = String(task.attemptCount);
   row.dataset.revision = String(task.revision);
   const description = document.createElement('p');
-  description.textContent = `${task.product} / ${task.video} / ${task.take} (${task.format}) · ${labels[task.state]} · tentativas ${task.attemptCount}/${task.maxAttempts}`;
+  description.textContent = `${task.batchName ? `${task.batchName} · ` : ''}${task.product} / ${task.video} / ${task.take} (${task.format}) · ${labels[task.state]} · tentativas ${task.attemptCount}/${task.maxAttempts}`;
   row.append(description);
   const execution = document.createElement('p');
   execution.className = 'hint';

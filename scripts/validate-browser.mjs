@@ -9,6 +9,7 @@ import { chromium } from 'playwright';
 import { validateQueue } from './browser-queue.mjs';
 import { validateFlow } from './browser-flow.mjs';
 import { validateFlowTake } from './browser-flow-take.mjs';
+import { validateBatches } from './browser-batches.mjs';
 import { startMediaFixture } from './browser-media.mjs';
 
 const directory = resolve('.cache', `browser-${randomUUID()}`);
@@ -246,6 +247,13 @@ try {
   await validateFlow({ browser, panel: popup, eventually });
   if (!process.argv.includes('--flow-only'))
     await validateQueue({ popup, eventually, stopServer, startServer });
+  await validateBatches({
+    browser,
+    panel: popup,
+    eventually,
+    stopServer,
+    startServer,
+  });
   await validateFlowTake({
     browser,
     panel: popup,

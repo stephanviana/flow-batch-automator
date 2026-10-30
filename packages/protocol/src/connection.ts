@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { batchDraftSchema, batchSchema } from './batches.js';
 import {
   flowInspectionSchema,
   flowExecuteSchema,
@@ -33,6 +34,7 @@ export const challengeRequestSchema = z.strictObject({
   method: z.enum(['GET', 'POST']),
   target: z.enum([
     '/api/identity',
+    '/api/batches',
     '/api/simulations',
     '/api/queue',
     '/api/queue/control',
@@ -123,6 +125,9 @@ export const popupRequestSchema = z
   .strictObject({
     type: z.enum([
       'status',
+      'batch-prepare',
+      'batch-open',
+      'batch-attach',
       'flow-open',
       'flow-inspect',
       'enqueue-flow',
@@ -142,6 +147,8 @@ export const popupRequestSchema = z
       'queue-show-download',
     ]),
     flowDraft: flowDraftSchema.optional(),
+    batchDraft: batchDraftSchema.optional(),
+    batchId: z.uuid().optional(),
     note: z.string().trim().min(1).max(500).optional(),
     reviewOutcome: z.enum(['not_submitted', 'failed']).optional(),
     taskId: z.uuid().optional(),
@@ -151,6 +158,15 @@ export const popupRequestSchema = z
     (message) =>
       (message.type === 'enqueue-flow') === Boolean(message.flowDraft),
     'Flow enqueue requires an approved draft',
+  )
+  .refine(
+    (message) =>
+      (message.type === 'batch-prepare') === Boolean(message.batchDraft) &&
+      (!['batch-open', 'batch-attach'].includes(message.type) ||
+        Boolean(message.batchId)) &&
+      (message.type !== 'batch-attach' ||
+        message.expectedRevision !== undefined),
+    'Batch commands require a draft or a recorded batch',
   );
 export type PopupRequest = z.infer<typeof popupRequestSchema>;
 export const extensionStateSchema = z.strictObject({
@@ -168,6 +184,8 @@ export const extensionStateSchema = z.strictObject({
   expiresAt: z.number().optional(),
 });
 export const popupReplySchema = z.strictObject({
+  batches: z.array(batchSchema).default([]),
+  activeBatchId: z.uuid().nullable().default(null),
   state: extensionStateSchema,
   simulations: z.array(simulationSchema),
   queue: queueSnapshotSchema.nullable(),

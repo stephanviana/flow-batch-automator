@@ -45,6 +45,7 @@ export const originalPromptsSchema = z.strictObject({
   copy: z.string().max(4096),
 });
 export const flowSettingsSchema = z.strictObject({
+  batchId: z.uuid().optional(),
   projectId: z.uuid(),
   imageModel: z.enum(['GEM_PIX_2', 'BELUGA', 'HARBOR_SEAL']),
   videoModel: flowVideoModelSchema,
@@ -59,6 +60,7 @@ export const flowSettingsSchema = z.strictObject({
 });
 export type FlowSettings = z.infer<typeof flowSettingsSchema>;
 export const flowDraftSchema = z.strictObject({
+  batchId: z.uuid().optional(),
   projectId: z.uuid(),
   requestId: z.uuid(),
   taskKey: z.uuid(),

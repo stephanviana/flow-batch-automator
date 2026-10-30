@@ -58,6 +58,14 @@ export class QueueDatabase {
     const summary = taskSummarySchema.parse({
       id: row.id,
       taskKey: row.task_key,
+      ...(row.batch_id
+        ? {
+            batchId: row.batch_id,
+            batchName: this.connection
+              .prepare('SELECT name FROM flow_batches WHERE id=?')
+              .get(String(row.batch_id))?.name,
+          }
+        : {}),
       executor: input.executor,
       step:
         this.connection

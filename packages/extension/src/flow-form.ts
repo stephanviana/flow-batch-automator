@@ -18,6 +18,8 @@ const videoModel = document.querySelector<HTMLSelectElement>(
 );
 const omniOptions = document.querySelector<HTMLDivElement>('#omni-options');
 let projectId: string | null = null;
+let batchId: string | null = null;
+let batchChanging = false;
 let connected = false;
 let busy = false;
 let pending: FlowDraft | undefined;
@@ -35,8 +37,8 @@ function fileBase64(file: File): Promise<string> {
   });
 }
 async function draft(): Promise<FlowDraft> {
-  if (!form || !projectId)
-    throw new Error('Verifique o projeto no Flow antes de autorizar o take.');
+  if (!form || !projectId || !batchId)
+    throw new Error('Prepare e abra o lote antes de autorizar o take.');
   const fields = new FormData(form);
   const reference = fields.get('reference');
   if (
@@ -47,6 +49,7 @@ async function draft(): Promise<FlowDraft> {
     throw new Error('Selecione uma imagem de referência de até 8 MB.');
   return flowDraftSchema.parse({
     projectId,
+    batchId,
     requestId: crypto.randomUUID(),
     taskKey: crypto.randomUUID(),
     product: fields.get('product'),
@@ -80,14 +83,33 @@ async function draft(): Promise<FlowDraft> {
   });
 }
 export function renderFlowForm(reply: PanelReply): void {
-  const next = reply.flow?.phase === 'ready' ? reply.flow.projectId : null;
-  if (projectId && next !== projectId && approval) {
+  const batch = reply.batches.find(
+    (candidate) => candidate.id === reply.activeBatchId,
+  );
+  const next =
+    batch?.status === 'ready' &&
+    reply.flow?.phase === 'ready' &&
+    reply.flow.projectId === batch.projectId
+      ? batch.projectId
+      : null;
+  if ((next !== projectId || batch?.id !== batchId) && approval) {
     approval.checked = false;
     pending = undefined;
   }
   projectId = next;
+  batchId = batch?.status === 'ready' ? batch.id : null;
   connected = reply.state.phase === 'connected' && reply.queue !== null;
-  if (submit) submit.disabled = busy || !connected || !projectId;
+  if (submit)
+    submit.disabled =
+      busy || batchChanging || !connected || !projectId || !batchId;
+}
+export function setBatchChanging(changing: boolean): void {
+  if (batchChanging === changing) return;
+  batchChanging = changing;
+  pending = undefined;
+  if (approval) approval.checked = false;
+  if (submit)
+    submit.disabled = busy || changing || !connected || !projectId || !batchId;
 }
 export function initializeFlowForm(send: Send): void {
   if (!form || !feedback || !submit || !approval || !videoModel || !omniOptions)
@@ -108,7 +130,15 @@ export function initializeFlowForm(send: Send): void {
   });
   form.addEventListener('submit', (event): void => {
     event.preventDefault();
-    if (busy || !connected || !projectId || !approval.checked) return;
+    if (
+      busy ||
+      batchChanging ||
+      !connected ||
+      !projectId ||
+      !batchId ||
+      !approval.checked
+    )
+      return;
     busy = true;
     submit.disabled = true;
     feedback.textContent = 'Preservando a referência e enfileirando o take…';
@@ -128,7 +158,7 @@ export function initializeFlowForm(send: Send): void {
           'Não foi possível enfileirar. Confira a conexão, os campos e a imagem de referência.';
       } finally {
         busy = false;
-        submit.disabled = !connected || !projectId;
+        submit.disabled = batchChanging || !connected || !projectId || !batchId;
       }
     })();
   });

@@ -3,6 +3,7 @@ import { randomUUID, createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { URLSearchParams } from 'node:url';
+import { prepareBatch } from './browser-batches.mjs';
 
 export async function validateFlowTake({
   browser,
@@ -222,7 +223,19 @@ export async function validateFlowTake({
     );
     if (!(await panel.locator('[data-action="queue-pause"]').isDisabled()))
       await panel.locator('[data-action="queue-pause"]').click();
+    const batchReply = await prepareBatch(
+      panel,
+      eventually,
+      'Lote de takes fixture',
+      'existing-project',
+    );
+    const batch = batchReply.batches.find(
+      (batch) => batch.id === batchReply.activeBatchId,
+    );
+    assert.equal(batch.projectId, projectId);
     const complete = await enqueue('Take completo');
+    // The queue must navigate the same Flow tab back to this take's fixed project.
+    await flow.goto('https://flow.google.com/');
     media.holdNextDownload();
     await panel.locator('[data-action="queue-start"]').click();
     await eventually(async () =>
@@ -262,6 +275,14 @@ export async function validateFlowTake({
     assert.equal(uploadCount, 1);
     assert.equal(imageCount, 1);
     assert.equal(videoCount, 1);
+    assert.equal(flow.url(), `https://flow.google.com/project/${projectId}`);
+    assert.equal(
+      browser
+        .pages()
+        .filter((page) => page.url().startsWith('https://flow.google.com/'))
+        .length,
+      1,
+    );
     assert.equal(
       await panel.locator('#queue-activity').getAttribute('data-tone'),
       'success',
@@ -286,6 +307,8 @@ export async function validateFlowTake({
       )
     ).inspection;
     assert.deepEqual(detail.input.original, original);
+    assert.equal(detail.input.flow.batchId, batch.id);
+    assert.equal(detail.task.batchName, batch.name);
     assert.equal(
       detail.input.flow.reference.sha256,
       createHash('sha256').update(referenceBytes).digest('hex'),

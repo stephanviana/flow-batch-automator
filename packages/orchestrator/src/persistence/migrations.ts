@@ -57,6 +57,19 @@ export const migrations: readonly Migration[] = [
     UNIQUE(attempt_id,stage)
   ) STRICT;`,
   },
+  {
+    version: 5,
+    sql: `CREATE TABLE flow_batches (
+      id TEXT PRIMARY KEY, client_id TEXT NOT NULL REFERENCES clients(id),
+      name TEXT NOT NULL, mode TEXT NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('draft','creating','ready','uncertain')),
+      project_id TEXT, project_title TEXT, creation_attempt_id TEXT,
+      revision INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
+    ) STRICT;
+    CREATE INDEX batches_client ON flow_batches(client_id);
+    ALTER TABLE queue_tasks ADD COLUMN batch_id TEXT REFERENCES flow_batches(id);`,
+  },
 ];
 
 export function migrate(

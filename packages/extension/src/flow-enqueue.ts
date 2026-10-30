@@ -7,12 +7,26 @@ import { saveReference } from './flow-assets.js';
 import { inspectFlow } from './flow.js';
 import { signedRequest } from './api.js';
 import { FlowInputError } from './flow-errors.js';
+import { batchSnapshot } from './batch-client.js';
 
 export async function enqueueFlow(
   clientId: string,
   input: FlowDraft,
 ): Promise<void> {
   const draft = flowDraftSchema.parse(input);
+  const batches = await batchSnapshot(clientId);
+  const batch = batches.batches.find(
+    (candidate) => candidate.id === draft.batchId,
+  );
+  if (
+    !batch ||
+    batches.activeBatchId !== batch.id ||
+    batch.status !== 'ready' ||
+    batch.projectId !== draft.projectId
+  )
+    throw new FlowInputError(
+      'Prepare e abra o lote antes de autorizar o take.',
+    );
   const project = await inspectFlow();
   if (project.phase !== 'ready' || project.projectId !== draft.projectId)
     throw new FlowInputError(
@@ -34,6 +48,7 @@ export async function enqueueFlow(
     executor: 'google-flow',
     maxAttempts: 1,
     flow: {
+      ...(draft.batchId ? { batchId: draft.batchId } : {}),
       projectId: draft.projectId,
       imageModel: draft.imageModel,
       videoModel: draft.videoModel,

@@ -73,6 +73,68 @@
           </div>
         </details>
       </section>
+      <section aria-labelledby="batch-title">
+        <h2 id="batch-title">Lote e projeto</h2>
+        <p id="batch-status" role="status" aria-live="polite">
+          Conecte a extensão para preparar um lote.
+        </p>
+        <label
+          >Lotes registrados<select id="batch-select">
+            <option value="">Selecione um lote</option>
+          </select></label
+        >
+        <button id="batch-open" type="button" class="secondary" disabled>
+          Abrir lote
+        </button>
+        <details id="batch-new">
+          <summary>Novo lote</summary>
+          <form id="batch-form">
+            <label
+              >Nome do lote<input
+                name="batchName"
+                maxlength="120"
+                placeholder="Produto · campanha · data"
+                required
+            /></label>
+            <label
+              >Projeto do Flow<select name="batchMode">
+                <option value="new-project">
+                  Criar projeto para este lote
+                </option>
+                <option value="existing-project">
+                  Usar projeto aberto e verificado
+                </option>
+              </select></label
+            >
+            <p class="hint">
+              O projeto recebe o nome do lote e será reutilizado nas retomadas.
+              Preparar o lote não gera imagens nem vídeos.
+            </p>
+            <button id="batch-prepare" type="submit" disabled>
+              Preparar lote
+            </button>
+          </form>
+        </details>
+        <div id="batch-review" hidden>
+          <p class="hint">
+            Criação sem confirmação. Confira os projetos no Flow e abra o
+            correto antes de vincular. Nenhum outro projeto será criado
+            automaticamente.
+          </p>
+          <label class="consent"
+            ><input id="batch-reviewed" type="checkbox" />Conferi o Flow e quero
+            vincular o projeto aberto a este lote.</label
+          >
+          <button id="batch-attach" type="button" class="secondary" disabled>
+            Vincular projeto aberto
+          </button>
+        </div>
+        <p id="batch-feedback" role="status" aria-live="polite"></p>
+        <p class="hint">
+          Novos takes entram no lote aberto. Os takes já enfileirados mantêm
+          seus projetos; a fila processa todos em sequência.
+        </p>
+      </section>
       <section aria-labelledby="take-title">
         <h2 id="take-title">Novo take</h2>
         <p class="hint">

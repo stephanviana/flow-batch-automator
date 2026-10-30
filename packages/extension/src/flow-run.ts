@@ -14,6 +14,7 @@ import {
 } from './flow-rpc-page.js';
 import { uploadRequest, imageRequest, videoRequest } from './flow-payloads.js';
 import { downloadVideo, FlowDownloadError } from './flow-download.js';
+import { openProject } from './flow-projects.js';
 
 export class FlowRunError extends Error {
   constructor(
@@ -61,7 +62,7 @@ function wait(milliseconds: number, signal: AbortSignal): Promise<void> {
     else signal.addEventListener('abort', aborted, { once: true });
   });
 }
-async function projectTab(projectId: string): Promise<number> {
+async function projectTab(projectId: string, reopen: boolean): Promise<number> {
   const tabs = await chrome.tabs.query({
     url: 'https://flow.google.com/*',
     discarded: false,
@@ -74,6 +75,17 @@ async function projectTab(projectId: string): Promise<number> {
       )?.[1] === projectId,
   );
   const selected = matching.find((tab) => tab.active) ?? matching[0];
+  if (selected?.id === undefined && reopen) {
+    try {
+      return await openProject(projectId, false);
+    } catch {
+      throw new FlowRunError(
+        'flow_project_missing',
+        'Não foi possível abrir o projeto do lote. Confira a sessão do Flow.',
+        true,
+      );
+    }
+  }
   if (selected?.id === undefined)
     throw new FlowRunError(
       'flow_project_missing',
@@ -191,7 +203,10 @@ export async function runFlowTake(
       true,
     );
   }
-  const runner = new FlowRunner(await projectTab(flow.projectId), signal);
+  const runner = new FlowRunner(
+    await projectTab(flow.projectId, Boolean(flow.batchId)),
+    signal,
+  );
   const base = {
     type: 'queue-progress' as const,
     taskId,

@@ -15,6 +15,8 @@ import { QueueDatabase } from './queue/database.js';
 import { QueueRepository } from './queue/repository.js';
 import { QueueMutations } from './queue/mutations.js';
 import { QueueEngine } from './queue/engine.js';
+import { BatchStore } from './persistence/batches.js';
+import { registerBatchRoutes } from './http/batches.js';
 
 export function createApp(config: AppConfig): FastifyInstance {
   const database = openDatabase(config.databasePath, config.busyTimeoutMs);
@@ -34,6 +36,8 @@ export function createApp(config: AppConfig): FastifyInstance {
   const simulations = new SimulationStore(database);
   simulations.interrupt(undefined, 'server-restart');
   const signatures = new SignatureService(database, clients);
+  const batches = new BatchStore(database);
+  batches.interrupt();
   const hub = new ConnectionHub(clients, signatures, simulations);
   const queueDatabase = new QueueDatabase(database);
   const queueRepository = new QueueRepository(queueDatabase);
@@ -53,6 +57,7 @@ export function createApp(config: AppConfig): FastifyInstance {
   hub.register(app, config.port);
   registerManagement(app, clients, hub, new URL('./public/', import.meta.url));
   registerConnectionRoutes(app, clients, signatures, simulations, hub);
+  registerBatchRoutes(app, signatures, clients, batches);
   registerQueueRoutes(
     app,
     signatures,

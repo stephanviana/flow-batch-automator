@@ -186,6 +186,8 @@ export const queueActionSchema = z.discriminatedUnion('action', [
 ]);
 export type QueueAction = z.infer<typeof queueActionSchema>;
 export const taskSummarySchema = z.strictObject({
+  batchId: z.uuid().optional(),
+  batchName: z.string().optional(),
   id: z.uuid(),
   taskKey: z.uuid(),
   executor: z.enum(['simulation', 'google-flow']),

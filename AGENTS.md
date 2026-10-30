@@ -5,10 +5,53 @@ camada continuam válidas dentro dela, respeitando as instruções do usuário.
 
 ## O que é este projeto
 
-Ferramenta local para gerar vídeos em lote no Google Flow. Estado desta entrega:
-Andamento visual imediato e etapas reais da fila, sem percentual fictício.
-Gerações que consomem créditos exigem autorização explícita. Não ampliar serviços,
-provedores, dashboard ou TTS. O importador da Fase 5 permanece pendente.
+Ferramenta local para gerar imagens e vídeos em lote no Google Flow e baixar os
+MP4s, reduzindo o trabalho manual. As Fases 1, 2 e 3 foram verificadas e aprovadas
+pelo usuário, incluindo conexão, três takes simulados sequenciais e histórico no
+Chrome do Windows. A **Fase 4 — Integração com Flow** foi implementada usando o
+FlowKit como referência e um side panel como interface. O usuário confirmou o
+primeiro take real: **“Concluiu e baixou o MP4”**. A conferência do SQLite mostrou
+uma tentativa concluída e os cinco checkpoints do percurso completo. O importador
+de lotes da Fase 5 ainda não foi implementado.
+
+A divisão por projetos foi implementada na versão 0.4.3: um projeto do Flow por lote, com
+vínculo persistente para retomadas. Novos lotes criam um projeto por padrão;
+também é possível vincular um projeto existente. Takes antigos mantêm o projeto
+original. Uma criação sem resposta confirmada exige revisão, sem criar outro
+projeto automaticamente. A criação do projeto não autoriza gerar mídia paga.
+O usuário pediu reutilizar a mesma aba do Flow, voltando à página inicial para
+criar o projeto e navegando nela até o projeto do lote. Não abrir abas adicionais
+para os lotes. Trocas manuais exigem fila pausada/ociosa; a execução pode navegar
+entre projetos antes de iniciar o próximo take, sem interromper o atual.
+O usuário validou o novo fluxo na conta real do Flow: **“Testei o novo fluxo e
+está funcionando corretamente.”** A divisão por projetos está aprovada; não
+atribuir a essa confirmação testes reais específicos de interrupção/recuperação.
+
+Antes da Fase 5, o usuário pediu Omni 1.1 Flash e confirmou o modo **Frames,
+somente frame inicial**. Imagem: Nano Banana Pro ou Nano Banana 2.1. Use a imagem
+gerada como frame inicial, preservando a referência original na etapa de imagem.
+Omni deve ser o padrão de novos takes (8 s, 720p), com os tempos 4/6/8/10 s e
+resoluções 360p/720p suportados pelo FlowKit. Não mudar modelos ou parâmetros de
+takes já registrados; a Fase 5 permanece pendente.
+O usuário confirmou **“Gerei com Omni e baixou o MP4”** na versão 0.4.1. O take
+`abra_i2v_8s` (Omni Frames, 8 s/720p) ficou concluído em uma tentativa, com os cinco
+checkpoints. Outras durações e resoluções têm cobertura com fixtures; não atribuir
+a elas essa validação real.
+
+O usuário também pediu feedback visual ao processar a fila. O painel deve
+responder imediatamente ao clique e mostrar as etapas reais até o download,
+incluindo pausa, falha e resultado incerto; não inventar percentual de geração.
+As chamadas diretas não sincronizam a listagem da página do Flow. Não recarregar
+a aba automaticamente durante uma execução para tentar atualizar essa listagem.
+
+O usuário retirou as restrições anteriores contra APIs privadas e integração no
+contexto autenticado da aba. Chamadas batchexecute com a sessão da própria conta
+estão autorizadas; não exigir automação por cliques como única alternativa.
+Reaproveite a fila existente e concentre o desenvolvimento no caminho mínimo:
+referência → imagem → vídeo → MP4. Não ampliar infraestrutura, provedores de IA,
+dashboard, TTS ou publicação em redes sociais. Executar gerações que consomem
+créditos continua dependendo de confirmação explícita; implementar e testar os
+adaptadores sem consumir créditos está autorizado.
 
 Use projetos e sessões anteriores como referência de organização e qualidade.
 Não atribua a este repositório funcionalidades, dependências, autorizações ou
@@ -24,7 +67,9 @@ validações de outros projetos, inclusive daqueles com nomes semelhantes.
   e rotas HTTP. Separe configuração, persistência, comunicação e segurança.
 - `packages/extension`: Chrome Manifest V3, Chrome 120+, side panel e service worker
   empacotados com esbuild. Identidade em IndexedDB; storage e alarms para estado
-  de conexão e recuperação. Integração com a sessão autenticada; credenciais permanecem no navegador.
+  de conexão e recuperação. Referências locais em IndexedDB separado, com SHA-256;
+  bytes das imagens não passam pelo orquestrador. A integração executa RPCs no contexto da aba do Flow,
+  aproveitando sua sessão; credenciais e tokens permanecem no navegador.
 - Docker Compose: orquestrador e serviço temporário `sync-extension`. Sem Redis,
   PostgreSQL, dashboard completo ou serviços externos adicionais.
 - Antes de implementar, confira o estado real do repositório e os contratos
@@ -96,6 +141,8 @@ mudanças apenas documentais não exigem criar testes de código.
 - `docker compose config --quiet`: validação da configuração de containers.
 - `pnpm test:docker`: integração real em projeto Compose e volume novos, com a
   porta 4319 livre; preserva o volume sintético e deixa os logs em `.cache/`.
+- `pnpm test:browser:flow`: executor com referência e MP4 em fixtures HTTPS
+  locais, sem Google real; OpenSSL e flags só no perfil isolado de teste.
 - `pnpm test:browser`: extensão real em Chrome for Testing com perfil e banco
   novos em `.cache/`, sem perfil pessoal. Exige navegador local de teste instalado
   e porta 4319 livre; não instala bibliotecas globais automaticamente.
@@ -124,8 +171,24 @@ mudanças apenas documentais não exigem criar testes de código.
 - WebSocket exige Origin exata da extensão e autenticação na primeira mensagem
   com prazo limitado. Não enviar credenciais pela URL. Revogação encerra conexões
   e impede tentativas automáticas. Simulações interrompidas não são reenviadas.
-- Extensão sem permissões de Flow, downloads, cookies, debugger ou acesso amplo
-  à web. Não usar APIs privadas, capturar credenciais ou contornar proteções.
+- A fila tem um único trabalho ativo globalmente. Persista a intenção antes do
+  envio, vincule eventos à tentativa e à conexão e ignore mensagens atrasadas.
+  Interrupções após a intenção de envio geram resultado incerto e bloqueiam novos
+  despachos até revisão explícita; reconexão não autoriza reenvio.
+- Takes reais exigem autorização vinculada à entrada imutável para uma imagem e
+  um vídeo, com tentativa única. Persistir checkpoints dos IDs de cada etapa.
+  Conclusão exige download confirmado pelo Chrome e evidência correspondente;
+  não aceitar conclusão manual simulada de uma tarefa real.
+- Repetição automática de simulações somente para falha comprovadamente anterior ao envio,
+  com espera progressiva e orçamento de tentativas. Preserve materiais originais,
+  todas as tentativas e eventos. Não prometa execução exatamente uma vez.
+- Conceda permissões de Flow, scripting, sidePanel e downloads conforme as
+  funcionalidades implementadas exigirem. Restrinja os hosts aos necessários.
+  Não exporte cookies, tokens de sessão ou reCAPTCHA ao orquestrador, logs ou UI.
+  Mantenha a autorização local e o tratamento de resultados incertos da fila.
+  A retirada das restrições da integração não autoriza expor o servidor na rede,
+  apagar dados ou alterar configurações globais.
+- Código adaptado do FlowKit deve preservar sua licença MIT e atribuição.
 - Testes não usam perfil pessoal do Chrome. Validação Windows/Chrome real deve
   ser registrada separadamente de testes HTTP e containers.
 
@@ -164,23 +227,3 @@ Use Conventional Commits com mensagens em inglês:
 - `test:` alterações de testes.
 - `docs:` documentação.
 - `chore:` manutenção e configuração.
-
-## Fila persistente
-
-Fila SQLite com entrada imutável, execução simulada sequencial, pausa, histórico, cancelamento, repetição segura e revisão de resultados incertos. Rotas assinadas e WebSocket com capacidade de fila; migração 3 preserva autorizações anteriores. A interface da fila será integrada no painel lateral.
-
-## Painel lateral e leitura do Flow
-
-O painel lateral substitui o popup, integra a fila e consulta o projeto na sessão autenticada do Flow. A leitura não gera mídia. O usuário autorizou a abordagem do FlowKit para simplificar a automação; credenciais permanecem na página e gerações pagas continuam exigindo autorização.
-
-## Geração de take e download MP4
-
-Referência local → imagem → vídeo → MP4. Referências ficam no IndexedDB com SHA-256, prompts preservados, uma imagem e um vídeo por autorização, tentativa única e cinco checkpoints. Conclusão exige download real confirmado pelo Chrome. O usuário confirmou: “Concluiu e baixou o MP4”.
-
-## Omni Flash e Frames
-
-Novos takes usam Omni 1.1 Flash em Frames, somente frame inicial, 8 s/720p/9:16, com Nano Banana Pro ou 2.1. Durações 4/6/8/10 s e resoluções 360p/720p; Veo e parâmetros históricos preservados. O usuário confirmou: “Gerei com Omni e baixou o MP4”, referente a 8 s/720p; outras opções têm fixtures.
-
-## Andamento visual da fila
-
-O painel responde imediatamente ao início e à pausa, mostra etapas reais, tempo desde a mudança, sucesso, erro e revisão. Não inventar percentuais nem recarregar a página durante um take para atualizar a listagem do Flow.
