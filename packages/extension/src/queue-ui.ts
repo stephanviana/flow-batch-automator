@@ -5,6 +5,7 @@ import type {
   TaskState,
   TaskSummary,
 } from '@flow-batch/protocol';
+import { renderQueueActivity } from './queue-activity.js';
 type Send = (message: PopupRequest) => Promise<unknown>;
 let historyStamp = '';
 const labels: Record<TaskState, string> = {
@@ -159,13 +160,7 @@ export function renderQueue(
   const tasks = document.querySelector('#queue-tasks');
   const history = document.querySelector('#queue-history');
   if (!summary || !feedback || !tasks || !history) return;
-  feedback.textContent = error ?? '';
-  for (const control of document.querySelectorAll<HTMLButtonElement>(
-    '[data-action^="queue-"]',
-  ))
-    control.disabled =
-      !queue ||
-      (control.dataset.action === 'queue-start' && queue.blockedByReview);
+  renderQueueActivity(queue, error);
   summary.textContent = !queue
     ? 'Fila indisponível. Conecte a extensão.'
     : queue.blockedByReview
@@ -186,9 +181,7 @@ export function renderQueue(
   for (const control of document.querySelectorAll<HTMLButtonElement>(
     '[data-action^="enqueue-"]',
   )) {
-    control.disabled =
-      !queue ||
-      (control.dataset.action === 'queue-start' && queue.blockedByReview);
+    control.disabled = !queue;
   }
   const nextHistoryStamp = JSON.stringify(
     inspection ? { id: inspection.task.id, events: inspection.events } : null,

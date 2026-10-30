@@ -1,6 +1,11 @@
 import { popupReplySchema } from '@flow-batch/protocol';
 import type { PopupRequest } from '@flow-batch/protocol';
 import { renderQueue } from './queue-ui.js';
+import {
+  beginQueueControl,
+  finishQueueControl,
+  renderQueueActivity,
+} from './queue-activity.js';
 import { initializeFlowForm, renderFlowForm } from './flow-form.js';
 
 const status = document.querySelector<HTMLParagraphElement>('#status');
@@ -28,11 +33,18 @@ let appliedSequence = 0;
 async function refresh(
   request: PopupRequest = { type: 'status' },
 ): Promise<ReturnType<typeof popupReplySchema.parse>> {
+  const control =
+    request.type === 'queue-start' || request.type === 'queue-pause'
+      ? request.type
+      : null;
   const sequence = ++requestSequence;
   pendingRequests++;
+  let controlError: string | undefined;
+  if (control) beginQueueControl(control);
   try {
     const response: unknown = await chrome.runtime.sendMessage(request);
     const data = popupReplySchema.parse(response);
+    if (control) controlError = data.operationError ?? undefined;
     if (sequence < appliedSequence) return data;
     appliedSequence = sequence;
     status!.textContent = data.state.message;
@@ -58,8 +70,20 @@ async function refresh(
       history!.append(entry);
     }
     return data;
+  } catch (error) {
+    controlError =
+      'Não foi possível confirmar o comando. Confira a conexão e tente novamente.';
+    if (sequence >= appliedSequence) {
+      appliedSequence = sequence;
+      renderQueueActivity(
+        null,
+        'Não foi possível atualizar a fila. Confira a conexão com a extensão.',
+      );
+    }
+    throw error;
   } finally {
     pendingRequests--;
+    if (control) finishQueueControl(control, controlError);
   }
 }
 initializeFlowForm(refresh);

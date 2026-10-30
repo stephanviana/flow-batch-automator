@@ -223,7 +223,38 @@ export async function validateFlowTake({
     if (!(await panel.locator('[data-action="queue-pause"]').isDisabled()))
       await panel.locator('[data-action="queue-pause"]').click();
     const complete = await enqueue('Take completo');
+    media.holdNextDownload();
     await panel.locator('[data-action="queue-start"]').click();
+    await eventually(async () =>
+      (await panel.locator('#queue-activity-title').textContent()).includes(
+        'Gerando imagem',
+      ),
+    );
+    assert.equal(
+      await panel.locator('#queue-steps li[aria-current="step"]').textContent(),
+      '2Imagem',
+    );
+    await eventually(async () =>
+      (await panel.locator('#queue-activity-title').textContent()).includes(
+        'vídeo',
+      ),
+    );
+    assert.equal(
+      await panel.locator('#queue-activity').getAttribute('data-busy'),
+      'true',
+    );
+    await eventually(
+      async () =>
+        (await panel.locator('#queue-activity-title').textContent()) ===
+        'Baixando MP4',
+      60000,
+    );
+    assert.equal(
+      await panel.locator('#queue-steps li[aria-current="step"]').textContent(),
+      '4MP4',
+    );
+    assert.notEqual(await complete.getAttribute('data-state'), 'completed');
+    media.releaseDownload();
     await eventually(
       async () => (await complete.getAttribute('data-state')) === 'completed',
       60000,
@@ -231,6 +262,19 @@ export async function validateFlowTake({
     assert.equal(uploadCount, 1);
     assert.equal(imageCount, 1);
     assert.equal(videoCount, 1);
+    assert.equal(
+      await panel.locator('#queue-activity').getAttribute('data-tone'),
+      'success',
+    );
+    assert.equal(
+      await panel.locator('#queue-steps [data-status="done"]').count(),
+      4,
+    );
+    assert.ok(
+      (await panel.locator('#queue-activity-title').textContent()).includes(
+        'MP4 disponível',
+      ),
+    );
     assert.ok(mediaCount >= 2);
     assert.equal(media.requests.length, 1);
     const taskId = await complete.getAttribute('data-task-id');
@@ -295,6 +339,14 @@ export async function validateFlowTake({
       40000,
     );
     await delay(500);
+    assert.equal(
+      await panel.locator('#queue-activity').getAttribute('data-tone'),
+      'warning',
+    );
+    assert.equal(
+      await panel.locator('#queue-activity').getAttribute('data-busy'),
+      'false',
+    );
     assert.equal(imageCount, 2);
     assert.equal(videoCount, 1);
     assert.equal(

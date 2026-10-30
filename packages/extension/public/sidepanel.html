@@ -13,6 +13,24 @@
         <h1>Flow Batch</h1>
         <p>Seu lote, ao lado do Flow.</p>
       </header>
+      <section
+        id="queue-activity"
+        class="queue-activity"
+        aria-labelledby="queue-activity-title"
+        data-tone="idle"
+        data-busy="false"
+      >
+        <div class="activity-heading">
+          <span class="activity-indicator" aria-hidden="true"></span>
+          <h2 id="queue-activity-title" role="status" aria-live="polite">
+            Consultando fila…
+          </h2>
+        </div>
+        <p id="queue-activity-task" class="activity-task" hidden></p>
+        <p id="queue-activity-detail">O andamento aparecerá aqui.</p>
+        <ol id="queue-steps" aria-label="Etapas do take" hidden></ol>
+        <p id="queue-activity-time" class="hint" aria-live="off" hidden></p>
+      </section>
       <section aria-labelledby="flow-title">
         <h2 id="flow-title">Projeto no Google Flow</h2>
         <p id="flow-status" role="status" aria-live="polite">

@@ -6,7 +6,7 @@ camada continuam válidas dentro dela, respeitando as instruções do usuário.
 ## O que é este projeto
 
 Ferramenta local para gerar vídeos em lote no Google Flow. Estado desta entrega:
-Omni 1.1 Flash Frames com Nano Banana Pro/2.1 e preservação dos takes antigos.
+Andamento visual imediato e etapas reais da fila, sem percentual fictício.
 Gerações que consomem créditos exigem autorização explícita. Não ampliar serviços,
 provedores, dashboard ou TTS. O importador da Fase 5 permanece pendente.
 
@@ -180,3 +180,7 @@ Referência local → imagem → vídeo → MP4. Referências ficam no IndexedDB
 ## Omni Flash e Frames
 
 Novos takes usam Omni 1.1 Flash em Frames, somente frame inicial, 8 s/720p/9:16, com Nano Banana Pro ou 2.1. Durações 4/6/8/10 s e resoluções 360p/720p; Veo e parâmetros históricos preservados. O usuário confirmou: “Gerei com Omni e baixou o MP4”, referente a 8 s/720p; outras opções têm fixtures.
+
+## Andamento visual da fila
+
+O painel responde imediatamente ao início e à pausa, mostra etapas reais, tempo desde a mudança, sucesso, erro e revisão. Não inventar percentuais nem recarregar a página durante um take para atualizar a listagem do Flow.

@@ -13,9 +13,36 @@ export async function validateQueue({
     await popup.locator('#queue-tasks [data-state="queued"]').count(),
     3,
   );
+  // A slow acknowledgement must not leave the start button visually silent.
+  await popup.evaluate(() => {
+    const original = chrome.runtime.sendMessage.bind(chrome.runtime);
+    chrome.runtime.sendMessage = async (request) => {
+      if (request.type === 'queue-start') {
+        chrome.runtime.sendMessage = original;
+        await new Promise((resolve) => globalThis.setTimeout(resolve, 900));
+      }
+      return original(request);
+    };
+  });
   await popup
     .getByRole('button', { name: 'Processar fila', exact: true })
     .click();
+  assert.equal(
+    await popup.locator('#queue-activity-title').textContent(),
+    'Iniciando fila…',
+  );
+  assert.equal(
+    await popup.locator('[data-action="queue-start"]').isDisabled(),
+    true,
+  );
+  assert.equal(
+    await popup.locator('[data-action="queue-start"]').textContent(),
+    'Iniciando fila…',
+  );
+  assert.equal(
+    await popup.locator('#queue-activity').getAttribute('data-busy'),
+    'true',
+  );
   await eventually(
     async () =>
       (await popup.locator('#queue-tasks [data-state="completed"]').count()) ===
@@ -24,6 +51,15 @@ export async function validateQueue({
   );
   for (const row of await tasks.all())
     assert.equal(await row.getAttribute('data-attempt-count'), '1');
+  await eventually(
+    async () =>
+      (await popup.locator('#queue-activity-title').textContent()) ===
+      'Simulação concluída',
+  );
+  assert.equal(
+    await popup.locator('#queue-activity').getAttribute('data-tone'),
+    'success',
+  );
   await tasks.first().getByRole('button', { name: 'Ver histórico' }).click();
   await eventually(
     async () => (await popup.locator('#queue-history li').count()) === 6,
@@ -62,6 +98,11 @@ export async function validateQueue({
       (await popup.locator('#queue-tasks [data-state="uncertain"]').count()) ===
       1,
     40000,
+  );
+  assert.equal(await tasks.count(), 7);
+  assert.equal(
+    await popup.locator('#queue-activity').getAttribute('data-busy'),
+    'false',
   );
   assert.ok(
     (await popup.locator('#queue-activity-title').textContent()).includes(
