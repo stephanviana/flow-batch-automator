@@ -2,13 +2,29 @@ import {
   type QueueProgress,
   type QueueAction,
   type TaskSummary,
+  type QueueCheckpoint,
 } from '@flow-batch/protocol';
 import type { QueueDatabase, TaskRecord } from './database.js';
 import { queueHash } from './repository.js';
 import { HttpError } from '../security/errors.js';
+import { FlowProgress } from './flow-progress.js';
 
 export class QueueMutations {
   constructor(private readonly database: QueueDatabase) {}
+
+  checkpoint(
+    clientId: string,
+    connectionId: string,
+    message: QueueCheckpoint,
+    now = Date.now(),
+  ): boolean {
+    return new FlowProgress(this.database).checkpoint(
+      clientId,
+      connectionId,
+      message,
+      now,
+    );
+  }
 
   progress(
     clientId: string,
@@ -62,6 +78,16 @@ export class QueueMutations {
           409,
           'Generation identity changed within the attempt',
         );
+      if (
+        record.input.executor === 'google-flow' &&
+        message.generationId !== `flow-${message.attemptId}`
+      )
+        throw new HttpError(409, 'Invalid Flow execution identity');
+      if (message.state === 'completed')
+        new FlowProgress(this.database).validateCompletion(
+          record,
+          message.result,
+        );
       this.database.change(record, message.state, now, 'executor-progress', {
         generationId: message.generationId,
         ...(message.state === 'completed' ? { result: message.result } : {}),
@@ -70,7 +96,10 @@ export class QueueMutations {
         this.database.connection
           .prepare('UPDATE queue_tasks SET deadline_at=? WHERE id=?')
           .run(
-            now + record.input.simulation.durationMs + 10000,
+            now +
+              (record.input.executor === 'google-flow'
+                ? 1800000
+                : record.input.simulation.durationMs + 10000),
             message.taskId,
           );
       return true;
@@ -196,6 +225,14 @@ export class QueueMutations {
   ): void {
     if (record.summary.state !== 'uncertain')
       throw new HttpError(409, 'Task does not require review');
+    if (
+      record.input.executor === 'google-flow' &&
+      action.outcome === 'completed'
+    )
+      throw new HttpError(
+        409,
+        'Real completion requires a confirmed browser download',
+      );
     this.database.change(
       record,
       action.outcome === 'completed' ? 'completed' : 'failed',

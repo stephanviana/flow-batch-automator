@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { flowInspectionSchema } from './flow.js';
+import {
+  flowInspectionSchema,
+  flowExecuteSchema,
+  queueCheckpointSchema,
+  flowDraftSchema,
+} from './flow.js';
 import {
   queueExecuteSchema,
   queueProgressSchema,
@@ -93,18 +98,20 @@ export const clientMessageSchema = z.discriminatedUnion('type', [
     clientId: z.uuid(),
     challengeId: z.uuid(),
     signature: z.string().regex(/^[A-Za-z0-9_-]{86}$/),
-    protocolVersion: z.literal(3).optional(),
+    protocolVersion: z.union([z.literal(3), z.literal(4)]).optional(),
   }),
   z.strictObject({ type: z.literal('ping') }),
   z.strictObject({ type: z.literal('simulation-started'), id: z.uuid() }),
   z.strictObject({ type: z.literal('simulation-completed'), id: z.uuid() }),
   queueProgressSchema,
+  queueCheckpointSchema,
 ]);
 export const serverMessageSchema = z.discriminatedUnion('type', [
   z.strictObject({ type: z.literal('authenticated') }),
   z.strictObject({ type: z.literal('pong') }),
   z.strictObject({ type: z.literal('revoked') }),
   queueExecuteSchema,
+  flowExecuteSchema,
   z.strictObject({
     type: z.literal('simulate'),
     id: z.uuid(),
@@ -112,30 +119,39 @@ export const serverMessageSchema = z.discriminatedUnion('type', [
   }),
 ]);
 export type ServerMessage = z.infer<typeof serverMessageSchema>;
-export const popupRequestSchema = z.strictObject({
-  type: z.enum([
-    'status',
-    'flow-open',
-    'flow-inspect',
-    'connect',
-    'disconnect',
-    'reconnect',
-    'simulate',
-    'enqueue-demo',
-    'enqueue-retry-demo',
-    'enqueue-stall-demo',
-    'queue-start',
-    'queue-pause',
-    'queue-retry',
-    'queue-resolve',
-    'queue-cancel',
-    'queue-inspect',
-  ]),
-  note: z.string().trim().min(1).max(500).optional(),
-  reviewOutcome: z.enum(['not_submitted', 'failed']).optional(),
-  taskId: z.uuid().optional(),
-  expectedRevision: z.number().int().min(0).optional(),
-});
+export const popupRequestSchema = z
+  .strictObject({
+    type: z.enum([
+      'status',
+      'flow-open',
+      'flow-inspect',
+      'enqueue-flow',
+      'connect',
+      'disconnect',
+      'reconnect',
+      'simulate',
+      'enqueue-demo',
+      'enqueue-retry-demo',
+      'enqueue-stall-demo',
+      'queue-start',
+      'queue-pause',
+      'queue-retry',
+      'queue-resolve',
+      'queue-cancel',
+      'queue-inspect',
+      'queue-show-download',
+    ]),
+    flowDraft: flowDraftSchema.optional(),
+    note: z.string().trim().min(1).max(500).optional(),
+    reviewOutcome: z.enum(['not_submitted', 'failed']).optional(),
+    taskId: z.uuid().optional(),
+    expectedRevision: z.number().int().min(0).optional(),
+  })
+  .refine(
+    (message) =>
+      (message.type === 'enqueue-flow') === Boolean(message.flowDraft),
+    'Flow enqueue requires an approved draft',
+  );
 export type PopupRequest = z.infer<typeof popupRequestSchema>;
 export const extensionStateSchema = z.strictObject({
   phase: z.enum([

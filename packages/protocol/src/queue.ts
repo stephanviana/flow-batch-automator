@@ -1,4 +1,13 @@
 import { z } from 'zod';
+import {
+  flowSettingsSchema,
+  flowResultSchema,
+  flowStageSchema,
+  queueCheckpointSchema,
+  originalPromptsSchema,
+  type FlowExecute,
+} from './flow.js';
+
 export const taskStateSchema = z.enum([
   'queued',
   'dispatching',
@@ -69,11 +78,7 @@ const taskBaseSchema = z.strictObject({
   format: z.string().min(1).max(80),
   take: z.string().min(1).max(80),
   references: z.array(inputReferenceSchema).max(10),
-  original: z.strictObject({
-    imagePrompt: z.string().max(4096),
-    videoPrompt: z.string().max(4096),
-    copy: z.string().max(4096),
-  }),
+  original: originalPromptsSchema,
 });
 export const taskInputSchema = z.discriminatedUnion('executor', [
   taskBaseSchema.extend({
@@ -81,6 +86,19 @@ export const taskInputSchema = z.discriminatedUnion('executor', [
     simulation: queueSimulationSchema,
     maxAttempts: z.number().int().min(1).max(5).default(3),
   }),
+  taskBaseSchema
+    .extend({
+      executor: z.literal('google-flow'),
+      flow: flowSettingsSchema,
+      maxAttempts: z.literal(1).default(1),
+    })
+    .refine(
+      (input) =>
+        input.references.length === 0 &&
+        input.original.imagePrompt.trim().length > 0 &&
+        input.original.videoPrompt.trim().length > 0 &&
+        input.format === input.flow.aspect,
+    ),
 ]);
 export type TaskInput = z.infer<typeof taskInputSchema>;
 export const enqueueSchema = z
@@ -105,7 +123,10 @@ const simulationResultSchema = z.strictObject({
   outputFile: z.null(),
   description: z.string().min(1).max(200),
 });
-export const queueResultSchema = simulationResultSchema;
+export const queueResultSchema = z.discriminatedUnion('simulated', [
+  simulationResultSchema,
+  flowResultSchema,
+]);
 export const queueProgressSchema = z.discriminatedUnion('state', [
   z.strictObject({
     type: z.literal('queue-progress'),
@@ -139,7 +160,7 @@ export const queueExecuteSchema = z.strictObject({
   simulation: queueSimulationSchema,
 });
 export type SimulationExecute = z.infer<typeof queueExecuteSchema>;
-export type QueueExecute = SimulationExecute;
+export type QueueExecute = SimulationExecute | FlowExecute;
 export const queueActionSchema = z.discriminatedUnion('action', [
   z.strictObject({
     action: z.literal('retry'),
@@ -167,7 +188,8 @@ export type QueueAction = z.infer<typeof queueActionSchema>;
 export const taskSummarySchema = z.strictObject({
   id: z.uuid(),
   taskKey: z.uuid(),
-  executor: z.literal('simulation'),
+  executor: z.enum(['simulation', 'google-flow']),
+  step: flowStageSchema.nullable(),
   product: z.string(),
   video: z.string(),
   format: z.string(),
@@ -208,6 +230,9 @@ export const taskDetailSchema = z.strictObject({
     }),
   ),
   events: z.array(taskEventSchema),
+  checkpoints: z.array(
+    z.strictObject({ at: z.number(), checkpoint: queueCheckpointSchema }),
+  ),
 });
 export type TaskDetail = z.infer<typeof taskDetailSchema>;
 export const queueSnapshotSchema = z.strictObject({

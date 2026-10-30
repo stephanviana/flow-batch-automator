@@ -12,6 +12,7 @@ import {
 } from '@flow-batch/protocol';
 import { fixture, pair, approve, signed, type Fixture } from './support.js';
 import { taskInput, progress } from './queue-support.js';
+import { flowInput } from './flow-support.js';
 
 test('revocation interrupts queued execution and reauthorization does not resend it', async (t) => {
   const f = await fixture(t);
@@ -62,7 +63,7 @@ test('revocation interrupts queued execution and reauthorization does not resend
 async function socketFor(
   f: Fixture,
   clientId: string,
-  version?: 3,
+  version?: 3 | 4,
 ): Promise<WebSocket> {
   if (!f.app.server.listening)
     await f.app.listen({ host: '127.0.0.1', port: 0 });
@@ -368,5 +369,108 @@ test('offline enqueue persists and v2 clients cannot receive queue work until ca
       })
     ).statusCode,
     401,
+  );
+});
+
+test('v3 sockets receive only simulations; v4 negotiates Flow dispatch and persists checkpoints before disconnect', async (t) => {
+  const f = await fixture(t);
+  const receipt = await pair(f);
+  await approve(f, receipt);
+  const oldSocket = await socketFor(f, receipt.clientId, 3);
+  t.after(() => oldSocket.terminate());
+  const oldMessages: QueueExecute[] = [];
+  oldSocket.on('message', (raw): void => {
+    oldMessages.push(job(raw));
+  });
+  const input = flowInput();
+  const created = await queueRequest(f, receipt.clientId, '/api/queue', {
+    requestId: randomUUID(),
+    tasks: [input, taskInput()],
+  });
+  assert.equal(created.statusCode, 200);
+  await queueRequest(f, receipt.clientId, '/api/queue/control', {
+    action: 'start',
+  });
+  await eventually(() => oldMessages.length === 1);
+  const simulation = oldMessages[0];
+  assert.ok(simulation && simulation.type === 'queue-execute');
+  for (const state of [
+    'submitted',
+    'generating',
+    'download_pending',
+    'completed',
+  ] as const)
+    oldSocket.send(
+      JSON.stringify(progress(simulation.taskId, simulation.attemptId, state)),
+    );
+  await eventually(
+    () =>
+      f.database
+        .prepare(
+          "SELECT COUNT(*) AS count FROM queue_tasks WHERE state='completed'",
+        )
+        .get()?.count === 1,
+  );
+  await queueRequest(f, receipt.clientId, '/api/queue/control', {
+    action: 'pause',
+  });
+  const current = await socketFor(f, receipt.clientId, 4);
+  t.after(() => current.terminate());
+  // Register before dispatch: authentication and the first job can share a TCP read.
+  const incoming = once(current, 'message', {
+    signal: AbortSignal.timeout(3000),
+  });
+  await queueRequest(f, receipt.clientId, '/api/queue/control', {
+    action: 'start',
+  });
+  const [raw] = await incoming;
+  const flow = serverMessageSchema.parse(JSON.parse(String(raw)));
+  assert.ok(flow.type === 'flow-execute');
+  assert.deepEqual(flow.original, input.original);
+  assert.equal(flow.attemptNumber, 1);
+  assert.equal(JSON.stringify(flow).includes('base64'), false);
+  current.send(
+    JSON.stringify({
+      type: 'queue-progress',
+      taskId: flow.taskId,
+      attemptId: flow.attemptId,
+      generationId: `flow-${flow.attemptId}`,
+      state: 'submitted',
+    }),
+  );
+  current.send(
+    JSON.stringify({
+      type: 'queue-checkpoint',
+      taskId: flow.taskId,
+      attemptId: flow.attemptId,
+      stage: 'reference_uploaded',
+      mediaId: randomUUID(),
+    }),
+  );
+  await eventually(
+    () =>
+      f.database
+        .prepare('SELECT COUNT(*) AS count FROM queue_checkpoints')
+        .get()?.count === 1,
+  );
+  const closed = once(current, 'close');
+  current.close();
+  await closed;
+  await eventually(
+    () =>
+      f.database
+        .prepare('SELECT state FROM queue_tasks WHERE id=?')
+        .get(flow.taskId)?.state === 'uncertain',
+  );
+  assert.equal(
+    f.database.prepare('SELECT COUNT(*) AS count FROM queue_checkpoints').get()
+      ?.count,
+    1,
+  );
+  assert.equal(
+    f.database
+      .prepare('SELECT running FROM queue_controls WHERE client_id=?')
+      .get(receipt.clientId)?.running,
+    0,
   );
 });

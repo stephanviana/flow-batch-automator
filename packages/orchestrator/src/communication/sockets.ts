@@ -80,6 +80,7 @@ export class ConnectionHub implements QueueTransport {
     if (
       !session?.clientId ||
       !session.queueCapable ||
+      (message.type === 'flow-execute' && !session.flowCapable) ||
       session.socket.readyState !== WebSocket.OPEN
     )
       return false;
@@ -233,8 +234,9 @@ export class ConnectionHub implements QueueTransport {
         if (previous.clientId === client.id)
           previous.socket.close(4000, 'Replaced by reconnect');
       session.clientId = client.id;
-      session.queueCapable = message.protocolVersion === 3;
-      session.flowCapable = false;
+      session.queueCapable =
+        message.protocolVersion === 3 || message.protocolVersion === 4;
+      session.flowCapable = message.protocolVersion === 4;
       this.send(session, { type: 'authenticated' });
       this.queue?.connected();
       return;
@@ -246,7 +248,10 @@ export class ConnectionHub implements QueueTransport {
       this.simulations.transition(message.id, session.id, 'running');
     else if (message.type === 'simulation-completed')
       this.simulations.transition(message.id, session.id, 'completed');
-    else if (message.type === 'queue-progress' && session.queueCapable)
+    else if (
+      (message.type === 'queue-progress' && session.queueCapable) ||
+      (message.type === 'queue-checkpoint' && session.flowCapable)
+    )
       this.queue?.progress(session.clientId, session.id, message);
     else throw new HttpError(400, 'Unexpected authentication');
   }

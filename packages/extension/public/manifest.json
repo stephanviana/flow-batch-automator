@@ -1,14 +1,15 @@
 {
   "manifest_version": 3,
   "name": "Flow Batch",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "minimum_chrome_version": "120",
-  "description": "Fila local e leitura do projeto no Google Flow pelo painel lateral.",
-  "permissions": ["storage", "alarms", "sidePanel", "scripting"],
+  "description": "Geração de imagem e vídeo no Google Flow, fila local e download de MP4.",
+  "permissions": ["storage", "alarms", "sidePanel", "scripting", "downloads"],
   "host_permissions": [
     "http://127.0.0.1/*",
     "https://flow.google.com/*",
-    "https://labs.google/fx/*"
+    "https://labs.google/fx/*",
+    "https://flow-content.google/*"
   ],
   "background": {
     "service_worker": "worker.js",
@@ -22,5 +23,13 @@
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'none'; connect-src http://127.0.0.1:4319 ws://127.0.0.1:4319"
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://flow.google.com/*"],
+      "js": ["flowkit-hijack.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    }
+  ]
 }

@@ -1,6 +1,6 @@
 {
   "name": "flow-batch-automator",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@12.15.0",
@@ -14,6 +14,7 @@
     "test": "pnpm --filter @flow-batch/protocol build && pnpm -r --if-present test && node --test scripts/test/*.test.mjs",
     "test:docker": "node scripts/validate-docker.mjs",
     "test:browser": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser.mjs",
+    "test:browser:flow": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser.mjs --flow-only",
     "test:browser:queue": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser.mjs --queue-only",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

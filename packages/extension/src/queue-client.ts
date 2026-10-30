@@ -2,8 +2,10 @@ import {
   taskInputSchema,
   type PopupRequest,
   type TaskInput,
+  taskDetailSchema,
 } from '@flow-batch/protocol';
 import { signedRequest } from './api.js';
+import { enqueueFlow } from './flow-enqueue.js';
 
 function demoTasks(type: PopupRequest['type']): TaskInput[] {
   const scenario =
@@ -37,6 +39,12 @@ export async function queueCommand(
   clientId: string,
   message: PopupRequest,
 ): Promise<void> {
+  if (message.type === 'enqueue-flow') {
+    if (!message.flowDraft)
+      throw new Error('Preencha o take e confirme o consumo de créditos.');
+    await enqueueFlow(clientId, message.flowDraft);
+    return;
+  }
   if (message.type.startsWith('enqueue-')) {
     await signedRequest(clientId, 'POST', '/api/queue', {
       requestId: crypto.randomUUID(),
@@ -48,6 +56,21 @@ export async function queueCommand(
     await signedRequest(clientId, 'POST', '/api/queue/control', {
       action: message.type === 'queue-start' ? 'start' : 'pause',
     });
+    return;
+  }
+  if (message.type === 'queue-show-download') {
+    const detail = taskDetailSchema.parse(
+      await signedRequest(clientId, 'POST', '/api/queue/task', {
+        taskId: message.taskId,
+      }),
+    );
+    if (
+      detail.task.state !== 'completed' ||
+      !detail.task.result ||
+      detail.task.result.simulated
+    )
+      throw new Error('Download indisponível.');
+    chrome.downloads.show(detail.task.result.downloadId);
     return;
   }
   if (!message.taskId || message.expectedRevision === undefined)

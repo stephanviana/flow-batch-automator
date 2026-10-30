@@ -4,3 +4,6 @@ dist
 .cache
 data
 inputs
+
+# Vendored FlowKit source; preserve the upstream file.
+packages/extension/public/flowkit-hijack.js

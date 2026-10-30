@@ -1,4 +1,8 @@
-import type { QueueExecute, QueueProgress } from '@flow-batch/protocol';
+import type {
+  QueueExecute,
+  QueueProgress,
+  QueueCheckpoint,
+} from '@flow-batch/protocol';
 export interface QueueTransport {
   queueConnections(): {
     clientId: string;
@@ -14,6 +18,6 @@ export interface QueueEvents {
   progress(
     clientId: string,
     connectionId: string,
-    message: QueueProgress,
+    message: QueueProgress | QueueCheckpoint,
   ): void;
 }

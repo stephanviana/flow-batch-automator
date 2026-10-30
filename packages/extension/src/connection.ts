@@ -129,7 +129,7 @@ export class ExtensionConnection {
           clientId,
           challengeId: signed.challenge.challengeId,
           signature: signed.signature,
-          protocolVersion: 3,
+          protocolVersion: 4,
         }),
       );
     socket.onmessage = (event: MessageEvent<string>): void => {
@@ -158,7 +158,7 @@ export class ExtensionConnection {
       void this.revoked();
       return;
     }
-    if (message.type === 'queue-execute') {
+    if (message.type === 'queue-execute' || message.type === 'flow-execute') {
       this.queueExecutor.run(message, socket);
       return;
     }

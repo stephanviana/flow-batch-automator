@@ -180,7 +180,14 @@ export class QueueRepository {
         .prepare(
           "UPDATE queue_tasks SET state='dispatching',attempt_count=?,revision=revision+1,active_attempt_id=?,connection_id=?,deadline_at=?,updated_at=?,generation_id=NULL,result=NULL,last_error=NULL,safe_to_retry=0 WHERE id=?",
         )
-        .run(number, attemptId, connectionId, now + 5000, now, id);
+        .run(
+          number,
+          attemptId,
+          connectionId,
+          now + (record.input.executor === 'google-flow' ? 300000 : 5000),
+          now,
+          id,
+        );
       this.database.connection
         .prepare(
           "INSERT INTO queue_attempts (id,task_id,number,connection_id,started_at,state) VALUES (?,?,?,?,?,'dispatching')",

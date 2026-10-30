@@ -55,6 +55,107 @@
           </div>
         </details>
       </section>
+      <section aria-labelledby="take-title">
+        <h2 id="take-title">Novo take</h2>
+        <p class="hint">
+          Uma referência → uma imagem → um vídeo → MP4 na pasta de downloads do
+          Chrome.
+        </p>
+        <form id="flow-form">
+          <label
+            >Produto<input
+              name="product"
+              maxlength="120"
+              value="Meu produto"
+              required
+          /></label>
+          <div class="actions">
+            <label
+              >Vídeo<input
+                name="video"
+                maxlength="120"
+                value="Vídeo 1"
+                required
+            /></label>
+            <label
+              >Take<input name="take" maxlength="80" value="Hook" required
+            /></label>
+          </div>
+          <label
+            >Imagem de referência<input
+              name="reference"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              required
+          /></label>
+          <p class="hint">
+            JPEG, PNG ou WebP, até 8 MB. O arquivo original fica preservado
+            nesta extensão.
+          </p>
+          <label
+            >Formato<select name="aspect">
+              <option value="9:16">Vertical · 9:16</option>
+              <option value="16:9">Horizontal · 16:9</option>
+            </select></label
+          >
+          <label
+            >Modelo de imagem<select name="imageModel">
+              <option value="GEM_PIX_2">Nano Banana Pro</option>
+              <option value="HARBOR_SEAL">Nano Banana Lite</option>
+            </select></label
+          >
+          <label
+            >Prompt da imagem<textarea
+              name="imagePrompt"
+              rows="5"
+              maxlength="4096"
+              required
+              placeholder="Cole o prompt original da imagem"
+            ></textarea>
+          </label>
+          <label
+            >Modelo de vídeo<select name="videoModel">
+              <option value="veo_3_1_i2v_lite">Veo 3.1 · Fast</option>
+              <option value="veo_3_1_i2v_lite_low_priority">
+                Veo 3.1 · baixa prioridade
+              </option>
+              <option value="veo_3_1_i2v_s_fast_ultra">
+                Veo 3.1 · Fast Ultra
+              </option>
+            </select></label
+          >
+          <label
+            >Prompt do vídeo<textarea
+              name="videoPrompt"
+              rows="5"
+              maxlength="4096"
+              required
+              placeholder="Cole o prompt original do vídeo"
+            ></textarea>
+          </label>
+          <label
+            >Copy (opcional)<textarea
+              name="copy"
+              rows="3"
+              maxlength="4096"
+              placeholder="Texto do take para manter junto ao material"
+            ></textarea>
+          </label>
+          <label class="consent"
+            ><input id="flow-approval" type="checkbox" required />Autorizo uma
+            geração de imagem e uma de vídeo neste projeto, com os modelos
+            acima, consumindo os créditos cobrados pelo Flow.</label
+          >
+          <p class="hint">
+            Quando a fila estiver habilitada, o take começará automaticamente.
+            Uma interrupção após envio exige revisão.
+          </p>
+          <button id="flow-submit" type="submit" disabled>
+            Enfileirar take autorizado
+          </button>
+          <p id="flow-feedback" role="status" aria-live="polite"></p>
+        </form>
+      </section>
       <section aria-labelledby="queue-title">
         <h2 id="queue-title">Fila</h2>
         <p id="queue-status" role="status"></p>

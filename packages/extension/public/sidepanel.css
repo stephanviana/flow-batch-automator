@@ -135,3 +135,51 @@ ol {
     gap: 0;
   }
 }
+label {
+  display: block;
+  margin-top: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+input:not([type='checkbox']),
+select,
+textarea {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin-top: 5px;
+  padding: 9px;
+  border: 1px solid #cbd8d3;
+  border-radius: 6px;
+  font: inherit;
+  background: #fff;
+  color: inherit;
+}
+textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #175c4d;
+  outline-offset: 2px;
+}
+input[type='file'] {
+  font-size: 12px;
+}
+.consent {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  align-items: flex-start;
+}
+.consent input {
+  flex-shrink: 0;
+  margin-top: 3px;
+  accent-color: #175c4d;
+}
+#flow-feedback {
+  font-size: 12px;
+}

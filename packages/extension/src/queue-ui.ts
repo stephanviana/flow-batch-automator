@@ -53,22 +53,68 @@ function taskRow(task: TaskSummary, send: Send): HTMLLIElement {
   const description = document.createElement('p');
   description.textContent = `${task.product} / ${task.video} / ${task.take} (${task.format}) · ${labels[task.state]} · tentativas ${task.attemptCount}/${task.maxAttempts}`;
   row.append(description);
+  const execution = document.createElement('p');
+  execution.className = 'hint';
+  const steps = {
+    reference_uploaded: 'Referência enviada',
+    image_generated: 'Imagem gerada',
+    video_submitted: 'Vídeo solicitado',
+    video_ready: 'Vídeo localizado',
+    download_started: 'Download iniciado',
+  };
+  execution.textContent =
+    task.executor === 'simulation'
+      ? 'Simulação'
+      : `Google Flow${task.step ? ` · ${steps[task.step]}` : ''}`;
+  row.append(execution);
   if (task.lastError) {
     const error = document.createElement('p');
     error.textContent = task.lastError.message;
     row.append(error);
   }
+  if (task.result && !task.result.simulated) {
+    const output = document.createElement('p');
+    output.className = 'hint';
+    output.textContent = `MP4: ${task.result.outputFile}`;
+    row.append(output);
+    button(
+      row,
+      'Mostrar MP4 na pasta',
+      { type: 'queue-show-download', taskId: task.id },
+      send,
+    );
+  }
   const common = { taskId: task.id, expectedRevision: task.revision };
   button(row, 'Ver histórico', { type: 'queue-inspect', ...common }, send);
   if (task.state === 'queued')
     button(row, 'Cancelar', { type: 'queue-cancel', ...common }, send);
-  if (task.state === 'uncertain')
+  if (task.state === 'uncertain' && task.executor === 'simulation')
     button(
       row,
       'Revisar: confirmar sem envio externo',
       { type: 'queue-resolve', ...common },
       send,
     );
+  if (task.state === 'uncertain' && task.executor === 'google-flow') {
+    const note = document.createElement('textarea');
+    note.placeholder =
+      'Confira o projeto no Flow e registre o resultado observado.';
+    note.maxLength = 500;
+    note.setAttribute('aria-label', 'Nota de revisão');
+    row.append(note);
+    button(
+      row,
+      'Encerrar tentativa com falha',
+      { type: 'queue-resolve', ...common, reviewOutcome: 'failed' },
+      async (message) => {
+        if (!note.value.trim()) {
+          note.focus();
+          return;
+        }
+        await send({ ...message, note: note.value });
+      },
+    );
+  }
   if (
     task.state === 'failed' &&
     task.safeToRetry &&
@@ -154,6 +200,11 @@ export function renderQueue(
     for (const event of inspection.events) {
       const line = document.createElement('li');
       line.textContent = `${new Date(event.at).toLocaleTimeString()} · ${labels[event.state]}${event.error ? ` · ${event.error.message}` : ''}`;
+      history.append(line);
+    }
+    for (const { checkpoint } of inspection.checkpoints) {
+      const line = document.createElement('li');
+      line.textContent = `${checkpoint.stage}: ${'mediaId' in checkpoint ? checkpoint.mediaId : 'operationId' in checkpoint ? checkpoint.operationId : `download #${checkpoint.downloadId}`}`;
       history.append(line);
     }
   }

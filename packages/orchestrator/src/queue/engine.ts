@@ -1,4 +1,8 @@
-import type { QueueProgress, QueueExecute } from '@flow-batch/protocol';
+import type {
+  QueueProgress,
+  QueueCheckpoint,
+  QueueExecute,
+} from '@flow-batch/protocol';
 import type { QueueTransport, QueueEvents } from './ports.js';
 import type { QueueRepository } from './repository.js';
 import type { QueueMutations } from './mutations.js';
@@ -22,9 +26,11 @@ export class QueueEngine implements QueueEvents {
   progress(
     clientId: string,
     connectionId: string,
-    message: QueueProgress,
+    message: QueueProgress | QueueCheckpoint,
   ): void {
-    this.mutations.progress(clientId, connectionId, message);
+    if (message.type === 'queue-checkpoint')
+      this.mutations.checkpoint(clientId, connectionId, message);
+    else this.mutations.progress(clientId, connectionId, message);
     this.wake();
   }
   wake(delay = 0): void {
@@ -79,13 +85,23 @@ export class QueueEngine implements QueueEvents {
     );
     if (!task?.activeAttemptId) return;
     try {
-      const message: QueueExecute = {
-        type: 'queue-execute',
-        taskId: task.summary.id,
-        attemptId: task.activeAttemptId,
-        attemptNumber: task.summary.attemptCount,
-        simulation: task.input.simulation,
-      };
+      const message: QueueExecute =
+        task.input.executor === 'google-flow'
+          ? {
+              type: 'flow-execute',
+              taskId: task.summary.id,
+              attemptId: task.activeAttemptId,
+              attemptNumber: 1,
+              flow: task.input.flow,
+              original: task.input.original,
+            }
+          : {
+              type: 'queue-execute',
+              taskId: task.summary.id,
+              attemptId: task.activeAttemptId,
+              attemptNumber: task.summary.attemptCount,
+              simulation: task.input.simulation,
+            };
       const sent = this.transport.sendQueue(session.connectionId, message);
       if (!sent)
         this.disconnected(session.connectionId, 'dispatch-outcome-unknown');

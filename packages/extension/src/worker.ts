@@ -15,6 +15,7 @@ import { signedRequest } from './api.js';
 import { ApiError } from './api.js';
 import { queueCommand } from './queue-client.js';
 import { inspectFlow, openFlow } from './flow.js';
+import { FlowInputError } from './flow-errors.js';
 
 const connection = new ExtensionConnection();
 let pendingCommand: Promise<unknown> = Promise.resolve();
@@ -133,9 +134,11 @@ chrome.runtime.onMessage.addListener(
           parsed.data.type.startsWith('enqueue-')
         ) {
           operationError =
-            error instanceof ApiError && error.status === 409
-              ? 'O registro mudou ou a ação exige revisão. Confira o lote e o histórico antes de continuar.'
-              : 'Não foi possível operar a fila. Verifique a conexão e tente novamente.';
+            error instanceof FlowInputError
+              ? error.message
+              : error instanceof ApiError && error.status === 409
+                ? 'O registro mudou ou a ação exige revisão. Confira o lote e o histórico antes de continuar.'
+                : 'Não foi possível operar a fila. Verifique a conexão e tente novamente.';
         } else if (parsed.data.type.startsWith('flow-')) {
           flow = {
             phase: 'error',

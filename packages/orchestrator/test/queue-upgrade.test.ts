@@ -51,7 +51,7 @@ test('phase 2 SQLite upgrades without losing authorization or diagnostic history
           .prepare('SELECT version FROM schema_migrations ORDER BY version')
           .all()
           .map((row) => row.version),
-        [1, 2, 3],
+        [1, 2, 3, 4],
       );
       assert.equal(
         database

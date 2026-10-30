@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": ".cache/test",
+    "types": ["node", "chrome"]
+  },
+  "include": ["src/flow-download.ts", "test/**/*.ts"]
+}

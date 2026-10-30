@@ -6,7 +6,7 @@ camada continuam válidas dentro dela, respeitando as instruções do usuário.
 ## O que é este projeto
 
 Ferramenta local para gerar vídeos em lote no Google Flow. Estado desta entrega:
-Painel lateral, fila e leitura do projeto na sessão do Flow.
+Referência → imagem → vídeo → MP4, com autorização para uma imagem e um vídeo.
 Gerações que consomem créditos exigem autorização explícita. Não ampliar serviços,
 provedores, dashboard ou TTS. O importador da Fase 5 permanece pendente.
 
@@ -172,3 +172,7 @@ Fila SQLite com entrada imutável, execução simulada sequencial, pausa, histó
 ## Painel lateral e leitura do Flow
 
 O painel lateral substitui o popup, integra a fila e consulta o projeto na sessão autenticada do Flow. A leitura não gera mídia. O usuário autorizou a abordagem do FlowKit para simplificar a automação; credenciais permanecem na página e gerações pagas continuam exigindo autorização.
+
+## Geração de take e download MP4
+
+Referência local → imagem → vídeo → MP4. Referências ficam no IndexedDB com SHA-256, prompts preservados, uma imagem e um vídeo por autorização, tentativa única e cinco checkpoints. Conclusão exige download real confirmado pelo Chrome. O usuário confirmou: “Concluiu e baixou o MP4”.

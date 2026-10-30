@@ -2,12 +2,14 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { chromium } from 'playwright';
 import { validateQueue } from './browser-queue.mjs';
 import { validateFlow } from './browser-flow.mjs';
+import { validateFlowTake } from './browser-flow-take.mjs';
+import { startMediaFixture } from './browser-media.mjs';
 
 const directory = resolve('.cache', `browser-${randomUUID()}`);
 await mkdir(directory, { recursive: true });
@@ -17,6 +19,7 @@ let browser;
 let popup;
 let management;
 let extensionId;
+let media;
 
 async function eventually(check, timeout = 15000) {
   const end = Date.now() + timeout;
@@ -66,6 +69,7 @@ async function openBrowser() {
       viewport: { width: 380, height: 1000 },
       downloadsPath: resolve(directory, 'downloads'),
       args: [
+        ...media.args,
         `--disable-extensions-except=${resolve('packages/extension/dist')}`,
         `--load-extension=${resolve('packages/extension/dist')}`,
       ],
@@ -157,6 +161,18 @@ try {
     )
       throw error;
   }
+  media = await startMediaFixture(directory);
+  await mkdir(resolve(directory, 'profile/Default'), { recursive: true });
+  await mkdir(resolve(directory, 'downloads'), { recursive: true });
+  await writeFile(
+    resolve(directory, 'profile/Default/Preferences'),
+    JSON.stringify({
+      download: {
+        default_directory: resolve(directory, 'downloads'),
+        prompt_for_download: false,
+      },
+    }),
+  );
   await startServer();
   await openBrowser();
   await connect();
@@ -230,6 +246,14 @@ try {
   await validateFlow({ browser, panel: popup, eventually });
   if (!process.argv.includes('--flow-only'))
     await validateQueue({ popup, eventually, stopServer, startServer });
+  await validateFlowTake({
+    browser,
+    panel: popup,
+    eventually,
+    stopServer,
+    startServer,
+    media,
+  });
   await management.goto('http://127.0.0.1:4319/connect');
   console.log(
     process.argv.includes('--flow-only')
@@ -254,5 +278,6 @@ try {
 } finally {
   if (browser) await browser.close();
   await stopServer();
+  if (media) await media.close();
   log.end();
 }

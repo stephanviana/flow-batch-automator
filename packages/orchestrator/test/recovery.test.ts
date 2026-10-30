@@ -58,6 +58,6 @@ test('phase 1 database upgrades transactionally while preserving foundation data
       .prepare('SELECT version FROM schema_migrations ORDER BY version')
       .all()
       .map((row) => row.version),
-    [1, 2, 3],
+    [1, 2, 3, 4],
   );
 });

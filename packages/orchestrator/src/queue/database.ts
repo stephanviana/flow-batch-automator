@@ -59,6 +59,12 @@ export class QueueDatabase {
       id: row.id,
       taskKey: row.task_key,
       executor: input.executor,
+      step:
+        this.connection
+          .prepare(
+            'SELECT stage FROM queue_checkpoints WHERE task_id=? ORDER BY sequence DESC LIMIT 1',
+          )
+          .get(id)?.stage ?? null,
       product: input.product,
       video: input.video,
       format: input.format,
@@ -106,6 +112,12 @@ export class QueueDatabase {
       input: record.input,
       attempts,
       events,
+      checkpoints: this.connection
+        .prepare(
+          'SELECT at,payload FROM queue_checkpoints WHERE task_id=? ORDER BY sequence',
+        )
+        .all(id)
+        .map((row) => ({ at: row.at, checkpoint: json(row.payload) })),
     });
   }
 

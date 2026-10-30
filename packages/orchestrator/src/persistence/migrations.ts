@@ -47,6 +47,16 @@ export const migrations: readonly Migration[] = [
     CREATE INDEX challenge_expiry ON challenges(expires_at);`,
   },
   { version: 3, sql: queueMigration },
+  {
+    version: 4,
+    sql: `CREATE TABLE queue_checkpoints (
+    sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id TEXT NOT NULL REFERENCES queue_tasks(id),
+    attempt_id TEXT NOT NULL REFERENCES queue_attempts(id),
+    stage TEXT NOT NULL, at INTEGER NOT NULL, payload TEXT NOT NULL,
+    UNIQUE(attempt_id,stage)
+  ) STRICT;`,
+  },
 ];
 
 export function migrate(

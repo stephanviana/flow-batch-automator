@@ -1,6 +1,8 @@
+import { runFlowTake, FlowRunError } from './flow-run.js';
 import type {
   QueueExecute,
   QueueProgress,
+  QueueCheckpoint,
   SimulationExecute,
 } from '@flow-batch/protocol';
 
@@ -46,21 +48,34 @@ export class QueueExecutor {
       controller: new AbortController(),
     };
     this.active = active;
-    void this.prepare(command, socket, active).catch(() => {
-      const safe = !active.submitted;
+    void this.prepare(command, socket, active).catch((error: unknown) => {
+      const safe =
+        command.type === 'flow-execute'
+          ? !active.started ||
+            (error instanceof FlowRunError && error.notSubmitted)
+          : !active.submitted;
       this.emit(socket, active, {
         type: 'queue-progress',
         taskId: command.taskId,
         attemptId: command.attemptId,
-        state: 'failed',
+        state:
+          command.type === 'flow-execute' && !safe ? 'uncertain' : 'failed',
         error: {
-          code: active.submitted
-            ? 'executor_failed'
-            : 'receipt_persistence_failed',
-          message: active.submitted
-            ? 'Simulated executor failed after submission'
-            : 'Could not persist the execution receipt',
-          retryable: safe,
+          code:
+            error instanceof FlowRunError
+              ? error.code
+              : active.submitted
+                ? 'executor_failed'
+                : 'receipt_persistence_failed',
+          message:
+            error instanceof FlowRunError
+              ? error.message
+              : command.type === 'flow-execute'
+                ? 'Não foi possível confirmar o resultado. Revise o projeto antes de gerar novamente.'
+                : active.submitted
+                  ? 'Simulated executor failed after submission'
+                  : 'Could not persist the execution receipt',
+          retryable: safe && command.type !== 'flow-execute',
           notSubmitted: safe,
         },
       });
@@ -94,6 +109,16 @@ export class QueueExecutor {
       queueReceipts: [...receipts, command.attemptId].slice(-100),
     });
     if (active.epoch !== this.epoch || this.active !== active) return;
+    if (command.type === 'flow-execute') {
+      active.started = true;
+      await runFlowTake(command, active.controller.signal, (event) => {
+        if (event.type === 'queue-progress' && event.state === 'submitted')
+          active.submitted = true;
+        this.emit(socket, active, event);
+      });
+      if (this.active === active) this.active = undefined;
+      return;
+    }
     const scenario = command.simulation.scenario;
     const transient =
       scenario === 'transient_before_submit' &&
@@ -179,7 +204,7 @@ export class QueueExecutor {
   private emit(
     socket: WebSocket,
     active: ActiveAttempt,
-    message: QueueProgress,
+    message: QueueProgress | QueueCheckpoint,
   ): void {
     if (
       active.epoch === this.epoch &&
