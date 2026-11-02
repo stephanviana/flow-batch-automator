@@ -17,7 +17,7 @@ services:
     pids_limit: 32
     volumes:
       - type: bind
-        source: ${WIN_EXTENSION_DIR:-/mnt/c/Users/stephan/flow-batch-extension}
+        source: ${WIN_EXTENSION_DIR:?Defina WIN_EXTENSION_DIR no arquivo .env com o destino local da extensão}
         target: /destination
         bind:
           create_host_path: false

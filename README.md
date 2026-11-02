@@ -6,9 +6,11 @@ materiais, cria as copys e os prompts; a extensão executa os lotes autorizados.
 
 ## Fluxo de uso
 
-1. Configure `WIN_EXTENSION_DIR` em `.env` com uma pasta existente para a extensão.
-   Inicie com `docker compose up -d --build` e carregue a extensão não empacotada
-   dessa pasta no Chrome.
+1. Copie `.env.example` para `.env` e ajuste `WIN_EXTENSION_DIR` para uma pasta
+   existente no Windows, acessível pelo WSL. O exemplo usa `SEU_USUARIO`, que deve
+   ser substituído pelo seu perfil do Windows. Inicie com
+   `docker compose up -d --build` e carregue a extensão não empacotada dessa pasta
+   no Chrome. O caminho real fica somente no `.env` local, ignorado pelo Git.
 2. Conecte a extensão e confirme a solicitação em
    <http://127.0.0.1:4319/connect>. Mantenha uma aba autenticada do Flow disponível.
 3. Abra <http://127.0.0.1:4319/orders>. Adicione produtos, suas informações e
