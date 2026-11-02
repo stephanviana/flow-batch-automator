@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Pedidos · Flow Batch</title>
+    <link rel="stylesheet" href="/orders.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <p class="eyebrow">FLOW BATCH · TIKTOK SHOP</p>
+          <h1>Pedidos de produção</h1>
+          <p>
+            Selecione os materiais e distribua as variações por produto e
+            formato.
+          </p>
+        </div>
+        <a href="/connect">Conexão da extensão</a>
+      </header>
+      <p id="status" role="status" aria-live="polite"></p>
+      <section>
+        <h2>Novo pedido</h2>
+        <form id="order-form">
+          <label
+            >Nome do pedido<input
+              name="orderName"
+              required
+              maxlength="120"
+              placeholder="Campanha novembro"
+          /></label>
+          <div id="products"></div>
+          <div class="actions">
+            <button id="add-product" type="button">Adicionar produto</button
+            ><button type="submit" id="save-order">Salvar pedido</button>
+          </div>
+          <p class="hint">
+            Cada variação tem gancho, Body e CTA: duas imagens novas e três
+            vídeos. Salvar prepara o pedido para o agente; a execução será
+            autorizada pelo chat.
+          </p>
+        </form>
+      </section>
+      <section>
+        <div class="section-heading">
+          <h2>Seus pedidos</h2>
+          <button id="refresh" type="button">Atualizar</button>
+        </div>
+        <p>Após salvar, peça ao agente: “Prepare os pedidos 12 e 15”.</p>
+        <div id="orders"></div>
+      </section>
+      <section>
+        <h2>Armazenamento local</h2>
+        <p>
+          Libere as cópias de pedidos concluídos ou cancelados. Materiais
+          compartilhados com pedidos ativos ficam protegidos. Arquivos
+          importados sem pedido ficam disponíveis para limpeza após 24 horas.
+        </p>
+        <button id="preview-cleanup" type="button">
+          Conferir arquivos para limpeza
+        </button>
+        <div id="cleanup"></div>
+      </section>
+    </main>
+    <script type="module" src="/orders.js"></script>
+  </body>
+</html>

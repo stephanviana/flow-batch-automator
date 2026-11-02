@@ -1,4 +1,5 @@
 import Fastify, { LogController, type FastifyInstance } from 'fastify';
+import { QUEUE_BODY_LIMIT } from '@flow-batch/protocol';
 import type { AppConfig } from './config.js';
 import { openDatabase } from './persistence/database.js';
 import { registerHealth } from './http/health.js';
@@ -17,6 +18,13 @@ import { QueueMutations } from './queue/mutations.js';
 import { QueueEngine } from './queue/engine.js';
 import { BatchStore } from './persistence/batches.js';
 import { registerBatchRoutes } from './http/batches.js';
+import { DispatchStore } from './persistence/dispatch.js';
+import { registerDispatchRoutes } from './http/dispatch.js';
+import { LocalSessions } from './security/local-session.js';
+import { OrderRepository } from './orders/repository.js';
+import { MaterialFiles } from './orders/material-files.js';
+import { registerOrders } from './http/orders.js';
+import { registerMaterialDownloads } from './http/materials.js';
 
 export function createApp(config: AppConfig): FastifyInstance {
   const database = openDatabase(config.databasePath, config.busyTimeoutMs);
@@ -26,7 +34,7 @@ export function createApp(config: AppConfig): FastifyInstance {
       redact: ['req.headers.cookie', 'req.headers.authorization'],
     },
     logController: new LogController({ disableRequestLogging: true }),
-    bodyLimit: 65536,
+    bodyLimit: QUEUE_BODY_LIMIT,
     requestTimeout: 10000,
     connectionTimeout: 10000,
     forceCloseConnections: true,
@@ -36,6 +44,12 @@ export function createApp(config: AppConfig): FastifyInstance {
   const simulations = new SimulationStore(database);
   simulations.interrupt(undefined, 'server-restart');
   const signatures = new SignatureService(database, clients);
+  const sessions = new LocalSessions();
+  const orders = new OrderRepository(database);
+  const materials = new MaterialFiles(
+    config.materialsDirectory,
+    orders.materials,
+  );
   const batches = new BatchStore(database);
   batches.interrupt();
   const hub = new ConnectionHub(clients, signatures, simulations);
@@ -55,9 +69,13 @@ export function createApp(config: AppConfig): FastifyInstance {
   registerLocalBoundary(app, config.port);
   registerHealth(app, database);
   hub.register(app, config.port);
-  registerManagement(app, clients, hub, new URL('./public/', import.meta.url));
+  const publicAssets = new URL('./public/', import.meta.url);
+  registerManagement(app, clients, hub, publicAssets, sessions);
+  registerOrders(app, sessions, orders, materials, clients, publicAssets);
+  registerMaterialDownloads(app, signatures, clients, orders, materials);
   registerConnectionRoutes(app, clients, signatures, simulations, hub);
   registerBatchRoutes(app, signatures, clients, batches);
+  registerDispatchRoutes(app, signatures, clients, new DispatchStore(database));
   registerQueueRoutes(
     app,
     signatures,

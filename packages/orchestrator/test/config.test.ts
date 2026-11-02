@@ -23,18 +23,3 @@ test('invalid configuration is rejected without echoing supplied values', () => 
     assert.throws(() => loadConfig(environment));
   }
 });
-
-test('SQLite cannot be placed inside the read-only inputs directory', () => {
-  assert.throws(() =>
-    loadConfig({
-      INPUT_DIR: '/tmp/inputs',
-      DATABASE_PATH: '/tmp/inputs/nested/db.sqlite',
-    }),
-  );
-  assert.doesNotThrow(() =>
-    loadConfig({
-      INPUT_DIR: '/tmp/inputs',
-      DATABASE_PATH: '/tmp/inputs-other/db.sqlite',
-    }),
-  );
-});

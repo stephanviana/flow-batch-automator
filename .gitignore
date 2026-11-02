@@ -5,8 +5,7 @@ dist/
 .env.*
 !.env.example
 data/
-inputs/*
-!inputs/.gitkeep
+/copys.txt
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm

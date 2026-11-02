@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { test } from 'node:test';
 import { batchActionSchema, popupRequestSchema } from '../src/index.js';
 
-test('batch commands require recorded IDs, review revision and a bounded draft', () => {
+test('removed manual batch commands are rejected while automatic project actions remain bounded', () => {
   const id = randomUUID();
   assert.equal(
     popupRequestSchema.safeParse({ type: 'batch-open' }).success,
@@ -11,7 +11,7 @@ test('batch commands require recorded IDs, review revision and a bounded draft',
   );
   assert.equal(
     popupRequestSchema.safeParse({ type: 'batch-open', batchId: id }).success,
-    true,
+    false,
   );
   assert.equal(
     popupRequestSchema.safeParse({ type: 'batch-attach', batchId: id }).success,
@@ -23,7 +23,7 @@ test('batch commands require recorded IDs, review revision and a bounded draft',
       batchId: id,
       expectedRevision: 1,
     }).success,
-    true,
+    false,
   );
   assert.equal(
     batchActionSchema.safeParse({

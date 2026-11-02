@@ -1,15 +1,10 @@
 import {
   batchActionReplySchema,
-  batchListSchema,
-  queueSnapshotSchema,
   type Batch,
   type BatchAction,
-  type PopupRequest,
-  type FlowInspection,
 } from '@flow-batch/protocol';
 import { z } from 'zod';
 import { signedRequest } from './api.js';
-import { inspectFlow } from './flow.js';
 import { createProject, openProject } from './flow-projects.js';
 import { FlowInputError } from './flow-errors.js';
 
@@ -20,21 +15,6 @@ const receiptSchema = z.strictObject({
   projectId: z.uuid(),
   projectTitle: z.string().max(160).optional(),
 });
-
-export async function batchSnapshot(
-  clientId: string,
-): Promise<{ batches: Batch[]; activeBatchId: string | null }> {
-  const { batches } = batchListSchema.parse(
-    await signedRequest(clientId, 'GET', '/api/batches'),
-  );
-  const stored = await chrome.storage.local.get('activeBatchId');
-  return {
-    batches,
-    activeBatchId: batches.some((batch) => batch.id === stored.activeBatchId)
-      ? String(stored.activeBatchId)
-      : null,
-  };
-}
 
 async function action(
   clientId: string,
@@ -90,7 +70,7 @@ async function provision(clientId: string, batch: Batch): Promise<Batch> {
     });
     throw new FlowInputError(
       outcome === 'not-created'
-        ? 'O projeto não foi criado. Entre no Flow e clique em Abrir lote para tentar novamente.'
+        ? 'O projeto não foi criado. Confira o acesso ao Flow e solicite revisão do pedido pelo chat.'
         : 'Criação sem confirmação. Confira o Flow e vincule o projeto aberto; não será criado outro automaticamente.',
     );
   }
@@ -107,74 +87,25 @@ async function provision(clientId: string, batch: Batch): Promise<Batch> {
   return recoverReceipt(clientId, batch);
 }
 
-async function attach(clientId: string, batch: Batch): Promise<Batch> {
-  const project = await inspectFlow();
-  if (
-    project.phase !== 'ready' ||
-    !z.uuid().safeParse(project.projectId).success
-  )
-    throw new FlowInputError(
-      'Abra e verifique o projeto do Flow que deseja vincular ao lote.',
-    );
-  return (
-    await action(clientId, {
-      action: 'attach',
-      id: batch.id,
-      expectedRevision: batch.revision,
-      projectId: project.projectId!,
-    })
-  ).batch;
-}
-
-export async function batchCommand(
+export async function prepareDispatchBatch(
   clientId: string,
-  message: PopupRequest,
-): Promise<FlowInspection | null> {
-  const queue = queueSnapshotSchema.parse(
-    await signedRequest(clientId, 'GET', '/api/queue'),
-  );
-  if (
-    queue.tasks.some((task) =>
-      ['dispatching', 'submitted', 'generating', 'download_pending'].includes(
-        task.state,
-      ),
-    ) ||
-    (queue.running && queue.counts.queued > 0)
-  )
-    throw new FlowInputError(
-      'Pause a fila e aguarde o take atual terminar antes de trocar de lote.',
-    );
-  let batch: Batch;
-  if (message.type === 'batch-prepare' && message.batchDraft)
-    batch = (
-      await action(clientId, { action: 'prepare', draft: message.batchDraft })
-    ).batch;
-  else {
-    const snapshot = await batchSnapshot(clientId);
-    const existing = snapshot.batches.find(
-      (candidate) => candidate.id === message.batchId,
-    );
-    if (!existing) throw new FlowInputError('Selecione um lote registrado.');
-    batch = existing;
-    if (
-      message.expectedRevision !== undefined &&
-      message.expectedRevision !== batch.revision
-    )
-      throw new FlowInputError(
-        'O lote mudou. Confira o estado atualizado antes de continuar.',
-      );
-  }
-  await chrome.storage.local.set({ activeBatchId: batch.id });
-  if (
-    message.type === 'batch-attach' ||
-    (batch.mode === 'existing-project' && batch.status === 'draft')
-  )
-    batch = await attach(clientId, batch);
-  else batch = await provision(clientId, batch);
+  draft: { id: string; name: string; mode: 'new-project' },
+): Promise<Batch> {
+  let batch = (await action(clientId, { action: 'prepare', draft })).batch;
+  batch = await provision(clientId, batch);
   if (batch.status !== 'ready' || !batch.projectId)
     throw new FlowInputError(
-      'Confira os projetos no Flow. Abra o projeto correto e use “Vincular projeto aberto” para resolver a criação sem confirmação.',
+      'Criação do projeto exige revisão. Nenhum outro projeto será criado automaticamente.',
     );
-  await openProject(batch.projectId);
-  return inspectFlow();
+  await openProject(batch.projectId, false);
+  await chrome.storage.local.set({
+    activeBatchId: batch.id,
+    dispatchFlow: {
+      phase: 'ready',
+      projectId: batch.projectId,
+      message: `Projeto do lote ${batch.name} pronto.`,
+      checkedAt: Date.now(),
+    },
+  });
+  return batch;
 }

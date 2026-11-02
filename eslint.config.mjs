@@ -30,6 +30,7 @@ export default tseslint.config(
         fetch: 'readonly',
         AbortSignal: 'readonly',
         document: 'readonly',
+        File: 'readonly',
         location: 'readonly',
         setInterval: 'readonly',
         indexedDB: 'readonly',

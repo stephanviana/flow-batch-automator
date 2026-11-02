@@ -9,10 +9,11 @@ import { chromium } from 'playwright';
 import { validateQueue } from './browser-queue.mjs';
 import { validateFlow } from './browser-flow.mjs';
 import { validateFlowTake } from './browser-flow-take.mjs';
-import { validateBatches } from './browser-batches.mjs';
 import { startMediaFixture } from './browser-media.mjs';
 
 const directory = resolve('.cache', `browser-${randomUUID()}`);
+const reuseOnly = process.argv.includes('--reuse-only');
+const ordersOnly = process.argv.includes('--orders-only') || reuseOnly;
 await mkdir(directory, { recursive: true });
 const log = createWriteStream(resolve(directory, 'server.log'));
 let server;
@@ -21,10 +22,15 @@ let popup;
 let management;
 let extensionId;
 let media;
+let asynchronousFailure;
+process.on('unhandledRejection', (error) => {
+  asynchronousFailure = error;
+});
 
 async function eventually(check, timeout = 15000) {
   const end = Date.now() + timeout;
   while (Date.now() < end) {
+    if (asynchronousFailure) throw asynchronousFailure;
     if (await check()) return;
     await delay(200);
   }
@@ -180,7 +186,8 @@ try {
   const identity = await assertNonExportableIdentity();
   if (
     !process.argv.includes('--queue-only') &&
-    !process.argv.includes('--flow-only')
+    !process.argv.includes('--flow-only') &&
+    !ordersOnly
   ) {
     await popup
       .getByRole('button', { name: 'Enviar teste simulado (5 s)' })
@@ -245,15 +252,8 @@ try {
     assert.equal(await assertNonExportableIdentity(), identity);
   }
   await validateFlow({ browser, panel: popup, eventually });
-  if (!process.argv.includes('--flow-only'))
+  if (!process.argv.includes('--flow-only') && !ordersOnly)
     await validateQueue({ popup, eventually, stopServer, startServer });
-  await validateBatches({
-    browser,
-    panel: popup,
-    eventually,
-    stopServer,
-    startServer,
-  });
   await validateFlowTake({
     browser,
     panel: popup,
@@ -261,14 +261,20 @@ try {
     stopServer,
     startServer,
     media,
+    directory,
+    reuseOnly,
   });
   await management.goto('http://127.0.0.1:4319/connect');
   console.log(
-    process.argv.includes('--flow-only')
-      ? 'Real Chrome for Testing: pairing, side panel, Flow transport and executor validated against local fixtures.'
-      : process.argv.includes('--queue-only')
-        ? 'Real Chrome for Testing: pairing, non-exportable identity and queue flow passed.'
-        : 'Real Chrome for Testing: matching codes, explicit confirmation, non-exportable persistent identity, simulation, heartbeat, server/browser restart, no resend, revocation, explicit reauthorization and queue flow passed.',
+    reuseOnly
+      ? 'Real Chrome for Testing: automatic dispatch, exact Body/CTA frame reuse and grouped MP4 downloads passed against local fixtures.'
+      : ordersOnly
+        ? 'Real Chrome for Testing: pairing, project inspection, panel orders, agent preparation, authorization, shared frame, downloads and cleanup passed against local fixtures.'
+        : process.argv.includes('--flow-only')
+          ? 'Real Chrome for Testing: pairing, side panel, Flow transport and executor validated against local fixtures.'
+          : process.argv.includes('--queue-only')
+            ? 'Real Chrome for Testing: pairing, non-exportable identity and queue flow passed.'
+            : 'Real Chrome for Testing: matching codes, explicit confirmation, non-exportable persistent identity, simulation, heartbeat, server/browser restart, no resend, revocation, explicit reauthorization and queue flow passed.',
   );
   console.log(`Isolated evidence: ${directory}`);
   await popup.screenshot({

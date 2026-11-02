@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { queueMigration } from './queue-migration.js';
+import { orderMigration } from './order-migration.js';
 
 export interface Migration {
   version: number;
@@ -70,6 +71,18 @@ export const migrations: readonly Migration[] = [
     CREATE INDEX batches_client ON flow_batches(client_id);
     ALTER TABLE queue_tasks ADD COLUMN batch_id TEXT REFERENCES flow_batches(id);`,
   },
+  {
+    version: 6,
+    sql: `CREATE TABLE dispatch_commands (
+      id TEXT PRIMARY KEY,client_id TEXT NOT NULL REFERENCES clients(id),
+      body TEXT NOT NULL,body_hash TEXT NOT NULL,
+      state TEXT NOT NULL CHECK(state IN ('pending','queued','blocked')),
+      message TEXT NOT NULL DEFAULT '',created_at INTEGER NOT NULL
+    ) STRICT;
+    CREATE INDEX dispatch_client ON dispatch_commands(client_id,created_at);
+    CREATE INDEX dispatch_manifest ON dispatch_commands(client_id,json_extract(body,'$.manifest.id'));`,
+  },
+  { version: 7, sql: orderMigration },
 ];
 
 export function migrate(

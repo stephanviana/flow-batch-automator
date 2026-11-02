@@ -6,8 +6,6 @@ import {
   finishQueueControl,
   renderQueueActivity,
 } from './queue-activity.js';
-import { initializeFlowForm, renderFlowForm } from './flow-form.js';
-import { initializeBatchForm, renderBatchForm } from './batch-form.js';
 
 const status = document.querySelector<HTMLParagraphElement>('#status');
 const code = document.querySelector<HTMLParagraphElement>('#code');
@@ -45,6 +43,11 @@ async function refresh(
   try {
     const response: unknown = await chrome.runtime.sendMessage(request);
     const data = popupReplySchema.parse(response);
+    const dispatch = await chrome.storage.local.get('dispatchStatus');
+    if (typeof dispatch.dispatchStatus === 'string')
+      document.querySelector<HTMLParagraphElement>(
+        '#dispatch-status',
+      )!.textContent = dispatch.dispatchStatus;
     if (control) controlError = data.operationError ?? undefined;
     if (sequence < appliedSequence) return data;
     appliedSequence = sequence;
@@ -60,8 +63,6 @@ async function refresh(
         : '';
     }
     renderQueue(data.queue, data.inspection, data.operationError, refresh);
-    renderFlowForm(data);
-    renderBatchForm(data);
     const nextSimulationStamp = JSON.stringify(data.simulations);
     if (nextSimulationStamp === simulationStamp) return data;
     simulationStamp = nextSimulationStamp;
@@ -88,8 +89,6 @@ async function refresh(
     if (control) finishQueueControl(control, controlError);
   }
 }
-initializeFlowForm(refresh);
-initializeBatchForm(refresh);
 for (const button of document.querySelectorAll<HTMLButtonElement>(
   '[data-action]',
 )) {

@@ -180,9 +180,6 @@ input[type='file'] {
   margin-top: 3px;
   accent-color: #175c4d;
 }
-#flow-feedback {
-  font-size: 12px;
-}
 .queue-activity {
   position: sticky;
   top: 8px;

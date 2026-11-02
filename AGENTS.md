@@ -5,57 +5,72 @@ camada continuam válidas dentro dela, respeitando as instruções do usuário.
 
 ## O que é este projeto
 
-Ferramenta local para gerar imagens e vídeos em lote no Google Flow e baixar os
-MP4s, reduzindo o trabalho manual. As Fases 1, 2 e 3 foram verificadas e aprovadas
-pelo usuário, incluindo conexão, três takes simulados sequenciais e histórico no
-Chrome do Windows. A **Fase 4 — Integração com Flow** foi implementada usando o
-FlowKit como referência e um side panel como interface. O usuário confirmou o
-primeiro take real: **“Concluiu e baixou o MP4”**. A conferência do SQLite mostrou
-uma tentativa concluída e os cinco checkpoints do percurso completo. O importador
-de lotes da Fase 5 ainda não foi implementado.
+Ferramenta local para a operação de TikTok Shop: o usuário monta pedidos no painel,
+o agente cria copy e prompts, a API coordena a fila e a extensão executa no Google
+Flow. FlowKit é referência técnica, não define o produto como ferramenta de YouTube.
 
-A divisão por projetos foi implementada na versão 0.4.3: um projeto do Flow por lote, com
-vínculo persistente para retomadas. Novos lotes criam um projeto por padrão;
-também é possível vincular um projeto existente. Takes antigos mantêm o projeto
-original. Uma criação sem resposta confirmada exige revisão, sem criar outro
-projeto automaticamente. A criação do projeto não autoriza gerar mídia paga.
-O usuário pediu reutilizar a mesma aba do Flow, voltando à página inicial para
-criar o projeto e navegando nela até o projeto do lote. Não abrir abas adicionais
-para os lotes. Trocas manuais exigem fila pausada/ociosa; a execução pode navegar
-entre projetos antes de iniciar o próximo take, sem interromper o atual.
-O usuário validou o novo fluxo na conta real do Flow: **“Testei o novo fluxo e
-está funcionando corretamente.”** A divisão por projetos está aprovada; não
-atribuir a essa confirmação testes reais específicos de interrupção/recuperação.
+A arquitetura 0.6.0 usa painel em `/orders`, com produtos, materiais selecionados
+de qualquer pasta, formatos e quantidades por produto. Não há presets nesta
+etapa. O usuário pede ao Codex/Antigravity que prepare um ou vários números de
+pedido. Consulte `skills/flow-orders/SKILL.md` e `agents/instrucoes.md` antes de
+preparar. As instruções criativas permanecem versionadas em `agents/`.
+O compilador não invoca IA; o agente ativo analisa os materiais reais e cria os
+textos e prompts. POV e Full Vendedora ainda aguardam suas bases de copy próprias.
 
-Antes da Fase 5, o usuário pediu Omni 1.1 Flash e confirmou o modo **Frames,
-somente frame inicial**. Imagem: Nano Banana Pro ou Nano Banana 2.1. Use a imagem
-gerada como frame inicial, preservando a referência original na etapa de imagem.
-Omni deve ser o padrão de novos takes (8 s, 720p), com os tempos 4/6/8/10 s e
-resoluções 360p/720p suportados pelo FlowKit. Não mudar modelos ou parâmetros de
-takes já registrados; a Fase 5 permanece pendente.
-O usuário confirmou **“Gerei com Omni e baixou o MP4”** na versão 0.4.1. O take
-`abra_i2v_8s` (Omni Frames, 8 s/720p) ficou concluído em uma tentativa, com os cinco
-checkpoints. Outras durações e resoluções têm cobertura com fixtures; não atribuir
-a elas essa validação real.
+O SQLite guarda registros; os materiais importados ficam em arquivos por hash
+em armazenamento persistente administrado pelo aplicativo, com deduplicação.
+Agente e extensão acessam materiais pela API local autorizada. Não depender de
+workspace Windows, symlink, seletor de pasta vinculada, caixa `.dispatch`,
+`setup.sh` ou importação manual de manifesto para novos pedidos. O usuário
+explicitamente autorizou remover o código/configuração antigos, os materiais do
+workspace anterior e seu histórico SQLite durante esta mudança. Essa limpeza
+pontual não autoriza exclusões futuras. Não alterar a pasta global de downloads.
 
-O usuário também pediu feedback visual ao processar a fila. O painel deve
-responder imediatamente ao clique e mostrar as etapas reais até o download,
-incluindo pausa, falha e resultado incerto; não inventar percentual de geração.
-As chamadas diretas não sincronizam a listagem da página do Flow. Não recarregar
-a aba automaticamente durante uma execução para tentar atualizar essa listagem.
+Cada variação tem duas imagens novas e três vídeos (gancho, Body, CTA). O CTA
+reutiliza exatamente a imagem confirmada do Body, com `reuseImageFrom` no
+manifesto, `imageSourceTaskKey` na entrada e `sourceImage` resolvido pelo servidor.
+Nunca gerar uma imagem de fallback. Validar dono, lote, projeto, variação e
+materiais visuais. CTA: zero imagens, um vídeo, quatro checkpoints iniciados por
+`image_reused`; gancho/Body: cinco checkpoints. Protocolo v5 obrigatório para
+reutilização e saídas agrupadas. MP4s separados na mesma pasta da variação:
+`01-Gancho.mp4`, `02-Body.mp4`, `03-CTA.mp4`.
 
-O usuário retirou as restrições anteriores contra APIs privadas e integração no
-contexto autenticado da aba. Chamadas batchexecute com a sessão da própria conta
-estão autorizadas; não exigir automação por cliques como única alternativa.
-Reaproveite a fila existente e concentre o desenvolvimento no caminho mínimo:
-referência → imagem → vídeo → MP4. Não ampliar infraestrutura, provedores de IA,
-dashboard, TTS ou publicação em redes sociais. Executar gerações que consomem
-créditos continua dependendo de confirmação explícita; implementar e testar os
-adaptadores sem consumir créditos está autorizado.
+Novos takes usam Nano Banana Pro e Omni 1.1 Flash Frames, frame inicial, 8 s/720p,
+9:16. Nano Banana 2.1 e os parâmetros suportados podem ser usados quando pedidos.
+Preservar referência original na geração da imagem e usar a imagem gerada no
+vídeo. Não mudar materiais/modelos de takes registrados. O gancho POV usa voz
+fora de câmera e somente mãos visíveis, sem coro ou lip-sync visível.
 
-Use projetos e sessões anteriores como referência de organização e qualidade.
-Não atribua a este repositório funcionalidades, dependências, autorizações ou
-validações de outros projetos, inclusive daqueles com nomes semelhantes.
+A copy de fábrica segue a fonte corrigida incorporada em `agents/copy.md`:
+reação comercial + produto + motivo de compra, com vantagem comercial e fechamento
+avaliativo curto integrado à frase. O usuário aprovou “por um precinho incrível”
+como exemplo, sem tornar a expressão obrigatória. Preservar gancho de venda,
+argumento concreto e CTA de compra. Não usar preço monetário explícito nem inventar
+promoção, urgência, estoque, popularidade, desconto ou oferta oficial da plataforma.
+Não bloquear a copy por falta de condição promocional; adaptar com descoberta e
+apelo comercial. Não transferir quantidade/capacidade de exemplos ao produto.
+Swipes brutos não são dependências de execução nem materiais a versionar.
+
+Nas imagens de Body/CTA, produto diretamente no balcão ou nas mãos da vendedora.
+Não inventar bandeja, cesta, tábua ou base portátil. Preservar acessórios reais
+confirmados. Kits grandes ficam no balcão sem desmontar a unidade comercial;
+a animação preserva esse apoio. Revisões exigem novos materiais conferidos e
+autorização antes de consumo. Não atribuir validação de políticas à revisão.
+
+Projetos do Flow são preparados automaticamente por lote e retomados pelo vínculo
+persistido. Reutilizar a mesma aba, sem abrir abas adicionais por lote. Criação
+sem resposta confirmada exige revisão, sem criar outra automaticamente. Não
+recarregar a aba para atualizar a listagem durante execução. Mostrar etapas reais,
+pausa, falha e incerteza; não inventar percentual.
+
+As Fases 1–4 e o piloto anterior tiveram validações reais no Chrome Windows,
+incluindo Omni Frames 8 s/720p e download de MP4. O piloto Fábrica Padrão de três
+takes comprovou o percurso técnico, não aprovação criativa, fala exata ou lip-sync.
+Body e CTA tinham apresentadoras diferentes; a correção de reutilização foi
+verificada com fixtures e não herda validação paga do piloto. O áudio POV ainda
+não foi validado na conta real. Testes sintéticos da arquitetura nova não
+comprovam novo teste pago. Implementar/testar sem créditos está autorizado;
+qualquer geração paga continua dependendo de autorização específica no chat.
 
 ## Stack e organização
 
@@ -67,8 +82,8 @@ validações de outros projetos, inclusive daqueles com nomes semelhantes.
   e rotas HTTP. Separe configuração, persistência, comunicação e segurança.
 - `packages/extension`: Chrome Manifest V3, Chrome 120+, side panel e service worker
   empacotados com esbuild. Identidade em IndexedDB; storage e alarms para estado
-  de conexão e recuperação. Referências locais em IndexedDB separado, com SHA-256;
-  bytes das imagens não passam pelo orquestrador. A integração executa RPCs no contexto da aba do Flow,
+  de conexão e recuperação. Referências de execução em IndexedDB separado, com SHA-256;
+  materiais importados passam pela API local e ficam em arquivos persistentes. A integração executa RPCs no contexto da aba do Flow,
   aproveitando sua sessão; credenciais e tokens permanecem no navegador.
 - Docker Compose: orquestrador e serviço temporário `sync-extension`. Sem Redis,
   PostgreSQL, dashboard completo ou serviços externos adicionais.
@@ -133,21 +148,23 @@ mudanças apenas documentais não exigem criar testes de código.
 
 ### Comandos e evidências
 
-- `pnpm install --frozen-lockfile`: instalação reproduzível.
-- `pnpm typecheck`, `pnpm lint`, `pnpm test`: verificações por workspace.
-- `pnpm build`: build dos três pacotes em ordem de dependência.
-- `pnpm format:check` e `pnpm check`: formatação e validação completa.
-- `pnpm dev`: servidor local; `pnpm start`: servidor compilado.
-- `docker compose config --quiet`: validação da configuração de containers.
-- `pnpm test:docker`: integração real em projeto Compose e volume novos, com a
-  porta 4319 livre; preserva o volume sintético e deixa os logs em `.cache/`.
-- `pnpm test:browser:flow`: executor com referência e MP4 em fixtures HTTPS
-  locais, sem Google real; OpenSSL e flags só no perfil isolado de teste.
-- `pnpm test:browser`: extensão real em Chrome for Testing com perfil e banco
-  novos em `.cache/`, sem perfil pessoal. Exige navegador local de teste instalado
-  e porta 4319 livre; não instala bibliotecas globais automaticamente.
-- Iniciar, atualizar e parar: `docker compose up -d`,
-  `docker compose up -d --build`, `docker compose down`.
+- `pnpm orders list` / `show NUMERO`: consulta do agente pela API local.
+- `pnpm orders checkout 12 15`: reserva e materiais para preparação; `--revise`
+  permite revisar uma preparação ainda não despachada.
+- `pnpm orders renew .cache/orders/12`: renova a reserva de preparação.
+- `pnpm orders publish CAMINHO/preparacao.json`: valida e publica, sem consumo.
+- `pnpm orders approve NUMERO --approve --hash HASH`: somente após autorização
+  no chat para a revisão exata; `--client UUID` escolhe a extensão quando necessário.
+- `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm lint`, `pnpm test`,
+  `pnpm build`, `pnpm format:check`, `pnpm check`.
+- `pnpm dev` / `pnpm start`: servidor local.
+- `docker compose config --quiet` / `pnpm test:docker`: configuração e integração
+  em Compose isolado, com volume sintético próprio e porta 4319 livre.
+- `pnpm test:browser:orders` / `pnpm test:browser:reuse`: pedidos pelo painel,
+  preparação, despacho, reutilização e downloads em Chrome for Testing com fixtures.
+- `pnpm test:browser:queue` / `pnpm test:browser`: fila e percurso completo em
+  perfil isolado. Não instalar bibliotecas globais nem usar o perfil pessoal.
+- `docker compose up -d --build` / `docker compose down`: atualizar/iniciar/parar.
 
 ## Segurança e persistência
 
@@ -160,8 +177,9 @@ mudanças apenas documentais não exigem criar testes de código.
   Execute sem privilégios, com raiz somente para leitura e volume SQLite próprio.
 - SQLite com WAL, foreign keys, busy timeout, migrações transacionais versionadas
   e encerramento limpo. Não usar `docker compose down -v` como parada normal.
-- Entrada somente para leitura; o orquestrador não acessa a pasta Windows.
-  `sync-extension` não tem rede e escreve somente no destino montado.
+- Materiais importados ficam no volume persistente local; não montar pastas
+  arbitrárias do Windows no servidor. `sync-extension` não tem rede e escreve
+  somente no destino montado.
 - Healthchecks não expõem caminhos, arquivos ou credenciais. Valide Host e
   Origin; não habilite CORS indiscriminadamente. Gestão local exige sessão
   HttpOnly/SameSite, cabeçalho próprio e confirmação explícita em `/connect`.
@@ -176,7 +194,8 @@ mudanças apenas documentais não exigem criar testes de código.
   Interrupções após a intenção de envio geram resultado incerto e bloqueiam novos
   despachos até revisão explícita; reconexão não autoriza reenvio.
 - Takes reais exigem autorização vinculada à entrada imutável para uma imagem e
-  um vídeo, com tentativa única. Persistir checkpoints dos IDs de cada etapa.
+  um vídeo, ou zero imagens e um vídeo quando reutilizam a imagem confirmada do
+  Body, com tentativa única. Persistir checkpoints dos IDs de cada etapa.
   Conclusão exige download confirmado pelo Chrome e evidência correspondente;
   não aceitar conclusão manual simulada de uma tarefa real.
 - Repetição automática de simulações somente para falha comprovadamente anterior ao envio,

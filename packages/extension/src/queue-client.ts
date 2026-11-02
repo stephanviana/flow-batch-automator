@@ -5,7 +5,6 @@ import {
   taskDetailSchema,
 } from '@flow-batch/protocol';
 import { signedRequest } from './api.js';
-import { enqueueFlow } from './flow-enqueue.js';
 
 function demoTasks(type: PopupRequest['type']): TaskInput[] {
   const scenario =
@@ -39,12 +38,6 @@ export async function queueCommand(
   clientId: string,
   message: PopupRequest,
 ): Promise<void> {
-  if (message.type === 'enqueue-flow') {
-    if (!message.flowDraft)
-      throw new Error('Preencha o take e confirme o consumo de créditos.');
-    await enqueueFlow(clientId, message.flowDraft);
-    return;
-  }
   if (message.type.startsWith('enqueue-')) {
     await signedRequest(clientId, 'POST', '/api/queue', {
       requestId: crypto.randomUUID(),

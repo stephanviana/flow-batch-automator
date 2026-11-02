@@ -1,10 +1,8 @@
 import { z } from 'zod';
-import { batchDraftSchema, batchSchema } from './batches.js';
 import {
   flowInspectionSchema,
   flowExecuteSchema,
   queueCheckpointSchema,
-  flowDraftSchema,
 } from './flow.js';
 import {
   queueExecuteSchema,
@@ -35,6 +33,8 @@ export const challengeRequestSchema = z.strictObject({
   target: z.enum([
     '/api/identity',
     '/api/batches',
+    '/api/dispatch',
+    '/api/materials',
     '/api/simulations',
     '/api/queue',
     '/api/queue/control',
@@ -123,53 +123,31 @@ export const serverMessageSchema = z.discriminatedUnion('type', [
   }),
 ]);
 export type ServerMessage = z.infer<typeof serverMessageSchema>;
-export const popupRequestSchema = z
-  .strictObject({
-    type: z.enum([
-      'status',
-      'batch-prepare',
-      'batch-open',
-      'batch-attach',
-      'flow-open',
-      'flow-inspect',
-      'enqueue-flow',
-      'connect',
-      'disconnect',
-      'reconnect',
-      'simulate',
-      'enqueue-demo',
-      'enqueue-retry-demo',
-      'enqueue-stall-demo',
-      'queue-start',
-      'queue-pause',
-      'queue-retry',
-      'queue-resolve',
-      'queue-cancel',
-      'queue-inspect',
-      'queue-show-download',
-    ]),
-    flowDraft: flowDraftSchema.optional(),
-    batchDraft: batchDraftSchema.optional(),
-    batchId: z.uuid().optional(),
-    note: z.string().trim().min(1).max(500).optional(),
-    reviewOutcome: z.enum(['not_submitted', 'failed']).optional(),
-    taskId: z.uuid().optional(),
-    expectedRevision: z.number().int().min(0).optional(),
-  })
-  .refine(
-    (message) =>
-      (message.type === 'enqueue-flow') === Boolean(message.flowDraft),
-    'Flow enqueue requires an approved draft',
-  )
-  .refine(
-    (message) =>
-      (message.type === 'batch-prepare') === Boolean(message.batchDraft) &&
-      (!['batch-open', 'batch-attach'].includes(message.type) ||
-        Boolean(message.batchId)) &&
-      (message.type !== 'batch-attach' ||
-        message.expectedRevision !== undefined),
-    'Batch commands require a draft or a recorded batch',
-  );
+export const popupRequestSchema = z.strictObject({
+  type: z.enum([
+    'status',
+    'flow-open',
+    'flow-inspect',
+    'connect',
+    'disconnect',
+    'reconnect',
+    'simulate',
+    'enqueue-demo',
+    'enqueue-retry-demo',
+    'enqueue-stall-demo',
+    'queue-start',
+    'queue-pause',
+    'queue-retry',
+    'queue-resolve',
+    'queue-cancel',
+    'queue-inspect',
+    'queue-show-download',
+  ]),
+  note: z.string().trim().min(1).max(500).optional(),
+  reviewOutcome: z.enum(['not_submitted', 'failed']).optional(),
+  taskId: z.uuid().optional(),
+  expectedRevision: z.number().int().min(0).optional(),
+});
 export type PopupRequest = z.infer<typeof popupRequestSchema>;
 export const extensionStateSchema = z.strictObject({
   phase: z.enum([
@@ -186,8 +164,6 @@ export const extensionStateSchema = z.strictObject({
   expiresAt: z.number().optional(),
 });
 export const popupReplySchema = z.strictObject({
-  batches: z.array(batchSchema).default([]),
-  activeBatchId: z.uuid().nullable().default(null),
   state: extensionStateSchema,
   simulations: z.array(simulationSchema),
   queue: queueSnapshotSchema.nullable(),

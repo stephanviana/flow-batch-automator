@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
+import { localClient } from './orders.mjs';
 import { appendFileSync, mkdirSync, readFileSync, statSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 
@@ -12,7 +13,6 @@ mkdirSync(destination, { recursive: true });
 const environment = {
   ...process.env,
   WIN_EXTENSION_DIR: destination,
-  INPUT_DIR: resolve('inputs'),
 };
 const log = join(directory, 'docker.log');
 
@@ -64,8 +64,8 @@ try {
     false,
   );
   assert.equal(
-    container.Mounts.find((mount) => mount.Destination === '/inputs').RW,
-    false,
+    container.Mounts.find((mount) => mount.Destination === '/data').RW,
+    true,
   );
   const syncContainer = JSON.parse(
     docker(['inspect', compose('ps', '-a', '-q', 'sync-extension')]),
@@ -89,6 +89,40 @@ try {
     headers: { Origin: 'https://example.com' },
   });
   assert.equal(forbidden.status, 403);
+
+  const reference = readFileSync(
+    new URL('./fixtures/reference.png', import.meta.url),
+  );
+  const session = await fetch('http://127.0.0.1:4319/orders');
+  const cookie = session.headers.get('set-cookie').split(';')[0];
+  const imported = await fetch('http://127.0.0.1:4319/manage/materials', {
+    method: 'POST',
+    headers: {
+      cookie,
+      Origin: 'http://127.0.0.1:4319',
+      'X-Flow-Management': '1',
+      'Content-Type': 'application/octet-stream',
+      'X-Flow-Filename': 'fixture.png',
+    },
+    body: reference,
+  });
+  assert.equal(imported.status, 200);
+  const material = await imported.json();
+  let api = await localClient();
+  const order = await api('/manage/orders', {
+    id: randomUUID(),
+    name: 'Docker order fixture',
+    products: [
+      {
+        id: randomUUID(),
+        name: 'Produto fixture',
+        information: 'Fixture sintética',
+        materials: [material.id],
+        referenceId: material.id,
+        groups: [{ id: randomUUID(), format: 'factory', count: 1 }],
+      },
+    ],
+  });
 
   executeNode(`import { DatabaseSync } from 'node:sqlite';
     const db = new DatabaseSync('/data/flow-batch.sqlite');
@@ -138,6 +172,21 @@ try {
     console.log(db.prepare("SELECT value FROM application_metadata WHERE key = 'container-test'").get().value);
     db.close();`);
   assert.equal(persisted, 'preserved');
+  api = await localClient();
+  assert.equal(
+    (await api(`/manage/orders/${order.number}`)).order.id,
+    order.id,
+  );
+  assert.deepEqual(
+    await api(`/manage/materials/${material.id}`, undefined, true),
+    reference,
+  );
+  await api(`/manage/orders/${order.id}/cancel`, {});
+  assert.equal(
+    (await api('/manage/cleanup', { ids: [material.id] })).removed,
+    1,
+  );
+
   const queue = JSON.parse(
     executeNode(`import { DatabaseSync } from 'node:sqlite';
     const db=new DatabaseSync('/data/flow-batch.sqlite',{readOnly:true});
@@ -152,7 +201,7 @@ try {
     running: 0,
   });
   console.log(
-    'Docker: build, health, loopback, isolation, sync on both starts, SQLite persistence and uncertain/pending queue recovery passed.',
+    'Docker: build, health, loopback, isolation, sync on both starts, SQLite/material persistence, cleanup and uncertain/pending queue recovery passed.',
   );
   console.log(`Synthetic test volume preserved: ${project}_sqlite_data`);
   console.log(`Logs and extension: ${directory}`);

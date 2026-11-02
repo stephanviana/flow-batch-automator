@@ -1,4 +1,4 @@
-import { resolve, relative, isAbsolute, sep } from 'node:path';
+import { resolve, dirname } from 'node:path';
 import { z } from 'zod';
 import { DEFAULT_PORT } from '@flow-batch/protocol';
 
@@ -6,7 +6,7 @@ const configSchema = z.object({
   HOST: z.enum(['127.0.0.1', '0.0.0.0']).default('127.0.0.1'),
   PORT: z.coerce.number().int().min(1024).max(65535).default(DEFAULT_PORT),
   DATABASE_PATH: z.string().min(1).default('./data/flow-batch.sqlite'),
-  INPUT_DIR: z.string().min(1).default('./inputs'),
+  MATERIALS_DIR: z.string().min(1).optional(),
   SQLITE_BUSY_TIMEOUT_MS: z.coerce
     .number()
     .int()
@@ -22,7 +22,7 @@ export interface AppConfig {
   host: '127.0.0.1' | '0.0.0.0';
   port: number;
   databasePath: string;
-  inputDirectory: string;
+  materialsDirectory: string;
   busyTimeoutMs: number;
   logLevel: z.infer<typeof configSchema>['LOG_LEVEL'];
 }
@@ -40,20 +40,14 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
     throw new Error('DATABASE_PATH must refer to a persistent file');
   }
   const databasePath = resolve(config.DATABASE_PATH);
-  const inputDirectory = resolve(config.INPUT_DIR);
-  const databaseRelativeToInputs = relative(inputDirectory, databasePath);
-  if (
-    !isAbsolute(databaseRelativeToInputs) &&
-    databaseRelativeToInputs !== '..' &&
-    !databaseRelativeToInputs.startsWith(`..${sep}`)
-  ) {
-    throw new Error('DATABASE_PATH must be outside INPUT_DIR');
-  }
+  const materialsDirectory = resolve(
+    config.MATERIALS_DIR ?? resolve(dirname(databasePath), 'materials'),
+  );
   return {
     host: config.HOST,
     port: config.PORT,
     databasePath,
-    inputDirectory,
+    materialsDirectory,
     busyTimeoutMs: config.SQLITE_BUSY_TIMEOUT_MS,
     logLevel: config.LOG_LEVEL,
   };

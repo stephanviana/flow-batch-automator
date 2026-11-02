@@ -10,17 +10,25 @@ export function registerManagement(
   clients: ClientStore,
   hub: ConnectionHub,
   assets: URL,
+  sessions = new LocalSessions(),
 ): void {
-  const sessions = new LocalSessions();
   const files = new Map<string, readonly [string, string]>([
     ['/connect', ['connect.html', 'text/html; charset=utf-8']],
     ['/connect.js', ['connect.js', 'text/javascript; charset=utf-8']],
     ['/connect.css', ['connect.css', 'text/css; charset=utf-8']],
+    ['/orders', ['orders.html', 'text/html; charset=utf-8']],
+    ['/orders.js', ['orders.js', 'text/javascript; charset=utf-8']],
+    ['/orders.css', ['orders.css', 'text/css; charset=utf-8']],
+    [
+      '/orders-editor.js',
+      ['orders-editor.js', 'text/javascript; charset=utf-8'],
+    ],
   ]);
   for (const [route, [filename, contentType]] of files) {
     const contents = readFileSync(new URL(filename, assets));
     app.get(route, async (request, reply): Promise<Buffer> => {
-      if (route === '/connect') sessions.open(request, reply);
+      if (route === '/connect' || route === '/orders')
+        sessions.open(request, reply);
       reply.header(
         'Content-Security-Policy',
         "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",

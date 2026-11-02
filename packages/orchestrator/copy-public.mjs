@@ -5,3 +5,7 @@ await mkdir(destination, { recursive: true });
 await cp(new URL('./public/', import.meta.url), destination, {
   recursive: true,
 });
+await cp(
+  new URL('../../agents/animacao.md', import.meta.url),
+  resolve(destination, 'animacao.md'),
+);

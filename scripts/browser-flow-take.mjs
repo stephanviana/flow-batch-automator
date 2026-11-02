@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { randomUUID, createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { setTimeout as delay } from 'node:timers/promises';
 import { URLSearchParams } from 'node:url';
-import { prepareBatch } from './browser-batches.mjs';
+import { localClient, checkout } from './orders.mjs';
+import { resolve } from 'node:path';
 
 export async function validateFlowTake({
   browser,
@@ -12,29 +12,26 @@ export async function validateFlowTake({
   stopServer,
   startServer,
   media,
+  directory,
 }) {
-  const projectId = randomUUID(),
-    referenceId = randomUUID(),
-    imageId = randomUUID(),
+  let projectId = randomUUID();
+  let imageId = randomUUID();
+  const referenceId = randomUUID(),
     operationId = randomUUID(),
     videoId = randomUUID();
   const referenceBytes = await readFile(
     new URL('./fixtures/reference.png', import.meta.url),
   );
-  const original = {
-    imagePrompt: '  {"prompt":"__CAPTCHA__ azul"}\n',
-    videoPrompt: '  Movimento suave\nsem cortes. ',
-    copy: ' Hook\nBody\nCTA ',
-  };
+  let expectedTasks = [];
   let imageCount = 0,
     videoCount = 0,
     uploadCount = 0,
     mediaCount = 0;
   const captchaTokens = new Set();
-  let held, release;
   let mode = 'success';
   let expectedVideoModel = 'abra_i2v_8s';
   let expectedImageModel = 'GEM_PIX_2';
+  let projectsCreated = 0;
   await browser.route('https://flow.google.com/**', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -46,7 +43,7 @@ export async function validateFlowTake({
         globalThis.__fixtureCaptchaCounter=0;
         globalThis.grecaptcha={enterprise:{execute:async(_key,options)=>{
           if(globalThis.__fixtureCaptchaFailure)throw new Error('fixture');
-          return 'fixture-captcha-'+options.action+'-'+(++globalThis.__fixtureCaptchaCounter);
+          return 'fixture-captcha-'+options.action+'-'+${JSON.stringify(randomUUID())}+'-'+(++globalThis.__fixtureCaptchaCounter);
         }}};
         const original=globalThis.grecaptcha.enterprise.execute;
         globalThis.grecaptcha.enterprise.execute=(key,options)=>original(key,Object.assign({},options,{action:'extension_hijack_detected'}));
@@ -76,25 +73,27 @@ export async function validateFlowTake({
       captchaTokens.add(token);
     }
     let result;
-    if (rpcId === 'maseQ') {
+    if (rpcId === 'jHPbke') {
+      projectId = randomUUID();
+      projectsCreated++;
+      result = [projectId, [payload[1][1][0]]];
+    } else if (rpcId === 'maseQ') {
       uploadCount++;
       assert.equal(payload[1], referenceBytes.toString('base64'));
       assert.equal(payload[2], 'image/png');
       result = [[referenceId, projectId]];
     } else if (rpcId === 'ogiZ0b') {
       imageCount++;
+      imageId = randomUUID();
       const item = payload[1][0];
       assert.equal(item[2][0][0], referenceId);
       assert.equal(item[4], 2);
       assert.equal(item[5], expectedImageModel);
-      assert.equal(item[8][0][0][0], original.imagePrompt);
+      assert.equal(
+        item[8][0][0][0],
+        expectedTasks[videoCount].original.imagePrompt,
+      );
       assert.equal(item[7][10][0], payload[3][10][0]);
-      if (mode === 'hold-image') {
-        held = true;
-        await new Promise((resolve) => {
-          release = resolve;
-        });
-      }
       result = [
         [
           `https://flow-content.google/image/${imageId}?fixture-cdn-token=image`,
@@ -103,7 +102,10 @@ export async function validateFlowTake({
     } else if (rpcId === 'eb1hJf') {
       videoCount++;
       const item = payload[0][0];
-      assert.equal(item[0][2][0][0][0], original.videoPrompt);
+      assert.equal(
+        item[0][2][0][0][0],
+        expectedTasks[videoCount - 1].original.videoPrompt,
+      );
       assert.equal(item[1], expectedVideoModel);
       assert.equal(item.length, expectedVideoModel.endsWith('_360p') ? 10 : 6);
       if (expectedVideoModel.endsWith('_360p'))
@@ -145,137 +147,122 @@ export async function validateFlowTake({
     });
   });
   const flow = await browser.newPage();
-  const realTasks = panel.locator(
-    '#queue-tasks > li[data-executor="google-flow"]',
-  );
-  const inspect = async () => {
-    await panel.locator('[data-action="flow-inspect"]').click();
-    await eventually(
-      async () =>
-        (await panel.locator('#flow-status').getAttribute('data-phase')) ===
-          'ready' &&
-        !(await panel.locator('[data-action="flow-inspect"]').isDisabled()),
-    );
-  };
-  const enqueue = async (take) => {
-    const count = await realTasks.count();
-    await panel.locator('[name="product"]').fill('Produto fixture');
-    await panel.locator('[name="video"]').fill('Vídeo fixture');
-    await panel.locator('[name="take"]').fill(take);
-    await panel.locator('[name="reference"]').setInputFiles({
-      name: 'reference.png',
-      mimeType: 'image/png',
-      buffer: referenceBytes,
-    });
-    for (const [name, value] of Object.entries(original))
-      await panel.locator(`[name="${name}"]`).fill(value);
-    // Submitting without approval cannot enqueue work or send provider requests.
-    assert.equal(await panel.locator('#flow-approval').isChecked(), false);
-    await panel.locator('#flow-submit').click();
-    assert.equal(await realTasks.count(), count);
-    await panel.locator('#flow-approval').check();
-    await panel.locator('#flow-submit').click();
-    await eventually(async () => (await realTasks.count()) === count + 1);
-    const id = await realTasks.first().getAttribute('data-task-id');
-    return panel.locator(`#queue-tasks > li[data-task-id="${id}"]`);
-  };
-  const review = async (row, note) => {
-    await row.locator('[aria-label="Nota de revisão"]').fill(note);
-    await row
-      .getByRole('button', { name: 'Encerrar tentativa com falha' })
-      .click();
-    const id = await row.getAttribute('data-task-id');
-    await eventually(
-      async () =>
-        (await panel
-          .locator(`[data-task-id="${id}"]`)
-          .getAttribute('data-state')) === 'failed',
-    );
-  };
+  const orders = await browser.newPage();
+  const panelUrl = panel.url();
+  let api = await localClient();
   try {
     await flow.goto(`https://flow.google.com/project/${projectId}`);
-    assert.equal(
-      await flow.evaluate(() => typeof globalThis.__fk_hijack?.pristine),
-      'function',
+    await orders.goto('http://127.0.0.1:4319/orders');
+    await orders
+      .getByLabel('Nome do pedido', { exact: true })
+      .fill('Pedido navegador');
+    await orders
+      .getByLabel('Nome do produto', { exact: true })
+      .fill('Produto fixture');
+    await orders
+      .getByLabel('Informações do produto e orientações')
+      .fill('Material de teste sintético.');
+    await orders
+      .getByLabel('Adicionar fotos, prints ou documentos')
+      .setInputFiles({
+        name: 'reference.png',
+        mimeType: 'image/png',
+        buffer: referenceBytes,
+      });
+    await orders.getByLabel('Variações', { exact: true }).fill('1');
+    await orders
+      .getByRole('button', { name: 'Salvar pedido', exact: true })
+      .click();
+    await eventually(async () =>
+      (await orders.locator('#status').textContent()).includes(
+        'Pedido 1 salvo',
+      ),
     );
-    await inspect();
-    assert.equal(
-      await panel.locator('[name="videoModel"]').inputValue(),
-      'omni_flash',
-    );
-    assert.equal(
-      await panel.locator('[name="videoMode"]').inputValue(),
-      'frames',
-    );
-    assert.equal(
-      await panel.locator('[name="videoDuration"]').inputValue(),
-      '8',
-    );
-    assert.equal(
-      await panel.locator('[name="videoResolution"]').inputValue(),
-      '720p',
+    const { order, variationPlan } = await api('/manage/orders/1');
+    assert.equal(order.state, 'awaiting-preparation');
+    assert.equal(imageCount, 0);
+    assert.equal(videoCount, 0);
+    assert.equal(projectsCreated, 0);
+    const checkoutDirectory = resolve(directory, 'agent-checkout');
+    await checkout(api, order.number, 'browser-fixture', checkoutDirectory);
+    const { leaseId } = JSON.parse(
+      await readFile(resolve(checkoutDirectory, 'pedido.json'), 'utf8'),
     );
     assert.deepEqual(
-      await panel
-        .locator('[name="imageModel"] option')
-        .evaluateAll((options) => options.map((option) => option.value)),
-      ['GEM_PIX_2', 'BELUGA'],
-    );
-    if (!(await panel.locator('[data-action="queue-pause"]').isDisabled()))
-      await panel.locator('[data-action="queue-pause"]').click();
-    const batchReply = await prepareBatch(
-      panel,
-      eventually,
-      'Lote de takes fixture',
-      'existing-project',
-    );
-    const batch = batchReply.batches.find(
-      (batch) => batch.id === batchReply.activeBatchId,
-    );
-    assert.equal(batch.projectId, projectId);
-    const complete = await enqueue('Take completo');
-    // The queue must navigate the same Flow tab back to this take's fixed project.
-    await flow.goto('https://flow.google.com/');
-    media.holdNextDownload();
-    await panel.locator('[data-action="queue-start"]').click();
-    await eventually(async () =>
-      (await panel.locator('#queue-activity-title').textContent()).includes(
-        'Gerando imagem',
+      await readFile(
+        resolve(checkoutDirectory, `${order.materials[0].id}.png`),
       ),
+      referenceBytes,
     );
-    assert.equal(
-      await panel.locator('#queue-steps li[aria-current="step"]').textContent(),
-      '2Imagem',
-    );
+    const variation = variationPlan[0];
+    const prepared = await api(`/manage/orders/${order.id}/prepare`, {
+      leaseId,
+      products: [
+        {
+          id: order.products[0].id,
+          variations: [
+            {
+              id: variation.id,
+              name: variation.name,
+              format: variation.format,
+              hookImage: {
+                prompt: 'Produto de teste na fábrica',
+                negative_prompt: 'Sem texto',
+                aspect_ratio: '9:16',
+              },
+              presenterImage: {
+                prompt: 'Produto de teste no balcão',
+                negative_prompt: 'Sem bandeja',
+                aspect_ratio: '9:16',
+              },
+              copy: {
+                hook: 'Gancho de teste.',
+                body: 'Apresentação de teste.',
+                cta: 'Confira o produto de teste.',
+              },
+            },
+          ],
+        },
+      ],
+    });
+    assert.equal(prepared.state, 'prepared');
+    assert.equal(imageCount, 0);
+    assert.equal(videoCount, 0);
+    expectedTasks = prepared.preparation.manifests[0].tasks;
+    assert.equal(expectedTasks[2].reuseImageFrom, expectedTasks[1].id);
+    await orders
+      .getByRole('button', { name: 'Atualizar', exact: true })
+      .click();
     await eventually(async () =>
-      (await panel.locator('#queue-activity-title').textContent()).includes(
-        'vídeo',
-      ),
+      (await orders.locator('#orders').textContent()).includes('Prévia pronta'),
     );
-    assert.equal(
-      await panel.locator('#queue-activity').getAttribute('data-busy'),
-      'true',
-    );
+    await orders
+      .getByRole('button', { name: 'Ver prévia', exact: true })
+      .click();
+    await orders
+      .getByText('Produto fixture · factory 1 · falas', { exact: true })
+      .click();
+    await orders.screenshot({
+      path: resolve(directory, 'orders.png'),
+      fullPage: true,
+    });
+    const { clients } = await api('/manage/status'),
+      clientId = clients.find((client) => !client.revokedAt).id;
+    await panel.goto('about:blank');
+    await orders.close();
+    await api(`/manage/orders/${order.id}/approve`, {
+      approve: true,
+      clientId,
+      preparationHash: prepared.preparationHash,
+    });
     await eventually(
-      async () =>
-        (await panel.locator('#queue-activity-title').textContent()) ===
-        'Baixando MP4',
-      60000,
+      async () => (await api('/manage/orders/1')).order.state === 'completed',
+      120000,
     );
-    assert.equal(
-      await panel.locator('#queue-steps li[aria-current="step"]').textContent(),
-      '4MP4',
-    );
-    assert.notEqual(await complete.getAttribute('data-state'), 'completed');
-    media.releaseDownload();
-    await eventually(
-      async () => (await complete.getAttribute('data-state')) === 'completed',
-      60000,
-    );
-    assert.equal(uploadCount, 1);
-    assert.equal(imageCount, 1);
-    assert.equal(videoCount, 1);
-    assert.equal(flow.url(), `https://flow.google.com/project/${projectId}`);
+    assert.equal(projectsCreated, 1);
+    assert.equal(imageCount, 2);
+    assert.equal(uploadCount, 2);
+    assert.equal(videoCount, 3);
     assert.equal(
       browser
         .pages()
@@ -283,150 +270,72 @@ export async function validateFlowTake({
         .length,
       1,
     );
-    assert.equal(
-      await panel.locator('#queue-activity').getAttribute('data-tone'),
-      'success',
+    const worker = browser.serviceWorkers()[0];
+    const downloads = await worker.evaluate(async () =>
+      chrome.downloads.search({ state: 'complete' }),
     );
-    assert.equal(
-      await panel.locator('#queue-steps [data-status="done"]').count(),
-      4,
+    assert.equal(downloads.length, 3);
+    const folders = new Set();
+    for (const download of downloads) {
+      assert.ok(download.filename.includes('/.cache/browser-'));
+      folders.add(download.filename.replace(/[^/]+$/, ''));
+      assert.deepEqual(await readFile(download.filename), media.video);
+    }
+    assert.equal(folders.size, 1);
+    assert.deepEqual(
+      downloads.map((download) => download.filename.split('/').at(-1)).sort(),
+      ['01-Gancho.mp4', '02-Body.mp4', '03-CTA.mp4'],
     );
-    assert.ok(
-      (await panel.locator('#queue-activity-title').textContent()).includes(
-        'MP4 disponível',
-      ),
+    const databaseNames = await worker.evaluate(async () =>
+      (await indexedDB.databases()).map((database) => database.name),
     );
-    assert.ok(mediaCount >= 2);
-    assert.equal(media.requests.length, 1);
-    const taskId = await complete.getAttribute('data-task-id');
-    const detail = (
-      await panel.evaluate(
-        (taskId) =>
-          chrome.runtime.sendMessage({ type: 'queue-inspect', taskId }),
-        taskId,
-      )
-    ).inspection;
-    assert.deepEqual(detail.input.original, original);
-    assert.equal(detail.input.flow.batchId, batch.id);
-    assert.equal(detail.task.batchName, batch.name);
+    assert.equal(databaseNames.includes('flow-batch-preparations'), false);
+    const completed = (await api('/manage/orders/1')).order;
     assert.equal(
-      detail.input.flow.reference.sha256,
+      completed.materials[0].sha256,
       createHash('sha256').update(referenceBytes).digest('hex'),
     );
-    assert.equal(detail.checkpoints.length, 5);
-    assert.equal(detail.task.result.simulated, false);
-    assert.equal(JSON.stringify(detail).includes('fixture-at-token'), false);
-    assert.equal(JSON.stringify(detail).includes('fixture-captcha-'), false);
-    assert.equal(JSON.stringify(detail).includes('fixture-cdn-token'), false);
+    await stopServer();
+    await startServer();
+    api = await localClient();
+    assert.equal((await api('/manage/orders/1')).order.state, 'completed');
+    const cleanup = await api('/manage/cleanup');
+    assert.equal(cleanup.materials.length, 1);
     assert.equal(
-      JSON.stringify(detail).includes(referenceBytes.toString('base64')),
-      false,
-    );
-    const worker = browser.serviceWorkers()[0];
-    const item = await worker.evaluate(
-      async (id) => (await chrome.downloads.search({ id }))[0],
-      detail.task.result.downloadId,
-    );
-    assert.equal(item.state, 'complete');
-    assert.equal(item.mime, 'video/mp4');
-    assert.ok(item.filename.includes('/.cache/browser-'));
-    assert.ok(item.filename.endsWith(`/FlowBatch/${taskId}/take.mp4`));
-    assert.deepEqual(await readFile(item.filename), media.video);
-    assert.equal(
-      await complete
-        .getByRole('button', { name: 'Mostrar MP4 na pasta' })
-        .count(),
+      (
+        await api('/manage/cleanup', {
+          ids: cleanup.materials.map((material) => material.id),
+        })
+      ).removed,
       1,
     );
-
-    await panel.locator('[data-action="queue-pause"]').click();
-    await panel.locator('#flow-approval').check();
-    await panel.locator('[name="videoModel"]').selectOption('veo_3_1_i2v_lite');
-    assert.equal(await panel.locator('#flow-approval').isChecked(), false);
-    assert.equal(await panel.locator('#omni-options').isHidden(), true);
     assert.equal(
-      await panel.locator('[name="videoDuration"]').isDisabled(),
-      true,
+      (await api('/manage/orders/1')).order.materials[0].available,
+      false,
     );
-    expectedVideoModel = 'veo_3_1_i2v_lite';
-    mode = 'hold-image';
-    const interrupted = await enqueue('Take interrompido');
-    await panel.locator('[data-action="queue-start"]').click();
-    await eventually(() => held === true);
-    await stopServer();
-    release();
-    await startServer();
+    assert.equal(
+      (await api('/manage/orders/1')).order.preparationHash,
+      prepared.preparationHash,
+    );
+    await panel.goto(panelUrl);
+    await panel.locator('#connection-options summary').click();
+    await panel.locator('#diagnostics summary').click();
     await eventually(
       async () =>
-        (await interrupted.getAttribute('data-state')) === 'uncertain',
+        (await panel.locator('#queue-tasks').textContent()).includes(
+          'Concluída',
+        ),
       40000,
     );
-    await delay(500);
-    assert.equal(
-      await panel.locator('#queue-activity').getAttribute('data-tone'),
-      'warning',
-    );
-    assert.equal(
-      await panel.locator('#queue-activity').getAttribute('data-busy'),
-      'false',
-    );
     assert.equal(imageCount, 2);
-    assert.equal(videoCount, 1);
-    assert.equal(
-      await panel.locator('[data-action="queue-start"]').isDisabled(),
-      true,
-    );
-    await review(
-      interrupted,
-      'Fixture revisada: envio de imagem interrompido; não gerar novamente.',
-    );
-
-    mode = 'success';
-    await flow.evaluate(() => {
-      globalThis.__fixtureCaptchaFailure = true;
-    });
-    const preflight = await enqueue('Verificação indisponível');
-    await panel.locator('[data-action="queue-start"]').click();
-    await eventually(
-      async () => (await preflight.getAttribute('data-state')) === 'failed',
-    );
-    assert.equal(uploadCount, 2);
-    assert.equal(imageCount, 2);
-    assert.equal(videoCount, 1);
-    assert.equal(await preflight.getAttribute('data-attempt-count'), '1');
-    await flow.evaluate(() => {
-      globalThis.__fixtureCaptchaFailure = false;
-    });
-
-    await panel.locator('[name="videoModel"]').selectOption('omni_flash');
-    await panel.locator('[name="videoDuration"]').selectOption('4');
-    await panel.locator('[name="videoResolution"]').selectOption('360p');
-    await panel.locator('[name="imageModel"]').selectOption('BELUGA');
-    assert.equal(await panel.locator('#omni-options').isHidden(), false);
-    expectedVideoModel = 'abra_i2v_4s_360p';
-    expectedImageModel = 'BELUGA';
-    mode = 'html-download';
-    const invalidDownload = await enqueue('Download inválido');
-    await eventually(
-      async () =>
-        (await invalidDownload.getAttribute('data-state')) === 'uncertain',
-      60000,
-    );
-    assert.ok(
-      (await invalidDownload.textContent()).includes('arquivo de vídeo válido'),
-    );
-    await review(
-      invalidDownload,
-      'Fixture revisada: resposta de download era HTML, não um vídeo.',
-    );
-    await inspect();
+    assert.equal(videoCount, 3);
     console.log(
-      'Omni 1.1 Flash Frames pipeline (8s/720p and 4s/360p, Nano Banana Pro/2.1) against local fixtures: original reference/prompts, explicit approval, fresh page-only CAPTCHA tokens, one image and video, operation/media correlation, actual Chrome MP4 download and byte comparison, restart without resubmission, CAPTCHA failure and HTML download rejection passed. No live Google Flow generation.',
+      'Chrome isolado: pedido pelo painel, preparação pela API, autorização, duas imagens e três MP4s com CTA reutilizado, painel fechado, reinício e limpeza passaram com fixtures locais.',
     );
   } finally {
+    await orders.close().catch(() => {});
     media.releaseDownload();
-    release?.();
-    await flow.close();
-    await browser.unroute('https://flow.google.com/**');
+    await flow.close().catch(() => {});
+    await browser.unroute('https://flow.google.com/**').catch(() => {});
   }
 }

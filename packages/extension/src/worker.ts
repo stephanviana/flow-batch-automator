@@ -7,7 +7,7 @@ import {
   type QueueSnapshot,
   type TaskDetail,
   type FlowInspection,
-  type Batch,
+  flowInspectionSchema,
 } from '@flow-batch/protocol';
 import { z } from 'zod';
 import { ExtensionConnection } from './connection.js';
@@ -17,7 +17,7 @@ import { ApiError } from './api.js';
 import { queueCommand } from './queue-client.js';
 import { inspectFlow, openFlow } from './flow.js';
 import { FlowInputError } from './flow-errors.js';
-import { batchSnapshot, batchCommand } from './batch-client.js';
+import { processDispatches } from './dispatch-runner.js';
 
 const connection = new ExtensionConnection();
 let pendingCommand: Promise<unknown> = Promise.resolve();
@@ -32,16 +32,20 @@ async function snapshot(): Promise<{
   inspection: TaskDetail | null;
   operationError: string | null;
   flow: FlowInspection | null;
-  batches: Batch[];
-  activeBatchId: string | null;
 }> {
   const state = await readState();
   const config = await preferences();
+  const dispatchFlow = flowInspectionSchema.safeParse(
+    (await chrome.storage.local.get('dispatchFlow')).dispatchFlow,
+  );
+  if (
+    dispatchFlow.success &&
+    dispatchFlow.data.checkedAt > (flow?.checkedAt ?? 0)
+  )
+    flow = dispatchFlow.data;
   let simulations: Simulation[] = [];
   let queue: QueueSnapshot | null = null;
   let inspection: TaskDetail | null = null;
-  let batches: Batch[] = [];
-  let activeBatchId: string | null = null;
   if (config.clientId && !config.revoked && state.phase === 'connected') {
     try {
       simulations = z
@@ -58,11 +62,6 @@ async function snapshot(): Promise<{
       );
     } catch {
       /* Keep the connection status independent from queue availability. */
-    }
-    try {
-      ({ batches, activeBatchId } = await batchSnapshot(config.clientId));
-    } catch {
-      /* Never authorize a take using an unconfirmed batch binding. */
     }
     if (inspectedTaskId) {
       try {
@@ -83,8 +82,6 @@ async function snapshot(): Promise<{
     inspection,
     operationError,
     flow,
-    batches,
-    activeBatchId,
   };
 }
 
@@ -110,11 +107,6 @@ async function command(
     });
   } else if (message.type === 'queue-inspect') {
     inspectedTaskId = message.taskId;
-  } else if (message.type.startsWith('batch-')) {
-    const config = await preferences();
-    if (!config.clientId || config.revoked)
-      throw new FlowInputError('Conecte a extensão primeiro.');
-    flow = await batchCommand(config.clientId, message);
   } else if (
     message.type.startsWith('queue-') ||
     message.type.startsWith('enqueue-')
@@ -135,6 +127,10 @@ chrome.runtime.onMessage.addListener(
       return false;
     const parsed = popupRequestSchema.safeParse(raw);
     if (!parsed.success) return false;
+    if (parsed.data.type === 'queue-pause')
+      void chrome.storage.local.set({ dispatchPausedAt: Date.now() });
+    if (parsed.data.type === 'queue-start')
+      void chrome.storage.local.remove('dispatchPausedAt');
     const operation =
       parsed.data.type === 'status'
         ? snapshot()
@@ -149,7 +145,6 @@ chrome.runtime.onMessage.addListener(
       .catch(async (error: unknown): Promise<void> => {
         if (
           parsed.data.type.startsWith('queue-') ||
-          parsed.data.type.startsWith('batch-') ||
           parsed.data.type.startsWith('enqueue-')
         ) {
           operationError =
@@ -157,9 +152,7 @@ chrome.runtime.onMessage.addListener(
               ? error.message
               : error instanceof ApiError && error.status === 409
                 ? 'O registro mudou ou a ação exige revisão. Confira o lote e o histórico antes de continuar.'
-                : parsed.data.type.startsWith('batch-')
-                  ? 'Não foi possível confirmar o lote. Use “Abrir lote” no mesmo registro para recuperar seu estado antes de criar outro.'
-                  : 'Não foi possível operar a fila. Verifique a conexão e tente novamente.';
+                : 'Não foi possível operar a fila. Verifique a conexão e tente novamente.';
         } else if (parsed.data.type.startsWith('flow-')) {
           flow = {
             phase: 'error',
@@ -188,3 +181,15 @@ chrome.runtime.onInstalled.addListener((): void => {
 });
 void connection.recover();
 void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+
+let checkingDispatches = false;
+setInterval((): void => {
+  if (checkingDispatches) return;
+  checkingDispatches = true;
+  pendingCommand = pendingCommand
+    .then(processDispatches)
+    .catch((): void => {})
+    .finally((): void => {
+      checkingDispatches = false;
+    });
+}, 10_000);

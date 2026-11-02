@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { test } from 'node:test';
 import { createApp } from '../src/app.js';
 import { SimulationStore } from '../src/persistence/simulations.js';
+import { migrations } from '../src/persistence/migrations.js';
 import { fixture, pair, approve, signed } from './support.js';
 
 test('server reopen preserves authorization and interrupts unfinished simulations without requeue', async (t) => {
@@ -58,6 +59,6 @@ test('phase 1 database upgrades transactionally while preserving foundation data
       .prepare('SELECT version FROM schema_migrations ORDER BY version')
       .all()
       .map((row) => row.version),
-    [1, 2, 3, 4, 5],
+    migrations.map((step) => step.version),
   );
 });

@@ -41,7 +41,7 @@ export function canTransitionTask(from: TaskState, to: TaskState): boolean {
   return transitions[from].includes(to);
 }
 
-const inputReferenceSchema = z.strictObject({
+export const inputReferenceSchema = z.strictObject({
   root: z.literal('inputs'),
   relativePath: z
     .string()

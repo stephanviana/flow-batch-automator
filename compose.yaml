@@ -2,7 +2,7 @@ name: flow-batch-automator
 
 services:
   sync-extension:
-    image: flow-batch-automator-sync-extension:0.4.3
+    image: flow-batch-automator-sync-extension:0.6.0
     build:
       context: .
       target: sync-extension
@@ -26,7 +26,7 @@ services:
       options: { max-size: '5m', max-file: '2' }
 
   orchestrator:
-    image: flow-batch-automator-orchestrator:0.4.3
+    image: flow-batch-automator-orchestrator:0.6.0
     build:
       context: .
       target: orchestrator
@@ -42,19 +42,12 @@ services:
       HOST: 0.0.0.0
       PORT: 4319
       DATABASE_PATH: /data/flow-batch.sqlite
-      INPUT_DIR: /inputs
       SQLITE_BUSY_TIMEOUT_MS: 3000
       LOG_LEVEL: ${LOG_LEVEL:-info}
     ports:
       - '127.0.0.1:4319:4319'
     volumes:
       - sqlite_data:/data
-      - type: bind
-        source: ${INPUT_DIR:-./inputs}
-        target: /inputs
-        read_only: true
-        bind:
-          create_host_path: false
     restart: unless-stopped
     stop_grace_period: 10s
     cpus: 0.5

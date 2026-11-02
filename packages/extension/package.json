@@ -1,12 +1,12 @@
 {
   "name": "@flow-batch/extension",
-  "version": "0.4.3",
+  "version": "0.6.0",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "tsc -p tsconfig.test.json && node --test .cache/test/test/*.test.js"
+    "test": "node -e \"require('node:fs').rmSync('.cache/test',{recursive:true,force:true})\" && tsc -p tsconfig.test.json && node --test .cache/test/test/*.test.js"
   },
   "dependencies": {
     "@flow-batch/protocol": "workspace:*",

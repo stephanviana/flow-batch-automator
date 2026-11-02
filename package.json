@@ -1,6 +1,6 @@
 {
   "name": "flow-batch-automator",
-  "version": "0.4.3",
+  "version": "0.6.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@12.15.0",
@@ -15,12 +15,15 @@
     "test:docker": "node scripts/validate-docker.mjs",
     "test:browser": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser.mjs",
     "test:browser:flow": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser.mjs --flow-only",
+    "test:browser:reuse": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser.mjs --reuse-only",
     "test:browser:queue": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser.mjs --queue-only",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm format:check",
     "dev": "pnpm --filter @flow-batch/protocol build && node scripts/dev.mjs",
-    "start": "node packages/orchestrator/dist/main.js"
+    "start": "node packages/orchestrator/dist/main.js",
+    "orders": "node scripts/orders.mjs",
+    "test:browser:orders": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser.mjs --orders-only"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

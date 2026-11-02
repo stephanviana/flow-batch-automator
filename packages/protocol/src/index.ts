@@ -5,6 +5,12 @@ export * from './flow.js';
 export * from './flow-output.js';
 export * from './flow-models.js';
 export * from './batches.js';
+export * from './imports.js';
+export * from './preparations.js';
+export * from './preparation-compiler.js';
+export * from './orders.js';
+export * from './dispatch.js';
+export * from './import-identity.js';
 
 export const DEFAULT_PORT = 4319;
 export const LOCAL_SERVER_URL = `http://127.0.0.1:${DEFAULT_PORT}`;

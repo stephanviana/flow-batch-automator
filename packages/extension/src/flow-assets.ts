@@ -1,5 +1,6 @@
 import {
   flowReferenceSchema,
+  stableImportId,
   type FlowReference,
   type FlowDraft,
 } from '@flow-batch/protocol';
@@ -65,10 +66,16 @@ async function digest(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
     (byte) => byte.toString(16).padStart(2, '0'),
   ).join('');
 }
-export async function saveReference(draft: FlowDraft): Promise<FlowReference> {
+export async function saveReference(
+  draft: Pick<FlowDraft, 'taskKey' | 'reference'>,
+): Promise<FlowReference> {
   const bytes = imageBytes(draft.reference.base64, draft.reference.mime);
   const reference = flowReferenceSchema.parse({
-    assetId: draft.taskKey,
+    assetId: await stableImportId([
+      'flow-reference-v1',
+      draft.reference.name,
+      await digest(bytes),
+    ]),
     name: draft.reference.name,
     mime: draft.reference.mime,
     bytes: bytes.length,
@@ -110,4 +117,14 @@ export async function loadReference(reference: FlowReference): Promise<string> {
       'A referência local mudou. Selecione o arquivo original novamente.',
     );
   return stored.base64;
+}
+
+export async function pruneReferences(
+  retained: readonly string[],
+): Promise<void> {
+  const keep = new Set(retained);
+  const keys = await assetOperation('readonly', (store) => store.getAllKeys());
+  for (const key of keys)
+    if (typeof key === 'string' && !keep.has(key))
+      await assetOperation('readwrite', (store) => store.delete(key));
 }
