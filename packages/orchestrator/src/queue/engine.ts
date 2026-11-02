@@ -2,10 +2,12 @@ import type {
   QueueProgress,
   QueueCheckpoint,
   QueueExecute,
+  FlowExecute,
 } from '@flow-batch/protocol';
 import type { QueueTransport, QueueEvents } from './ports.js';
 import type { QueueRepository } from './repository.js';
 import type { QueueMutations } from './mutations.js';
+import { FlowImages } from './flow-images.js';
 
 export class QueueEngine implements QueueEvents {
   private timer: ReturnType<typeof setTimeout> | undefined;
@@ -68,6 +70,9 @@ export class QueueEngine implements QueueEvents {
       connections
         .filter((connection) => connection.flowCapable)
         .map((connection) => connection.clientId),
+      connections
+        .filter((connection) => connection.modernFlowCapable)
+        .map((connection) => connection.clientId),
     );
     if (!candidate) return;
     if (candidate.summary.nextAttemptAt > now) {
@@ -84,6 +89,30 @@ export class QueueEngine implements QueueEvents {
       now,
     );
     if (!task?.activeAttemptId) return;
+    let sourceImage: FlowExecute['sourceImage'];
+    if (task.input.executor === 'google-flow') {
+      try {
+        sourceImage = new FlowImages(
+          this.repository.database.connection,
+        ).resolve(task.clientId, task.input);
+      } catch {
+        this.mutations.progress(task.clientId, session.connectionId, {
+          type: 'queue-progress',
+          taskId: task.summary.id,
+          attemptId: task.activeAttemptId,
+          state: 'failed',
+          error: {
+            code: 'source_image_unavailable',
+            message:
+              'A imagem do Body não está confirmada. O CTA não gerou outra imagem nem enviou vídeo.',
+            retryable: false,
+            notSubmitted: true,
+          },
+        });
+        this.wake();
+        return;
+      }
+    }
     try {
       const message: QueueExecute =
         task.input.executor === 'google-flow'
@@ -94,6 +123,7 @@ export class QueueEngine implements QueueEvents {
               attemptNumber: 1,
               flow: task.input.flow,
               original: task.input.original,
+              ...(sourceImage ? { sourceImage } : {}),
             }
           : {
               type: 'queue-execute',

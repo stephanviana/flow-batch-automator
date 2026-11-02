@@ -8,6 +8,7 @@ export interface QueueTransport {
     clientId: string;
     connectionId: string;
     flowCapable?: boolean;
+    modernFlowCapable?: boolean;
   }[];
   sendQueue(connectionId: string, message: QueueExecute): boolean;
   closeQueue(connectionId: string): void;

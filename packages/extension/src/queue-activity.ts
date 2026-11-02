@@ -36,7 +36,11 @@ function taskStep(task: TaskSummary): number {
     task.step === 'download_started'
   )
     return 3;
-  if (task.step === 'image_generated' || task.step === 'video_submitted')
+  if (
+    task.step === 'image_generated' ||
+    task.step === 'image_reused' ||
+    task.step === 'video_submitted'
+  )
     return 2;
   if (
     task.state === 'generating' ||

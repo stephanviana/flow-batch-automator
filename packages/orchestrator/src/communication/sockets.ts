@@ -24,6 +24,7 @@ interface Session {
   lastSeen: number;
   queueCapable: boolean;
   flowCapable: boolean;
+  modernFlowCapable: boolean;
 }
 
 export class ConnectionHub implements QueueTransport {
@@ -49,11 +50,13 @@ export class ConnectionHub implements QueueTransport {
     clientId: string;
     connectionId: string;
     flowCapable: boolean;
+    modernFlowCapable: boolean;
   }[] {
     const connections: {
       clientId: string;
       connectionId: string;
       flowCapable: boolean;
+      modernFlowCapable: boolean;
     }[] = [];
     for (const session of this.sessions.values()) {
       if (
@@ -68,6 +71,7 @@ export class ConnectionHub implements QueueTransport {
           clientId: session.clientId,
           connectionId: session.id,
           flowCapable: session.flowCapable,
+          modernFlowCapable: session.modernFlowCapable,
         });
       } catch {
         continue;
@@ -81,6 +85,9 @@ export class ConnectionHub implements QueueTransport {
       !session?.clientId ||
       !session.queueCapable ||
       (message.type === 'flow-execute' && !session.flowCapable) ||
+      (message.type === 'flow-execute' &&
+        (message.flow.imageSourceTaskKey || message.flow.output) &&
+        !session.modernFlowCapable) ||
       session.socket.readyState !== WebSocket.OPEN
     )
       return false;
@@ -187,6 +194,7 @@ export class ConnectionHub implements QueueTransport {
       lastSeen: Date.now(),
       queueCapable: false,
       flowCapable: false,
+      modernFlowCapable: false,
     };
     this.sessions.set(session.id, session);
     const deadline = setTimeout((): void => {
@@ -235,8 +243,12 @@ export class ConnectionHub implements QueueTransport {
           previous.socket.close(4000, 'Replaced by reconnect');
       session.clientId = client.id;
       session.queueCapable =
-        message.protocolVersion === 3 || message.protocolVersion === 4;
-      session.flowCapable = message.protocolVersion === 4;
+        message.protocolVersion === 3 ||
+        message.protocolVersion === 4 ||
+        message.protocolVersion === 5;
+      session.flowCapable =
+        message.protocolVersion === 4 || message.protocolVersion === 5;
+      session.modernFlowCapable = message.protocolVersion === 5;
       this.send(session, { type: 'authenticated' });
       this.queue?.connected();
       return;

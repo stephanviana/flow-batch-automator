@@ -1,3 +1,5 @@
+import { flowOutputPath, type FlowOutput } from '@flow-batch/protocol';
+
 export class FlowDownloadError extends Error {}
 
 export async function downloadVideo(
@@ -5,6 +7,7 @@ export async function downloadVideo(
   taskId: string,
   signal: AbortSignal,
   started: (id: number) => Promise<void>,
+  output?: FlowOutput,
 ): Promise<{ downloadId: number; outputFile: string }> {
   const parsed = new URL(url);
   if (
@@ -19,7 +22,7 @@ export async function downloadVideo(
       'O Flow retornou um endereço de vídeo incompatível.',
     );
   signal.throwIfAborted();
-  const outputFile = `FlowBatch/${taskId}/take.mp4`;
+  const outputFile = flowOutputPath(taskId, output);
   const downloadId = await chrome.downloads.download({
     url,
     filename: outputFile,

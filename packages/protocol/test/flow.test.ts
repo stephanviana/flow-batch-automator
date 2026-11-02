@@ -8,6 +8,7 @@ import {
   popupRequestSchema,
   resolveOmniVideoModel,
   flowDraftSchema,
+  flowExecuteSchema,
 } from '../src/index.js';
 
 test('Flow inputs bind approval to one image, one video, supported models and an immutable local reference', () => {
@@ -31,6 +32,38 @@ test('Flow inputs bind approval to one image, one video, supported models and an
     },
   };
   assert.equal(flowSettingsSchema.safeParse(settings).success, true);
+  const reused = {
+    ...settings,
+    imageSourceTaskKey: randomUUID(),
+    approval: { ...settings.approval, imageGenerations: 0 },
+  };
+  assert.equal(flowSettingsSchema.safeParse(reused).success, true);
+  assert.equal(
+    flowSettingsSchema.safeParse({ ...settings, approval: reused.approval })
+      .success,
+    false,
+  );
+  assert.equal(
+    flowSettingsSchema.safeParse({ ...reused, approval: settings.approval })
+      .success,
+    false,
+  );
+  const command = {
+    type: 'flow-execute',
+    taskId: randomUUID(),
+    attemptId: randomUUID(),
+    attemptNumber: 1,
+    original: { imagePrompt: 'image', videoPrompt: 'video', copy: '' },
+    flow: reused,
+  };
+  assert.equal(flowExecuteSchema.safeParse(command).success, false);
+  assert.equal(
+    flowExecuteSchema.safeParse({
+      ...command,
+      sourceImage: { taskId: randomUUID(), mediaId: randomUUID() },
+    }).success,
+    true,
+  );
   assert.equal(
     flowSettingsSchema.safeParse({ ...settings, approval: undefined }).success,
     false,

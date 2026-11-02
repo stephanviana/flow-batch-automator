@@ -15,6 +15,7 @@ interface DownloadState {
 function fixture(
   t: TestContext,
   search: () => Promise<DownloadState[]>,
+  expectedFilename = `FlowBatch/${taskId}/take.mp4`,
 ): {
   signal: AbortSignal;
   emit: () => void;
@@ -29,7 +30,7 @@ function fixture(
         download: async (
           options: chrome.downloads.DownloadOptions,
         ): Promise<number> => {
-          assert.equal(options.filename, `FlowBatch/${taskId}/take.mp4`);
+          assert.equal(options.filename, expectedFilename);
           return 17;
         },
         search,
@@ -104,6 +105,25 @@ test('HTML and other video containers cannot be reported as a completed MP4', as
     );
     assert.equal(f.listenerCount(), 0);
   }
+});
+
+test('grouped download uses the approved variation folder without changing Chrome download settings', async (t) => {
+  const output = { directory: 'lote/variacao', filename: '03-CTA.mp4' };
+  const expected = 'FlowBatch/lote/variacao/03-CTA.mp4';
+  const f = fixture(
+    t,
+    async () => [
+      { state: 'complete', exists: true, mime: 'video/mp4', fileSize: 1716 },
+    ],
+    expected,
+  );
+  assert.deepEqual(
+    await downloadVideo(videoUrl, taskId, f.signal, async () => {}, output),
+    {
+      downloadId: 17,
+      outputFile: expected,
+    },
+  );
 });
 
 test('a completed item without a file and a URL outside Flow are rejected', async (t) => {

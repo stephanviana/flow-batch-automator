@@ -56,6 +56,7 @@ test('the activity card follows confirmed reference, image, video and download s
       ['dispatching', null, 0, 'referência'],
       ['generating', 'reference_uploaded', 1, 'imagem'],
       ['generating', 'image_generated', 2, 'vídeo'],
+      ['generating', 'image_reused', 2, 'vídeo'],
       ['generating', 'video_submitted', 2, 'vídeo'],
       ['download_pending', 'download_started', 3, 'MP4'],
     ];

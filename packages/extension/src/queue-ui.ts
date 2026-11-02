@@ -59,6 +59,7 @@ function taskRow(task: TaskSummary, send: Send): HTMLLIElement {
   const steps = {
     reference_uploaded: 'Referência enviada',
     image_generated: 'Imagem gerada',
+    image_reused: 'Imagem do Body reutilizada',
     video_submitted: 'Vídeo solicitado',
     video_ready: 'Vídeo localizado',
     download_started: 'Download iniciado',

@@ -1,10 +1,12 @@
 import {
-  flowStageSchema,
+  flowCheckpointStages,
+  flowOutputPath,
   type QueueCheckpoint,
   type TaskSummary,
 } from '@flow-batch/protocol';
 import type { QueueDatabase, TaskRecord } from './database.js';
 import { HttpError } from '../security/errors.js';
+import { FlowImages } from './flow-images.js';
 
 export class FlowProgress {
   constructor(private readonly database: QueueDatabase) {}
@@ -36,8 +38,23 @@ export class FlowProgress {
           throw new HttpError(409, 'Checkpoint identity changed');
         return false;
       }
-      if (flowStageSchema.options[previous.length] !== message.stage)
+      if (
+        flowCheckpointStages(record.input.flow)[previous.length] !==
+        message.stage
+      )
         throw new HttpError(409, 'Checkpoint out of order');
+      if (message.stage === 'image_reused') {
+        const source = new FlowImages(sql).resolve(clientId, record.input);
+        if (
+          !source ||
+          source.taskId !== message.sourceTaskId ||
+          source.mediaId !== message.mediaId
+        )
+          throw new HttpError(
+            409,
+            'Reused image does not match the source checkpoint',
+          );
+      }
       const expectedState =
         message.stage === 'reference_uploaded'
           ? 'submitted'
@@ -92,13 +109,15 @@ export class FlowProgress {
     const fields = new Map(
       checkpoints.map(({ checkpoint }) => [checkpoint.stage, checkpoint]),
     );
-    const image = fields.get('image_generated');
+    const image = fields.get(
+      record.input.flow.imageSourceTaskKey ? 'image_reused' : 'image_generated',
+    );
     const operation = fields.get('video_submitted');
     const video = fields.get('video_ready');
     const download = fields.get('download_started');
     if (
-      checkpoints.length !== 5 ||
-      image?.stage !== 'image_generated' ||
+      checkpoints.length !== flowCheckpointStages(record.input.flow).length ||
+      (image?.stage !== 'image_generated' && image?.stage !== 'image_reused') ||
       image.mediaId !== result.imageMediaId ||
       operation?.stage !== 'video_submitted' ||
       operation.operationId !== result.operationId ||
@@ -106,7 +125,8 @@ export class FlowProgress {
       video.mediaId !== result.videoMediaId ||
       download?.stage !== 'download_started' ||
       download.downloadId !== result.downloadId ||
-      result.outputFile !== `FlowBatch/${record.summary.id}/take.mp4`
+      result.outputFile !==
+        flowOutputPath(record.summary.id, record.input.flow.output)
     )
       throw new HttpError(
         409,

@@ -47,6 +47,11 @@ type CheckpointBody<T = QueueCheckpoint> = T extends QueueCheckpoint
   ? Omit<T, 'type' | 'taskId' | 'attemptId'>
   : never;
 type Emit = (event: QueueProgress | QueueCheckpoint) => void;
+interface FrameEvents {
+  submitted: () => void;
+  generating: () => void;
+  checkpoint: (event: CheckpointBody) => void;
+}
 
 function wait(milliseconds: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -187,15 +192,31 @@ class FlowRunner {
   }
 }
 
-export async function runFlowTake(
+async function prepareFrame(
+  runner: FlowRunner,
   command: FlowExecute,
   signal: AbortSignal,
-  emit: Emit,
-): Promise<void> {
-  const { flow, original, taskId, attemptId } = command;
+  events: FrameEvents,
+): Promise<string> {
+  if (command.flow.imageSourceTaskKey) {
+    if (!command.sourceImage)
+      throw new FlowRunError(
+        'source_image_missing',
+        'A imagem do Body não está confirmada. O CTA não gerou outra imagem.',
+        true,
+      );
+    events.submitted();
+    events.generating();
+    events.checkpoint({
+      stage: 'image_reused',
+      mediaId: command.sourceImage.mediaId,
+      sourceTaskId: command.sourceImage.taskId,
+    });
+    return command.sourceImage.mediaId;
+  }
   let base64: string;
   try {
-    base64 = await loadReference(flow.reference);
+    base64 = await loadReference(command.flow.reference);
   } catch {
     throw new FlowRunError(
       'flow_reference_missing',
@@ -203,6 +224,26 @@ export async function runFlowTake(
       true,
     );
   }
+  const uploaded = await runner.rpc(uploadRequest(command.flow, base64));
+  const referenceId = flowIdSchema.parse(uploaded.mediaId);
+  events.submitted();
+  events.checkpoint({ stage: 'reference_uploaded', mediaId: referenceId });
+  events.generating();
+  await wait(3000, signal);
+  const generated = await runner.rpc(
+    imageRequest(command.flow, command.original.imagePrompt, referenceId),
+  );
+  const imageId = flowIdSchema.parse(generated.mediaId);
+  events.checkpoint({ stage: 'image_generated', mediaId: imageId });
+  return imageId;
+}
+
+export async function runFlowTake(
+  command: FlowExecute,
+  signal: AbortSignal,
+  emit: Emit,
+): Promise<void> {
+  const { flow, original, taskId, attemptId } = command;
   const runner = new FlowRunner(
     await projectTab(flow.projectId, Boolean(flow.batchId)),
     signal,
@@ -220,17 +261,11 @@ export async function runFlowTake(
       attemptId,
       ...event,
     } as QueueCheckpoint);
-  const uploaded = await runner.rpc(uploadRequest(flow, base64));
-  const referenceId = flowIdSchema.parse(uploaded.mediaId);
-  emit({ ...base, state: 'submitted' });
-  checkpoint({ stage: 'reference_uploaded', mediaId: referenceId });
-  emit({ ...base, state: 'generating' });
-  await wait(3000, signal);
-  const generated = await runner.rpc(
-    imageRequest(flow, original.imagePrompt, referenceId),
-  );
-  const imageId = flowIdSchema.parse(generated.mediaId);
-  checkpoint({ stage: 'image_generated', mediaId: imageId });
+  const imageId = await prepareFrame(runner, command, signal, {
+    submitted: (): void => emit({ ...base, state: 'submitted' }),
+    generating: (): void => emit({ ...base, state: 'generating' }),
+    checkpoint,
+  });
   await wait(3000, signal);
   const video = await runner.rpc(
     videoRequest(flow, original.videoPrompt, imageId),
@@ -247,6 +282,7 @@ export async function runFlowTake(
     async (downloadId) => {
       checkpoint({ stage: 'download_started', downloadId });
     },
+    flow.output,
   ).catch((error: unknown): never => {
     throw new FlowRunError(
       'flow_download_failed',

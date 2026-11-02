@@ -100,7 +100,9 @@ export const clientMessageSchema = z.discriminatedUnion('type', [
     clientId: z.uuid(),
     challengeId: z.uuid(),
     signature: z.string().regex(/^[A-Za-z0-9_-]{86}$/),
-    protocolVersion: z.union([z.literal(3), z.literal(4)]).optional(),
+    protocolVersion: z
+      .union([z.literal(3), z.literal(4), z.literal(5)])
+      .optional(),
   }),
   z.strictObject({ type: z.literal('ping') }),
   z.strictObject({ type: z.literal('simulation-started'), id: z.uuid() }),

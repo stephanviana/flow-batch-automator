@@ -10,6 +10,7 @@ import {
 import type { QueueDatabase, TaskRecord } from './database.js';
 import { HttpError } from '../security/errors.js';
 import { BatchStore } from '../persistence/batches.js';
+import { FlowImages } from './flow-images.js';
 
 export function queueHash(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -67,6 +68,8 @@ export class QueueRepository {
       return String(existing.id);
     }
     const id = randomUUID();
+    if (input.executor === 'google-flow')
+      new FlowImages(sql).assertSource(clientId, input);
     const batchId =
       input.executor === 'google-flow' ? input.flow.batchId : undefined;
     if (batchId && input.executor === 'google-flow') {
@@ -153,13 +156,14 @@ export class QueueRepository {
   candidate(
     clientIds: string[],
     flowClientIds: string[] = [],
+    modernFlowClientIds: string[] = [],
   ): TaskRecord | undefined {
     if (!clientIds.length || this.blocked()) return undefined;
     const row = this.database.connection
       .prepare(
-        `SELECT q.id FROM queue_tasks q JOIN queue_controls c ON c.client_id=q.client_id JOIN clients a ON a.id=q.client_id WHERE q.state='queued' AND c.running=1 AND a.authorized_at IS NOT NULL AND a.revoked_at IS NULL AND q.client_id IN (${clientIds.map(() => '?').join(',')}) AND (json_extract(q.input,'$.executor')='simulation'${flowClientIds.length ? ` OR q.client_id IN (${flowClientIds.map(() => '?').join(',')})` : ''}) ORDER BY q.sequence LIMIT 1`,
+        `SELECT q.id FROM queue_tasks q JOIN queue_controls c ON c.client_id=q.client_id JOIN clients a ON a.id=q.client_id WHERE q.state='queued' AND c.running=1 AND a.authorized_at IS NOT NULL AND a.revoked_at IS NULL AND q.client_id IN (${clientIds.map(() => '?').join(',')}) AND (json_extract(q.input,'$.executor')='simulation'${flowClientIds.length ? ` OR q.client_id IN (${flowClientIds.map(() => '?').join(',')})` : ''}) AND ((json_extract(q.input,'$.flow.imageSourceTaskKey') IS NULL AND json_extract(q.input,'$.flow.output') IS NULL)${modernFlowClientIds.length ? ` OR q.client_id IN (${modernFlowClientIds.map(() => '?').join(',')})` : ''}) ORDER BY q.sequence LIMIT 1`,
       )
-      .get(...clientIds, ...flowClientIds);
+      .get(...clientIds, ...flowClientIds, ...modernFlowClientIds);
     return row ? this.database.task(String(row.id)) : undefined;
   }
 

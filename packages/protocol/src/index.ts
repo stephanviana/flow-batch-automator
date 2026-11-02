@@ -2,6 +2,7 @@ import { z } from 'zod';
 export * from './connection.js';
 export * from './queue.js';
 export * from './flow.js';
+export * from './flow-output.js';
 export * from './flow-models.js';
 export * from './batches.js';
 
