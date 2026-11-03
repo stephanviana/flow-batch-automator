@@ -27,7 +27,7 @@
       </div>
       <p id="status" role="status" aria-live="polite"></p>
       <div class="workspace">
-        <section aria-labelledby="new-order-title">
+        <section class="order-editor" aria-labelledby="new-order-title">
           <p class="eyebrow">01 / Criar</p>
           <h2 id="new-order-title">Novo pedido</h2>
           <p class="section-intro">
@@ -54,7 +54,7 @@
             </p>
           </form>
         </section>
-        <section aria-labelledby="saved-orders-title">
+        <section class="order-list" aria-labelledby="saved-orders-title">
           <p class="eyebrow">02 / Acompanhar</p>
           <div class="section-heading">
             <h2 id="saved-orders-title">Seus pedidos</h2>
@@ -67,20 +67,20 @@
           </p>
           <div id="orders"></div>
         </section>
+        <section class="storage" aria-labelledby="storage-title">
+          <p class="eyebrow">Organização</p>
+          <h2 id="storage-title">Armazenamento local</h2>
+          <p>
+            Libere as cópias de pedidos concluídos ou cancelados. Materiais
+            compartilhados com pedidos ativos ficam protegidos. Arquivos
+            importados sem pedido ficam disponíveis para limpeza após 24 horas.
+          </p>
+          <button id="preview-cleanup" type="button" class="secondary">
+            Conferir arquivos para limpeza
+          </button>
+          <div id="cleanup"></div>
+        </section>
       </div>
-      <section class="storage" aria-labelledby="storage-title">
-        <p class="eyebrow">Organização</p>
-        <h2 id="storage-title">Armazenamento local</h2>
-        <p>
-          Libere as cópias de pedidos concluídos ou cancelados. Materiais
-          compartilhados com pedidos ativos ficam protegidos. Arquivos
-          importados sem pedido ficam disponíveis para limpeza após 24 horas.
-        </p>
-        <button id="preview-cleanup" type="button" class="secondary">
-          Conferir arquivos para limpeza
-        </button>
-        <div id="cleanup"></div>
-      </section>
     </main>
     <script type="module" src="/orders.js"></script>
   </body>
