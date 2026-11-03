@@ -15,8 +15,9 @@ materiais, cria as copys e os prompts; a extensão executa os lotes autorizados.
    <http://127.0.0.1:4319/connect>. Mantenha uma aba autenticada do Flow disponível.
 3. Abra <http://127.0.0.1:4319/orders> ou use **Abrir painel de pedidos** na
    extensão, que cria uma nova aba à direita da atual, com o painel lateral
-   fechado nessa aba. Adicione produtos, suas informações e
-   arquivos de qualquer pasta acessível pelo seletor. Escolha uma imagem de
+   fechado nessa aba. Ao voltar para uma aba de pedidos já aberta, o painel
+   lateral também fecha, mesmo que tenha sido aberto em outra aba. Adicione
+   produtos, suas informações e arquivos de qualquer pasta acessível pelo seletor. Escolha uma imagem de
    referência e distribua formatos/quantidades por produto. O mesmo produto pode
    ter vários formatos. Esta versão não possui presets.
 4. Salve e peça no chat: **“Prepare os pedidos 12 e 15”**. A skill

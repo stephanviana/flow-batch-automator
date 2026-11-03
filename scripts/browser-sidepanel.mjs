@@ -54,3 +54,28 @@ export async function clickOrdersInSidePanel(browser, extensionId) {
     await connection.detach();
   }
 }
+
+export async function openSidePanel(browser, worker, source) {
+  const launcher = await browser.newPage();
+  await launcher.goto(
+    `chrome-extension://${new URL(worker.url()).host}/sidepanel.html`,
+  );
+  await launcher.evaluate(() => {
+    const open = document.createElement('button');
+    open.id = 'open-real-panel';
+    open.textContent = 'Open real side panel';
+    open.onclick = async () => {
+      const window = await chrome.windows.getCurrent();
+      await chrome.sidePanel.open({ windowId: window.id });
+    };
+    document.body.append(open);
+  });
+  await source.bringToFront();
+  await launcher.locator('#open-real-panel').click();
+  await launcher.waitForFunction(
+    async () =>
+      (await chrome.runtime.getContexts({ contextTypes: ['SIDE_PANEL'] }))
+        .length === 1,
+  );
+  await launcher.close();
+}

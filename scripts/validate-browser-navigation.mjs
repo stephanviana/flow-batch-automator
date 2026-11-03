@@ -3,7 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { chromium } from 'playwright';
-import { clickOrdersInSidePanel } from './browser-sidepanel.mjs';
+import { clickOrdersInSidePanel, openSidePanel } from './browser-sidepanel.mjs';
+import { validateOrdersPanelVisibility } from './browser-orders-visibility.mjs';
 
 const directory = resolve('.cache', `browser-navigation-${randomUUID()}`);
 await mkdir(directory, { recursive: true });
@@ -41,33 +42,8 @@ async function activeTab(worker) {
   });
 }
 
-async function openSidePanel(worker, source) {
-  const launcher = await browser.newPage();
-  await launcher.goto(
-    `chrome-extension://${new URL(worker.url()).host}/sidepanel.html`,
-  );
-  await launcher.evaluate(() => {
-    const open = document.createElement('button');
-    open.id = 'open-real-panel';
-    open.textContent = 'Open real side panel';
-    open.onclick = async () => {
-      const window = await chrome.windows.getCurrent();
-      await chrome.sidePanel.open({ windowId: window.id });
-    };
-    document.body.append(open);
-  });
-  await source.bringToFront();
-  await launcher.locator('#open-real-panel').click();
-  await launcher.waitForFunction(
-    async () =>
-      (await chrome.runtime.getContexts({ contextTypes: ['SIDE_PANEL'] }))
-        .length === 1,
-  );
-  await launcher.close();
-}
-
 async function verifyNavigation(worker, source, fullWidth) {
-  await openSidePanel(worker, source);
+  await openSidePanel(browser, worker, source);
   await source.bringToFront();
   await source.waitForFunction(
     (width) => globalThis.innerWidth < width,
@@ -102,6 +78,9 @@ async function verifyNavigation(worker, source, fullWidth) {
 }
 
 try {
+  await browser.route('https://flow.google.com/**', (route) =>
+    route.fulfill({ contentType: 'text/html', body: '<h1>Flow fixture</h1>' }),
+  );
   await browser.route('http://127.0.0.1:4319/**', (route) =>
     route.fulfill({
       contentType: 'text/html',
@@ -111,7 +90,7 @@ try {
   let [worker] = browser.serviceWorkers();
   worker ??= await browser.waitForEvent('serviceworker');
   const source = await browser.newPage();
-  await source.goto('data:text/html,<h1>Aba original</h1>');
+  await source.goto('https://flow.google.com/project/navigation-fixture');
   const fullWidth = await source.evaluate(() => globalThis.innerWidth);
   const neighbor = await browser.newPage();
   await neighbor.goto('data:text/html,<h1>Aba da direita</h1>');
@@ -119,11 +98,13 @@ try {
   // preserve the original page and hide the real Chrome side panel.
   await verifyNavigation(worker, source, fullWidth);
   await verifyNavigation(worker, neighbor, fullWidth);
+  await validateOrdersPanelVisibility(browser, worker, source, fullWidth);
   // Exercise the compatibility path without the Chrome 141+ close API.
   await worker.evaluate(() => {
     chrome.sidePanel.close = undefined;
   });
   await verifyNavigation(worker, source, fullWidth);
+  await validateOrdersPanelVisibility(browser, worker, source, fullWidth);
   console.log(
     'Real Chrome side panel: orders open in one independent tab immediately to the right, at full width with the side panel disabled; original tabs remain intact.',
   );

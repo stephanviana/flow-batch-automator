@@ -19,6 +19,9 @@ import { inspectFlow, openFlow } from './flow.js';
 import { FlowInputError } from './flow-errors.js';
 import { processDispatches } from './dispatch-runner.js';
 import { openOrdersPanel } from './orders-navigation.js';
+import { registerOrdersPanelVisibility } from './orders-panel-visibility.js';
+
+registerOrdersPanelVisibility();
 
 const connection = new ExtensionConnection();
 let pendingCommand: Promise<unknown> = Promise.resolve();

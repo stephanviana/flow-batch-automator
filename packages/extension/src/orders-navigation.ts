@@ -1,13 +1,4 @@
-async function closeSidePanel(windowId: number): Promise<void> {
-  if (typeof chrome.sidePanel.close === 'function') {
-    await chrome.sidePanel.close({ windowId });
-    return;
-  }
-  // Chrome 120–140 has no close API. The worker must restore availability
-  // after disabling the global panel destroys the side panel document.
-  await chrome.sidePanel.setOptions({ enabled: false });
-  await chrome.sidePanel.setOptions({ enabled: true });
-}
+import { closeSidePanel, ordersPageUrl } from './orders-panel-visibility.js';
 
 export async function openOrdersPanel(): Promise<void> {
   const [activeTab] = await chrome.tabs.query({
@@ -15,7 +6,7 @@ export async function openOrdersPanel(): Promise<void> {
     currentWindow: true,
   });
   const ordersTab = await chrome.tabs.create({
-    url: 'http://127.0.0.1:4319/orders',
+    url: ordersPageUrl,
     active: false,
     ...(activeTab
       ? { windowId: activeTab.windowId, index: activeTab.index + 1 }
