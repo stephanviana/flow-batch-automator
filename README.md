@@ -128,6 +128,9 @@ pnpm start
 - `packages/protocol`: contratos e compilador compartilhado, sem dependência Node de execução.
 - `packages/orchestrator`: API local, painel, importação de materiais, SQLite e fila.
 - `packages/extension`: identidade, contexto autenticado do Flow, execução e downloads.
+- `packages/ui/theme.css`: tema escuro compartilhado pelo painel, conexão e extensão,
+  com botões em verde-menta, foco visível e suporte a movimento reduzido. Os builds
+  copiam esse arquivo para os respectivos artefatos, sem recursos externos.
 - `agents`: instruções criativas versionadas.
 - `skills/flow-orders`: procedimento de consulta, preparação, revisão e despacho.
 - `scripts/orders.mjs`: cliente local usado pelo agente.

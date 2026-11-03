@@ -4,13 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Flow Batch</title>
+    <link rel="stylesheet" href="theme.css" />
     <link rel="stylesheet" href="sidepanel.css" />
   </head>
   <body>
     <main>
       <header>
         <p class="eyebrow">GOOGLE FLOW · AUTOMAÇÃO LOCAL</p>
-        <h1>Flow Batch</h1>
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">F</span>
+          <h1>Flow Batch</h1>
+        </div>
         <p>Seu lote, ao lado do Flow.</p>
       </header>
       <section
@@ -80,7 +84,11 @@
           prompts; após sua autorização no chat, a extensão acompanha a
           execução.
         </p>
-        <a href="http://127.0.0.1:4319/orders" target="_blank" rel="noopener"
+        <a
+          class="button-link"
+          href="http://127.0.0.1:4319/orders"
+          target="_blank"
+          rel="noopener"
           >Abrir painel de pedidos</a
         >
         <p id="dispatch-status" role="status" aria-live="polite">

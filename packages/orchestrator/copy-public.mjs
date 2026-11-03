@@ -6,6 +6,10 @@ await cp(new URL('./public/', import.meta.url), destination, {
   recursive: true,
 });
 await cp(
+  new URL('../ui/theme.css', import.meta.url),
+  resolve(destination, 'theme.css'),
+);
+await cp(
   new URL('../../agents/animacao.md', import.meta.url),
   resolve(destination, 'animacao.md'),
 );

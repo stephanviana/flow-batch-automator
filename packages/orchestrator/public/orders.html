@@ -4,60 +4,79 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Pedidos · Flow Batch</title>
+    <link rel="stylesheet" href="/theme.css" />
     <link rel="stylesheet" href="/orders.css" />
   </head>
   <body>
     <main>
-      <header>
-        <div>
-          <p class="eyebrow">FLOW BATCH · TIKTOK SHOP</p>
-          <h1>Pedidos de produção</h1>
-          <p>
-            Selecione os materiais e distribua as variações por produto e
-            formato.
-          </p>
-        </div>
-        <a href="/connect">Conexão da extensão</a>
+      <header class="app-bar">
+        <a class="brand" href="/orders"
+          ><span class="brand-mark" aria-hidden="true">F</span>Flow Batch</a
+        >
+        <nav aria-label="Navegação principal">
+          <a href="/orders" aria-current="page">Pedidos</a>
+          <a href="/connect">Conexão da extensão</a>
+        </nav>
       </header>
+      <div class="page-intro">
+        <p class="eyebrow">Seu espaço de produção · TikTok Shop</p>
+        <h1>Pedidos de produção</h1>
+        <p>
+          Selecione os materiais e distribua as variações por produto e formato.
+        </p>
+      </div>
       <p id="status" role="status" aria-live="polite"></p>
-      <section>
-        <h2>Novo pedido</h2>
-        <form id="order-form">
-          <label
-            >Nome do pedido<input
-              name="orderName"
-              required
-              maxlength="120"
-              placeholder="Campanha novembro"
-          /></label>
-          <div id="products"></div>
-          <div class="actions">
-            <button id="add-product" type="button">Adicionar produto</button
-            ><button type="submit" id="save-order">Salvar pedido</button>
-          </div>
-          <p class="hint">
-            Cada variação tem gancho, Body e CTA: duas imagens novas e três
-            vídeos. Salvar prepara o pedido para o agente; a execução será
-            autorizada pelo chat.
+      <div class="workspace">
+        <section aria-labelledby="new-order-title">
+          <p class="eyebrow">01 / Criar</p>
+          <h2 id="new-order-title">Novo pedido</h2>
+          <p class="section-intro">
+            Reúna produtos e referências para a próxima produção.
           </p>
-        </form>
-      </section>
-      <section>
-        <div class="section-heading">
-          <h2>Seus pedidos</h2>
-          <button id="refresh" type="button">Atualizar</button>
-        </div>
-        <p>Após salvar, peça ao agente: “Prepare os pedidos 12 e 15”.</p>
-        <div id="orders"></div>
-      </section>
-      <section>
-        <h2>Armazenamento local</h2>
+          <form id="order-form">
+            <label
+              >Nome do pedido<input
+                name="orderName"
+                required
+                maxlength="120"
+                placeholder="Campanha novembro"
+            /></label>
+            <div id="products"></div>
+            <div class="actions">
+              <button id="add-product" type="button" class="secondary">
+                Adicionar produto</button
+              ><button type="submit" id="save-order">Salvar pedido</button>
+            </div>
+            <p class="hint">
+              Cada variação tem gancho, Body e CTA: duas imagens novas e três
+              vídeos. Salvar prepara o pedido para o agente; a execução será
+              autorizada pelo chat.
+            </p>
+          </form>
+        </section>
+        <section aria-labelledby="saved-orders-title">
+          <p class="eyebrow">02 / Acompanhar</p>
+          <div class="section-heading">
+            <h2 id="saved-orders-title">Seus pedidos</h2>
+            <button id="refresh" type="button" class="secondary">
+              Atualizar
+            </button>
+          </div>
+          <p class="section-intro">
+            Após salvar, peça ao agente: “Prepare os pedidos 12 e 15”.
+          </p>
+          <div id="orders"></div>
+        </section>
+      </div>
+      <section class="storage" aria-labelledby="storage-title">
+        <p class="eyebrow">Organização</p>
+        <h2 id="storage-title">Armazenamento local</h2>
         <p>
           Libere as cópias de pedidos concluídos ou cancelados. Materiais
           compartilhados com pedidos ativos ficam protegidos. Arquivos
           importados sem pedido ficam disponíveis para limpeza após 24 horas.
         </p>
-        <button id="preview-cleanup" type="button">
+        <button id="preview-cleanup" type="button" class="secondary">
           Conferir arquivos para limpeza
         </button>
         <div id="cleanup"></div>

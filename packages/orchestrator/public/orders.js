@@ -100,6 +100,7 @@ async function refresh() {
   for (const order of orders) {
     const card = element(list, 'article');
     card.dataset.orderNumber = String(order.number);
+    card.dataset.state = order.state;
     element(card, 'h3', `Pedido ${order.number} · ${order.name}`);
     element(card, 'span', states[order.state], 'badge');
     if (order.lease)
@@ -220,6 +221,7 @@ document.querySelector('#preview-cleanup').addEventListener(
           area,
           'button',
           'Remover estas cópias importadas',
+          'danger',
         );
         remove.addEventListener(
           'click',

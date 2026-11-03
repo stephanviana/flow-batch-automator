@@ -24,8 +24,8 @@ function text(parent, tag, content, className) {
   parent.append(element);
   return element;
 }
-function button(parent, label, action) {
-  const element = text(parent, 'button', label);
+function button(parent, label, action, className = '') {
+  const element = text(parent, 'button', label, className);
   element.addEventListener('click', async () => {
     element.disabled = true;
     try {
@@ -57,15 +57,18 @@ async function refresh() {
     button(article, 'Confirmar conexão', () =>
       management(`/manage/requests/${request.id}`, { approve: true }),
     );
-    button(article, 'Cancelar', () =>
-      management(`/manage/requests/${request.id}`, { approve: false }),
+    button(
+      article,
+      'Cancelar',
+      () => management(`/manage/requests/${request.id}`, { approve: false }),
+      'secondary',
     );
   }
   if (!pending.childElementCount)
     text(
       pending,
       'p',
-      'Nenhuma solicitação pendente. Inicie pelo popup da extensão.',
+      'Nenhuma solicitação pendente. Inicie pelo painel da extensão.',
     );
   const clients = document.querySelector('#clients');
   clients.replaceChildren();
@@ -82,8 +85,11 @@ async function refresh() {
           : 'Autorizada · desconectada',
     );
     if (!client.revokedAt)
-      button(article, 'Revogar acesso', () =>
-        management(`/manage/clients/${client.id}/revoke`, {}),
+      button(
+        article,
+        'Revogar acesso',
+        () => management(`/manage/clients/${client.id}/revoke`, {}),
+        'danger',
       );
   }
   if (!clients.childElementCount)

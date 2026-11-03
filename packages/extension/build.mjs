@@ -18,6 +18,10 @@ await build({
 await cp(new URL('./public/', import.meta.url), outputDirectory, {
   recursive: true,
 });
+await cp(
+  new URL('../ui/theme.css', import.meta.url),
+  new URL('theme.css', outputDirectory),
+);
 const digest = createHash('sha256');
 const manifest = JSON.parse(
   await readFile(new URL('manifest.json', outputDirectory), 'utf8'),

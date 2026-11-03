@@ -13,6 +13,7 @@ export function registerManagement(
   sessions = new LocalSessions(),
 ): void {
   const files = new Map<string, readonly [string, string]>([
+    ['/theme.css', ['theme.css', 'text/css; charset=utf-8']],
     ['/connect', ['connect.html', 'text/html; charset=utf-8']],
     ['/connect.js', ['connect.js', 'text/javascript; charset=utf-8']],
     ['/connect.css', ['connect.css', 'text/css; charset=utf-8']],

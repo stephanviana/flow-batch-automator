@@ -1,33 +1,91 @@
-:root {
-  font:
-    16px system-ui,
-    sans-serif;
-  color: #182329;
-  background: #f4f7f8;
-}
 main {
-  max-width: 700px;
-  margin: 40px auto;
+  max-width: 1040px;
+  margin: auto;
+  padding: 0 32px 64px;
+}
+.connection-guide {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px 24px;
+  margin-bottom: 28px;
+  border: 1px solid #345d54;
+  border-radius: 12px;
+  background: #142822;
+}
+.connection-guide .brand-mark {
+  width: 28px;
+  height: 28px;
+  font-size: 16px;
+}
+.connection-guide p {
+  margin: 0;
+  color: #c1d8ce;
+  font-size: 0.9rem;
+}
+.connection-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+.connection-card {
+  min-width: 0;
   padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+}
+.connection-card > .hint {
+  margin: 0 0 24px;
 }
 article {
-  background: white;
-  border: 1px solid #ced9dc;
-  border-radius: 8px;
-  padding: 20px;
-  margin: 12px 0;
+  padding: 18px;
+  margin-top: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-inset);
+}
+article > p {
+  font-size: 0.85rem;
+}
+article > .code {
+  margin: 0 0 18px;
+  font-size: 2rem;
 }
 button {
-  padding: 10px 16px;
   margin: 8px 8px 0 0;
-  cursor: pointer;
-  font: inherit;
 }
-.code {
-  font: bold 32px monospace;
-  letter-spacing: 5px;
+#pending > p,
+#clients > p {
+  padding: 26px 18px;
+  margin-bottom: 0;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  text-align: center;
+  font-size: 0.88rem;
 }
-p {
-  overflow-wrap: anywhere;
-  line-height: 1.5;
+#status:not(:empty) {
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-raised);
+}
+.connection-note {
+  max-width: 70ch;
+  margin: 24px 0 0;
+}
+@media (max-width: 760px) {
+  .connection-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 450px) {
+  main {
+    padding: 0 16px 32px;
+  }
+  .connection-card,
+  .connection-guide {
+    padding: 20px 16px;
+  }
 }
