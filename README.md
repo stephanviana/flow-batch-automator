@@ -13,7 +13,9 @@ materiais, cria as copys e os prompts; a extensão executa os lotes autorizados.
    no Chrome. O caminho real fica somente no `.env` local, ignorado pelo Git.
 2. Conecte a extensão e confirme a solicitação em
    <http://127.0.0.1:4319/connect>. Mantenha uma aba autenticada do Flow disponível.
-3. Abra <http://127.0.0.1:4319/orders>. Adicione produtos, suas informações e
+3. Abra <http://127.0.0.1:4319/orders> ou use **Abrir painel de pedidos** na
+   extensão, que cria uma nova aba à direita da atual, com o painel lateral
+   fechado nessa aba. Adicione produtos, suas informações e
    arquivos de qualquer pasta acessível pelo seletor. Escolha uma imagem de
    referência e distribua formatos/quantidades por produto. O mesmo produto pode
    ter vários formatos. Esta versão não possui presets.
@@ -148,6 +150,7 @@ pnpm test:docker
 pnpm test:browser:orders
 pnpm test:browser:reuse
 pnpm test:browser:queue
+pnpm test:browser:navigation
 pnpm test:browser
 ```
 

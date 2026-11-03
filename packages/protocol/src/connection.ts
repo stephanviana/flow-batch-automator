@@ -126,6 +126,7 @@ export type ServerMessage = z.infer<typeof serverMessageSchema>;
 export const popupRequestSchema = z.strictObject({
   type: z.enum([
     'status',
+    'orders-open',
     'flow-open',
     'flow-inspect',
     'connect',

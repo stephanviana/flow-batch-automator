@@ -13,10 +13,19 @@ const history = document.querySelector<HTMLUListElement>('#history');
 const flowStatus = document.querySelector<HTMLParagraphElement>('#flow-status');
 const flowProject =
   document.querySelector<HTMLParagraphElement>('#flow-project');
+const ordersLink = document.querySelector<HTMLAnchorElement>('#open-orders');
 const simulate = document.querySelector<HTMLButtonElement>(
   '[data-action="simulate"]',
 );
-if (!status || !code || !history || !simulate || !flowStatus || !flowProject)
+if (
+  !status ||
+  !code ||
+  !history ||
+  !simulate ||
+  !flowStatus ||
+  !flowProject ||
+  !ordersLink
+)
   throw new Error('Side panel elements missing');
 const labels = {
   sent: 'Enviada',
@@ -28,6 +37,15 @@ let simulationStamp = '';
 let pendingRequests = 0;
 let requestSequence = 0;
 let appliedSequence = 0;
+
+ordersLink.addEventListener('click', async (event): Promise<void> => {
+  event.preventDefault();
+  try {
+    await refresh({ type: 'orders-open' });
+  } catch {
+    status.textContent = 'Não foi possível abrir o painel. Tente novamente.';
+  }
+});
 
 async function refresh(
   request: PopupRequest = { type: 'status' },

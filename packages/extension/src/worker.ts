@@ -18,6 +18,7 @@ import { queueCommand } from './queue-client.js';
 import { inspectFlow, openFlow } from './flow.js';
 import { FlowInputError } from './flow-errors.js';
 import { processDispatches } from './dispatch-runner.js';
+import { openOrdersPanel } from './orders-navigation.js';
 
 const connection = new ExtensionConnection();
 let pendingCommand: Promise<unknown> = Promise.resolve();
@@ -89,6 +90,7 @@ async function command(
   message: z.infer<typeof popupRequestSchema>,
 ): Promise<Awaited<ReturnType<typeof snapshot>>> {
   if (message.type === 'flow-open') await openFlow();
+  else if (message.type === 'orders-open') await openOrdersPanel();
   else if (message.type === 'flow-inspect') flow = await inspectFlow();
   else if (message.type === 'connect') await connection.connect();
   else if (message.type === 'disconnect') await connection.disconnect();
