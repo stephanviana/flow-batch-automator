@@ -21,6 +21,8 @@ O modo **Clonar formato de vídeo** associa um MP4 do produto a cada grupo
 `clone`. Leia `agents/clonagem.md`: o agente analisa o vídeo real e publica
 análise e direções adaptadas; o compilador não invoca IA. A foto continua como
 referência do Flow. MP4 até 64 MB; imagens/documentos até 8 MB.
+No painel, cada produto usa um único MP4, vinculado automaticamente à clonagem.
+Outra referência de vídeo deve ser preparada em outro pedido/lote.
 
 O SQLite guarda registros; os materiais importados ficam em arquivos por hash
 em armazenamento persistente administrado pelo aplicativo, com deduplicação.

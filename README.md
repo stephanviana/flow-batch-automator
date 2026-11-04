@@ -17,8 +17,10 @@ materiais, cria as copys e os prompts; a extensão executa os lotes autorizados.
    extensão, que cria uma nova aba à direita da atual, com o painel lateral
    fechado nessa aba. Ao voltar para uma aba de pedidos já aberta, o painel
    lateral também fecha, mesmo que tenha sido aberto em outra aba. Adicione
-   produtos, suas informações e arquivos de qualquer pasta acessível pelo seletor. Escolha uma imagem de
-   referência e distribua formatos/quantidades por produto. O mesmo produto pode
+   produtos e suas informações. Selecione a foto no campo **Imagem de referência para o Flow**
+   e use **Materiais adicionais** para os demais arquivos, de qualquer pasta acessível pelo seletor.
+   Os seletores exibem os arquivos escolhidos e acompanham as remoções na lista.
+   Distribua formatos/quantidades por produto. O mesmo produto pode
    ter vários formatos. Esta versão não possui presets.
 4. Salve e peça no chat: **“Prepare os pedidos 12 e 15”**. A skill
    [flow-orders](skills/flow-orders/SKILL.md) orienta a preparação. As regras
@@ -38,6 +40,35 @@ existente de downloads do Chrome não é alterada. Não há montagem de vídeo f
 As bases de copy de POV e Full Vendedora ainda aguardam seus swipes específicos.
 O pedido pode selecionar esses formatos; o agente deve resolver essa pendência
 criativa antes de publicar conteúdo para execução.
+
+## Clonar o formato de um vídeo
+
+No produto do pedido, selecione a foto em **Imagem de referência para o Flow**.
+Em **Criação dos vídeos**, escolha **Clonar um vídeo**. Depois importe um único
+MP4 baixado do TikTok Shop em **Materiais adicionais**.
+Ele será vinculado automaticamente à clonagem, sem
+uma segunda seleção. Para clonar outra referência, prepare outro pedido/lote.
+**Usar formatos padrão** mostra os seis formatos do catálogo. A quantidade
+de variações pode ser definida junto de outros formatos no mesmo produto. A prévia pode ser
+reproduzida antes de salvar e consultada novamente no pedido salvo. Use
+**Adicionar criação** para combinar os dois caminhos no mesmo produto.
+Alternar entre os modos limpa o formato e os materiais adicionais do produto,
+incluindo o seletor de arquivos, a lista e as prévias.
+Escolha os arquivos novamente no modo ativo. A quantidade de variações e a
+imagem de referência do produto são mantidas. Os materiais adicionais são
+compartilhados pelas criações do produto.
+
+Salve e peça ao agente que prepare o pedido. O checkout baixa o MP4 verificado
+e identifica o vídeo de cada variação. O agente analisa a estrutura, adapta
+as falas e cenas para o produto e publica a análise e as direções de gancho,
+Body e CTA para sua conferência. O servidor não chama IA e o vídeo não é
+enviado ao Flow; a foto do produto continua como referência de geração.
+
+MP4s podem ter até 64 MB; imagens e documentos continuam limitados a 8 MB.
+O modo mantém duas imagens, três vídeos e reutilização exata da imagem de Body
+no CTA. A adaptação segue os limites atuais de takes (padrão de 8 s/720p, 9:16),
+e não inclui montagem do vídeo de origem. Salvar e publicar não consomem
+créditos; a execução depende da autorização da revisão exata no chat.
 
 ## Preparação pelo agente
 
@@ -152,12 +183,15 @@ pnpm test:browser:orders
 pnpm test:browser:reuse
 pnpm test:browser:queue
 pnpm test:browser:navigation
+pnpm test:browser:cloning
 pnpm test:browser
 ```
 
 Os testes de navegador usam Chrome for Testing em perfil isolado, referências e
 MP4s sintéticos e endpoints HTTPS locais. Não usam perfil pessoal nem consomem
 créditos do Google. Exigem navegador de teste instalado e porta 4319 livre.
+`test:browser:cloning` usa servidor e SQLite isolados na porta 4329, sem precisar
+parar a instalação local; `test:browser:navigation` usa somente páginas sintéticas.
 `test:docker` usa projeto e volume sintéticos próprios e preserva as evidências
 em `.cache/`. Esses testes não comprovam qualidade criativa ou uma nova geração
 paga na conta real. A autorização de implementação não autoriza essas gerações.

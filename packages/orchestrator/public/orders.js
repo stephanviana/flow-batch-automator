@@ -1,11 +1,13 @@
+import { referenceVideoPreview } from './orders-video-preview.js';
 import { element, productEditor, formats } from './orders-editor.js';
 const status = document.querySelector('#status'),
   form = document.querySelector('#order-form');
 const products = [],
   container = document.querySelector('#products');
+const previewDisposers = [];
 let draftId = crypto.randomUUID(),
   busy = false;
-export async function api(path, body, headers = {}) {
+export async function api(path, body, headers = {}, asBlob = false) {
   const binary = body instanceof File;
   const response = await fetch(path, {
     method: body === undefined ? 'GET' : 'POST',
@@ -22,6 +24,7 @@ export async function api(path, body, headers = {}) {
       ? { body: binary ? body : JSON.stringify(body) }
       : {}),
   });
+  if (response.ok && asBlob) return response.blob();
   const result = await response.json();
   if (!response.ok)
     throw new Error(result.error ?? 'Não foi possível confirmar a operação.');
@@ -32,6 +35,7 @@ function addProduct() {
   products.push(editor);
   editor.remove.addEventListener('click', () => {
     products.splice(products.indexOf(editor), 1);
+    editor.dispose();
     editor.container.remove();
   });
 }
@@ -42,15 +46,17 @@ function report(error) {
 async function action(operation) {
   if (busy) return;
   busy = true;
-  const controls = [...form.querySelectorAll('button,input,select,textarea')];
-  controls.forEach((control) => (control.disabled = true));
+  const controls = [
+    ...form.querySelectorAll('button,input,select,textarea'),
+  ].map((control) => ({ control, disabled: control.disabled }));
+  controls.forEach(({ control }) => (control.disabled = true));
   status.className = '';
   try {
     await operation();
   } catch (error) {
     report(error);
   } finally {
-    controls.forEach((control) => (control.disabled = false));
+    controls.forEach(({ control, disabled }) => (control.disabled = disabled));
     busy = false;
   }
 }
@@ -70,6 +76,7 @@ form.addEventListener('submit', (event) => {
     });
     status.textContent = `Pedido ${order.number} salvo. Peça ao agente: “Prepare o pedido ${order.number}”.`;
     draftId = crypto.randomUUID();
+    products.forEach((product) => product.dispose());
     container.replaceChildren();
     products.length = 0;
     form.reset();
@@ -93,9 +100,27 @@ function details(parent, title, value) {
   element(node, 'summary', title);
   element(node, 'pre', value);
 }
+function cloneReview(parent, variation) {
+  const review = element(parent, 'details');
+  element(
+    review,
+    'summary',
+    `${variation.name} · análise e adaptação do vídeo`,
+  );
+  element(review, 'p', variation.cloneVideo.analysis);
+  for (const [stage, label] of [
+    ['hook', 'Gancho'],
+    ['body', 'Body'],
+    ['cta', 'CTA'],
+  ]) {
+    element(review, 'h4', label);
+    element(review, 'pre', variation.cloneVideo.directions[stage]);
+  }
+}
 async function refresh() {
   const { orders } = await api('/manage/orders'),
     list = document.querySelector('#orders');
+  previewDisposers.splice(0).forEach((dispose) => dispose());
   list.replaceChildren();
   for (const order of orders) {
     const card = element(list, 'article');
@@ -116,6 +141,18 @@ async function refresh() {
         'li',
         `${product.name}: ${product.groups.map((group) => `${group.count} × ${formats.find(([key]) => key === group.format)?.[1]}`).join('; ')}`,
       );
+    for (const product of order.products)
+      for (const videoId of new Set(
+        product.groups.map((group) => group.videoReferenceId).filter(Boolean),
+      )) {
+        const video = order.materials.find(
+          (material) => material.id === videoId,
+        );
+        if (video)
+          previewDisposers.push(
+            referenceVideoPreview(card, product.name, video, api),
+          );
+      }
     for (const dispatch of order.dispatches)
       if (dispatch.message) element(card, 'p', dispatch.message);
     if (Object.keys(order.counts).length)
@@ -146,6 +183,7 @@ async function refresh() {
               (product) => product.id === prepared.id,
             );
             for (const variation of prepared.variations) {
+              if (variation.cloneVideo) cloneReview(area, variation);
               details(
                 area,
                 `${product.name} · ${variation.name} · falas`,

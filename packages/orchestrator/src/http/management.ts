@@ -25,6 +25,14 @@ export function registerManagement(
       ['orders-editor.js', 'text/javascript; charset=utf-8'],
     ],
   ]);
+  for (const filename of [
+    'orders-elements.js',
+    'orders-materials-editor.js',
+    'orders-format-editor.js',
+    'orders-config.js',
+    'orders-video-preview.js',
+  ])
+    files.set(`/${filename}`, [filename, 'text/javascript; charset=utf-8']);
   for (const [route, [filename, contentType]] of files) {
     const contents = readFileSync(new URL(filename, assets));
     app.get(route, async (request, reply): Promise<Buffer> => {
@@ -32,7 +40,7 @@ export function registerManagement(
         sessions.open(request, reply);
       reply.header(
         'Content-Security-Policy',
-        "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+        "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src blob:; media-src blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
       );
       reply.type(contentType ?? 'text/plain');
       return contents;

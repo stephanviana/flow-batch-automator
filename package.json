@@ -18,6 +18,7 @@
     "test:browser:reuse": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser.mjs --reuse-only",
     "test:browser:queue": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser.mjs --queue-only",
     "test:browser:navigation": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser-navigation.mjs",
+    "test:browser:cloning": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser-cloning.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm format:check",

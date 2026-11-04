@@ -162,13 +162,11 @@ export async function validateFlowTake({
     await orders
       .getByLabel('Informações do produto e orientações')
       .fill('Material de teste sintético.');
-    await orders
-      .getByLabel('Adicionar fotos, prints ou documentos')
-      .setInputFiles({
-        name: 'reference.png',
-        mimeType: 'image/png',
-        buffer: referenceBytes,
-      });
+    await orders.getByLabel('Imagem de referência para o Flow').setInputFiles({
+      name: 'reference.png',
+      mimeType: 'image/png',
+      buffer: referenceBytes,
+    });
     await orders.getByLabel('Variações', { exact: true }).fill('1');
     await orders
       .getByRole('button', { name: 'Salvar pedido', exact: true })

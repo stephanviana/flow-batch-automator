@@ -57,13 +57,77 @@ label {
   font-size: 0.78rem;
 }
 .group {
+  padding: 20px 0;
+  margin-bottom: 12px;
+  border-top: 1px solid var(--border);
+}
+.group-fields {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 92px auto;
   gap: 10px;
   align-items: end;
-  padding: 16px 0;
+  margin-top: 18px;
+}
+.creation-heading {
+  margin: 22px 0 0;
+  font-size: 0.95rem;
+}
+.creation-mode {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+.creation-mode legend {
   margin-bottom: 12px;
-  border-top: 1px solid var(--border);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+.creation-mode .mode-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  cursor: pointer;
+}
+.mode-choice:has(input:checked) {
+  border-color: var(--accent);
+  background: #142e29;
+}
+.mode-choice:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.creation-mode input[type='radio'] {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  margin: 3px 0 0;
+  padding: 0;
+  accent-color: var(--accent);
+}
+.mode-choice strong,
+.mode-choice .hint {
+  display: block;
+}
+.mode-choice strong {
+  margin-bottom: 5px;
+  font-size: 0.85rem;
+}
+.mode-choice .hint {
+  font-size: 0.78rem;
+  font-weight: 400;
+  line-height: 1.5;
+}
+.clone-guidance {
+  margin-bottom: 0;
 }
 .group label {
   margin: 0;
@@ -190,10 +254,13 @@ ul {
   }
 }
 @container (max-width: 440px) {
-  .group {
+  .creation-mode {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .group-fields {
     grid-template-columns: minmax(0, 1fr) 80px;
   }
-  .group button {
+  .group-fields button {
     grid-column: 1 / -1;
     justify-self: start;
   }
@@ -209,10 +276,10 @@ ul {
   #orders article {
     padding: 16px 12px;
   }
-  .group {
+  .group-fields {
     grid-template-columns: minmax(0, 1fr) 80px;
   }
-  .group button {
+  .group-fields button {
     grid-column: 1 / -1;
     justify-self: start;
   }
@@ -222,4 +289,24 @@ ul {
   .page-intro {
     padding-top: 28px;
   }
+}
+.reference-video {
+  display: block;
+  width: 100%;
+  max-height: 300px;
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.reference-image {
+  display: block;
+  width: 100%;
+  max-width: 240px;
+  max-height: 200px;
+  object-fit: contain;
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
 }
