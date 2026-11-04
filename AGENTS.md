@@ -15,12 +15,18 @@ etapa. O usuário pede ao Codex/Antigravity que prepare um ou vários números d
 pedido. Consulte `skills/flow-orders.md` e `agents/instrucoes.md` antes de
 preparar. As instruções criativas permanecem versionadas em `agents/`.
 O compilador não invoca IA; o agente ativo analisa os materiais reais e cria os
-textos e prompts. POV e Full Vendedora ainda aguardam suas bases de copy próprias.
+textos e prompts. As bases específicas de Fábrica, POV e Full Vendedora ficam
+em `agents/copy/`, selecionadas pelas regras comuns de `agents/copy.md`. Os
+formatos padrão usam diretamente essas bases de swipe incorporadas; testes de
+copy/formato de referência seguem o caminho de clonagem. Manter no repositório
+as instruções operacionais, incorporando regras úteis de sintaxe nas bases de
+cada formato, sem versionar estudos de origem ou extração dos swipes.
 
 O modo **Clonar formato de vídeo** associa um MP4 do produto a cada grupo
 `clone`. Use `skills/flow-clone-video.md` e leia `agents/clonagem.md`:
-o agente analisa o vídeo real e publica
-análise e direções adaptadas; o compilador não invoca IA. A foto continua como
+o agente analisa o vídeo real, extrai estrutura narrativa, sintaxe, formato,
+template e regras de fidelidade antes de redigir, e publica a síntese e as
+direções adaptadas; o compilador não invoca IA. A foto continua como
 referência do Flow. MP4 até 64 MB; imagens/documentos até 8 MB.
 No painel, cada produto usa um único MP4, vinculado automaticamente à clonagem.
 Outra referência de vídeo deve ser preparada em outro pedido/lote.
@@ -34,22 +40,39 @@ explicitamente autorizou remover o código/configuração antigos, os materiais 
 workspace anterior e seu histórico SQLite durante esta mudança. Essa limpeza
 pontual não autoriza exclusões futuras. Não alterar a pasta global de downloads.
 
-Cada variação tem duas imagens novas e três vídeos (gancho, Body, CTA). O CTA
-reutiliza exatamente a imagem confirmada do Body, com `reuseImageFrom` no
-manifesto, `imageSourceTaskKey` na entrada e `sourceImage` resolvido pelo servidor.
-Nunca gerar uma imagem de fallback. Validar dono, lote, projeto, variação e
-materiais visuais. CTA: zero imagens, um vídeo, quatro checkpoints iniciados por
-`image_reused`; gancho/Body: cinco checkpoints. Protocolo v5 obrigatório para
+Cada variação tem três vídeos (gancho, Body, CTA). Fábrica, POV + Vendedora
+(`pov`) e clonagem usam duas imagens: gancho e Body; o CTA reutiliza a imagem
+confirmada do Body. Full POV (`full-pov`) e Full Vendedora (`seller`) usam uma
+imagem, gerada no gancho e reutilizada diretamente no Body e CTA. Nos formatos
+Full, preparar somente `hookImage`, sem `presenterImage`. Takes e preparações
+já registrados preservam seus manifestos, materiais e autorizações.
+
+A reutilização usa `reuseImageFrom` no manifesto, `imageSourceTaskKey` na entrada
+e `sourceImage` resolvido pelo servidor. Sempre apontar ao take gerador original,
+sem encadear uma reutilização em outra. Nunca gerar imagem de fallback. Validar
+dono, lote, projeto, variação e materiais visuais. Take com reutilização: zero
+imagens, um vídeo, quatro checkpoints iniciados por `image_reused`; take gerador:
+uma imagem, um vídeo e cinco checkpoints. Protocolo v5 obrigatório para
 reutilização e saídas agrupadas. MP4s separados na mesma pasta da variação:
 `01-Gancho.mp4`, `02-Body.mp4`, `03-CTA.mp4`.
 
 Novos takes usam Nano Banana Pro e Omni 1.1 Flash Frames, frame inicial, 8 s/720p,
 9:16. Nano Banana 2.1 e os parâmetros suportados podem ser usados quando pedidos.
 Preservar referência original na geração da imagem e usar a imagem gerada no
-vídeo. Não mudar materiais/modelos de takes registrados. O gancho POV usa voz
-fora de câmera e somente mãos visíveis, sem coro ou lip-sync visível.
+vídeo. Não mudar materiais/modelos de takes registrados. POV + Vendedora usa voz fora de câmera e mãos no gancho; Full POV mantém essa
+composição nos três takes, sem coro ou lip-sync visível.
 
-A copy de fábrica segue a fonte corrigida incorporada em `agents/copy.md`:
+As falas dos três takes devem ser planejadas para ocupar perto de 7–7,5 segundos
+de cada take de 8 segundos, com margem curta e ritmo natural, conforme
+`agents/copy.md`. Não deixar gancho, Body ou CTA muito curtos para completar
+com apresentação silenciosa, nem inventar alegações ou repetir texto para encher.
+A duração é estimativa editorial; só o áudio gerado comprova a realização.
+Na clonagem, mesmo uma única variação exige copy própria baseada na estrutura
+do vídeo. Com várias, variar argumento ou ênfase sustentados, além da redação;
+não copiar a transcrição nem fazer somente substituições de palavras.
+
+A copy de fábrica segue `agents/copy/fabrica.md` e as regras comuns de
+`agents/copy.md`:
 reação comercial + produto + motivo de compra, com vantagem comercial e fechamento
 avaliativo curto integrado à frase. O usuário aprovou “por um precinho incrível”
 como exemplo, sem tornar a expressão obrigatória. Preservar gancho de venda,
@@ -168,7 +191,8 @@ mudanças apenas documentais não exigem criar testes de código.
 - `pnpm dev` / `pnpm start`: servidor local.
 - `docker compose config --quiet` / `pnpm test:docker`: configuração e integração
   em Compose isolado, com volume sintético próprio e porta 4319 livre.
-- `pnpm test:browser:orders` / `pnpm test:browser:reuse`: pedidos pelo painel,
+- `pnpm test:browser:orders` / `pnpm test:browser:reuse` /
+  `pnpm test:browser:formats`: pedidos pelo painel,
   preparação, despacho, reutilização e downloads em Chrome for Testing com fixtures.
 - `pnpm test:browser:queue` / `pnpm test:browser`: fila e percurso completo em
   perfil isolado. Não instalar bibliotecas globais nem usar o perfil pessoal.

@@ -25,7 +25,8 @@
     "dev": "pnpm --filter @flow-batch/protocol build && node scripts/dev.mjs",
     "start": "node packages/orchestrator/dist/main.js",
     "orders": "node scripts/orders.mjs",
-    "test:browser:orders": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser.mjs --orders-only"
+    "test:browser:orders": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser.mjs --orders-only",
+    "test:browser:formats": "node scripts/validate-browser-formats.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

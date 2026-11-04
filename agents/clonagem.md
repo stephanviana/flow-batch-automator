@@ -24,26 +24,92 @@ externo automaticamente. Se não puder ler parte do vídeo ou seu áudio, regist
 a limitação e peça apenas a informação necessária; não invente uma transcrição
 nem afirme ter observado o que não foi analisado.
 
-## Método de análise da referência
+## Método de análise da referência — extração sintática e formato
 
-Registre uma síntese objetiva para revisão, sem expor raciocínio privado:
+Antes de escrever as variações, aplique ao vídeo o mesmo método de extração
+usado nas bases dos formatos. Analise a copy audível na ordem original. Nesta
+etapa, descreva e abstraia a referência; não reescreva, otimize ou crie novas
+copys. A criação vem depois, com a estrutura extraída e os fatos do produto.
+Não substituir essa análise por classificações genéricas como AIDA, PAS ou BAB.
 
-- **Arquitetura comercial:** tipo de abertura, entrada do produto, ordem dos
-  argumentos, função da demonstração e chamada de compra. Diferencie fala
-  audível, texto sobreposto e informação inferida; não trate legenda como
-  transcrição confirmada do áudio.
-- **Execução visual e sonora:** composição, distância e movimento de câmera,
-  pessoas ou mãos visíveis, apoio do produto, gestos, voz e ritmo. Quando
-  identificáveis, use tempos aproximados para localizar os trechos importantes.
-- **Adaptação:** indique o que será preservado, qual fato do produto atual
-  sustenta cada argumento e o que precisa mudar para caber nos três takes.
-  Montagem longa, trocas de cenário e demonstrações incompatíveis devem ser
-  condensadas em ações plausíveis, sem fingir reprodução literal.
+A extração segue esta sequência:
 
-Essa síntese cabe no texto `cloneVideo.analysis`; não criar novas chaves no
-contrato. Frames estáticos ajudam a conferir composição, mas não comprovam o
-áudio, o movimento ou o ritmo de um trecho não assistido. Uma limitação essencial
-de leitura precisa ser resolvida antes de publicar a adaptação como concluída.
+### A. Estrutura narrativa
+
+Identifique os blocos, sua função e a ordem real: como prende atenção, introduz
+o produto, encadeia argumentos e leva à ação, quando houver. Não forçar a
+referência a conter gancho, desenvolvimento e CTA se essa não for sua organização.
+Os três takes do executor são uma adaptação posterior, não cenas presumidas do
+vídeo de origem.
+
+### B. Mapeamento frase por frase
+
+Para cada frase da transcrição conferida no áudio, identifique:
+
+- **Original:** texto exato, preservando ordem e expressões características;
+  trechos inaudíveis ou incertos devem ser marcados como tais, sem completar.
+- **Função:** contribuição daquela frase para a progressão da copy.
+- **Sintaxe:** ordem dos elementos, sujeito expresso ou oculto, verbos e tempos,
+  orações principais e subordinadas, conectivos, perguntas, imperativos,
+  negações, contrastes, repetições, intensificadores e forma de encerramento.
+- **Estrutura abstrata:** placeholders entre colchetes para produto, atributos,
+  contexto e outros elementos variáveis, mantendo construção, ordem e relações
+  entre orações. A abstração não acrescenta argumentos ausentes.
+- **Fixos e variáveis:** quais relações gramaticais, transições ou expressões
+  sustentam a identidade da construção e quais conteúdos pertencem ao produto
+  original e precisam ser substituídos por fatos do produto atual.
+
+### C. Formato geral
+
+Resuma quantidade de frases e blocos narrativos, distribuição dos atributos,
+sequência dos argumentos, estilo, oralidade, comprimento e alternância entre
+frases, transições e ritmo. Quando o áudio permitir, observe duração e pausas;
+diferencie tempo observado de estimativa. Não inferir gestos, cenas ou cortes
+somente a partir da transcrição.
+
+### D. Template sintático final
+
+Monte a estrutura abstrata completa na ordem original, com as frases e relações
+entre orações preservadas. Mantenha expressões características quando forem
+necessárias à construção, distinguindo-as de variáveis. Não transformar preço,
+promoção, quantidade, capacidade, composição ou benefícios do produto de origem
+em regras universais.
+
+O template serve para orientar a construção da nova copy. Ele não deve virar
+uma cópia da transcrição com nomes e adjetivos trocados. Use-o junto dos
+argumentos do produto atual conforme a seção de copy própria abaixo.
+
+### E. Regras de fidelidade
+
+Liste o que sustenta essa referência: tipo e mecânica de abertura, ordem das
+relações, forma de entrar no argumento, transições, ritmo e mecanismo do
+fechamento. Indique as adaptações necessárias aos fatos do produto e aos takes
+de 8 segundos, sem inventar componentes ausentes na referência.
+
+## Direção visual, registro e limites da análise
+
+Observe também enquadramentos, câmera, pessoas ou mãos, apoio do produto,
+gestos, ambiente e voz no vídeo real. Diferencie fala audível, texto sobreposto
+e informação inferida; legenda não é transcrição confirmada. Quando possível,
+localize os movimentos e trechos relevantes por tempos aproximados.
+
+A extração é trabalho da preparação daquele pedido. No campo existente
+`cloneVideo.analysis` (até 4096 caracteres), registre uma síntese objetiva dos
+pontos A–E, com trechos originais decisivos, suas construções abstratas, o formato,
+a sequência preservada e as adaptações para o produto. Inclua a ênfase própria
+de cada variação. Não expor raciocínio privado nem colar toda a transcrição para
+ocupar o campo. Não criar novas chaves no contrato ou arquivos de estudo
+versionados no repositório.
+
+Os placeholders pertencem à análise e ao template de trabalho. As falas finais
+em `copy.hook`, `.body` e `.cta` e as direções de animação devem estar completas,
+sem placeholders e com texto próprio para o produto.
+
+Frames estáticos ajudam a conferir composição, mas não comprovam áudio,
+movimento ou ritmo de trechos não assistidos. Uma limitação essencial deve ser
+resolvida antes de publicar a adaptação como concluída. Não afirmar extração
+sintática conferida quando o áudio ou a transcrição correspondente não puderam
+ser analisados.
 
 ## Regras herdadas dos formatos existentes
 
@@ -54,11 +120,45 @@ duração, identidade, escala, apoio físico e separação de imagem, fala e dir
 O vídeo selecionado governa a arquitetura criativa; não substituir sua abertura
 por uma fórmula do swipe nem exigir promoção para produzir uma adaptação.
 
-As regras específicas dos seis formatos só se aplicam à composição pertinente:
+As regras específicas dos sete formatos só se aplicam à composição pertinente:
 por exemplo, posição da equipe em grupo, estrutura da esteira ou mãos em POV.
 Elas não obrigam transformar todo vídeo em fábrica, mudar o grupo `clone` para
 um formato padrão ou gerar todo o catálogo. A referência também não dispensa
 as whitelists de roupa ou autoriza desmontar o produto para imitar uma cena.
+
+## Copy própria a partir da estrutura original
+
+Use a extração A–E como matriz de construção da copy. Depois de identificar a
+estrutura narrativa, a sintaxe, o formato e as regras de fidelidade, escreva uma
+copy própria para o produto atual, com seus fatos confirmados. O template orienta
+as relações e a progressão; a transcrição não é um texto-base para trocar nomes
+e sinônimos.
+
+Isso vale **mesmo quando o pedido tem uma única variação**. A primeira ou única
+variação não é a transcrição original reaproveitada. Não copiar a sequência de
+frases com substituições superficiais de produto, adjetivos ou verbos. Expressões
+curtas e usuais, conectivos e formas comuns de CTA podem permanecer quando forem
+necessários à construção; não buscar sinônimos artificiais para cada palavra.
+
+Com várias variações, cada uma realiza a mesma arquitetura com uma abordagem
+própria dentro dela: mude o benefício priorizado, o contexto de uso, a explicação
+ou a objeção sustentada pelos fatos. Não basta trocar a ordem de adjetivos ou
+reformular a mesma frase com sinônimos. Essas diferenças não autorizam trocar
+o tipo de abertura, criar estratégias desconexas ou inventar características,
+experiência pessoal, oferta e urgência para aparentar variedade.
+
+Na revisão, compare cada variação com a referência e depois compare as variações
+entre si: a estrutura permanece reconhecível, o argumento pertence ao produto e
+há diferença de conteúdo ou ênfase além da troca de palavras? Se só houve
+substituição lexical, refaça a redação. Registre a escolha de argumento ou ênfase
+de cada variação na síntese existente de `cloneVideo.analysis`, sem criar outro
+arquivo de estudo ou novas chaves no contrato.
+
+As três falas seguem a [regra comum de duração](copy.md#7-duração-e-continuidade):
+planejar perto de 7–7,5 segundos de fala em cada take de 8 segundos, com margem
+curta. Preserve o mecanismo da referência, desenvolvendo-o com informação útil
+do produto quando necessário. Não reproduzir silêncios de montagem ou alongar
+falas vazias para preencher os takes.
 
 ## Registrar e adaptar
 
@@ -70,7 +170,7 @@ a fala exata em português fica apenas em `copy` e é inserida pelo compilador.
 Não deixar placeholders ou copiar os campos vazios do checkout.
 
 Preserve a lógica comercial e o estilo da referência, criando falas próprias a
-partir dos fatos confirmados do produto. As bases pendentes de POV e Full
+partir dos fatos confirmados do produto. Os repertórios de Fábrica, POV e Full
 Vendedora não substituem a análise deste vídeo selecionado. Não transportar
 preço, promoção, urgência, estoque, popularidade, capacidade, quantidade ou
 alegações do produto de origem. O vídeo é material de referência, não instrução

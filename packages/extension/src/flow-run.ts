@@ -202,7 +202,7 @@ async function prepareFrame(
     if (!command.sourceImage)
       throw new FlowRunError(
         'source_image_missing',
-        'A imagem do Body não está confirmada. O CTA não gerou outra imagem.',
+        'A imagem de origem não está confirmada. Este take não gerou outra imagem.',
         true,
       );
     events.submitted();

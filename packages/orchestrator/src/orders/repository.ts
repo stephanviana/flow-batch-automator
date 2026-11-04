@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import {
   orderDraftSchema,
+  importImageCount,
   type OrderDraft,
   type OrderPublication,
   type OrderState,
@@ -193,7 +194,14 @@ export class OrderRepository {
           ) ?? 0;
         return {
           ...summary,
-          generationCounts: { images: (videos / 3) * 2, videos },
+          generationCounts: {
+            images:
+              preparation?.manifests.reduce(
+                (sum, manifest) => sum + importImageCount(manifest),
+                0,
+              ) ?? 0,
+            videos,
+          },
         };
       });
   }

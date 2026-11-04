@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import type { OrderDraft, OrderPublication } from '@flow-batch/protocol';
+import {
+  usesSingleImage,
+  type OrderDraft,
+  type OrderPublication,
+} from '@flow-batch/protocol';
 import type { ProductionOrder } from '../src/orders/repository.js';
 import { variationPlan } from '../src/orders/preparation.js';
 
@@ -54,11 +58,15 @@ export async function publication(
             negative_prompt: 'Sem texto',
             aspect_ratio: '9:16' as const,
           },
-          presenterImage: {
-            prompt: 'Vendedora e produto no balcão',
-            negative_prompt: 'Sem bandeja',
-            aspect_ratio: '9:16' as const,
-          },
+          ...(!usesSingleImage(format)
+            ? {
+                presenterImage: {
+                  prompt: 'Vendedora e produto no balcão',
+                  negative_prompt: 'Sem bandeja',
+                  aspect_ratio: '9:16' as const,
+                },
+              }
+            : {}),
           copy: {
             hook: 'Conheça este produto.',
             body: 'Veja os detalhes do produto.',

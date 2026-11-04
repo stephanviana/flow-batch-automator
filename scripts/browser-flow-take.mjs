@@ -3,6 +3,7 @@ import { randomUUID, createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { URLSearchParams } from 'node:url';
 import { localClient, checkout } from './orders.mjs';
+import { usesSingleImage } from '../packages/protocol/dist/index.js';
 import { resolve } from 'node:path';
 
 export async function validateFlowTake({
@@ -13,7 +14,10 @@ export async function validateFlowTake({
   startServer,
   media,
   directory,
+  format = 'factory',
+  base = 'http://127.0.0.1:4319',
 }) {
+  const singleImage = usesSingleImage(format);
   let projectId = randomUUID();
   let imageId = randomUUID();
   const referenceId = randomUUID(),
@@ -149,10 +153,10 @@ export async function validateFlowTake({
   const flow = await browser.newPage();
   const orders = await browser.newPage();
   const panelUrl = panel.url();
-  let api = await localClient();
+  let api = await localClient(base);
   try {
     await flow.goto(`https://flow.google.com/project/${projectId}`);
-    await orders.goto('http://127.0.0.1:4319/orders');
+    await orders.goto(`${base}/orders`);
     await orders
       .getByLabel('Nome do pedido', { exact: true })
       .fill('Pedido navegador');
@@ -168,6 +172,7 @@ export async function validateFlowTake({
       buffer: referenceBytes,
     });
     await orders.getByLabel('Variações', { exact: true }).fill('1');
+    await orders.getByLabel('Formato', { exact: true }).selectOption(format);
     await orders
       .getByRole('button', { name: 'Salvar pedido', exact: true })
       .click();
@@ -193,6 +198,13 @@ export async function validateFlowTake({
       referenceBytes,
     );
     const variation = variationPlan[0];
+    const checkoutPlan = JSON.parse(
+      await readFile(resolve(checkoutDirectory, 'preparacao.json'), 'utf8'),
+    );
+    assert.equal(
+      'presenterImage' in checkoutPlan.products[0].variations[0],
+      !singleImage,
+    );
     const prepared = await api(`/manage/orders/${order.id}/prepare`, {
       leaseId,
       products: [
@@ -208,11 +220,15 @@ export async function validateFlowTake({
                 negative_prompt: 'Sem texto',
                 aspect_ratio: '9:16',
               },
-              presenterImage: {
-                prompt: 'Produto de teste no balcão',
-                negative_prompt: 'Sem bandeja',
-                aspect_ratio: '9:16',
-              },
+              ...(!singleImage
+                ? {
+                    presenterImage: {
+                      prompt: 'Produto de teste no balcão',
+                      negative_prompt: 'Sem bandeja',
+                      aspect_ratio: '9:16',
+                    },
+                  }
+                : {}),
               copy: {
                 hook: 'Gancho de teste.',
                 body: 'Apresentação de teste.',
@@ -227,7 +243,14 @@ export async function validateFlowTake({
     assert.equal(imageCount, 0);
     assert.equal(videoCount, 0);
     expectedTasks = prepared.preparation.manifests[0].tasks;
-    assert.equal(expectedTasks[2].reuseImageFrom, expectedTasks[1].id);
+    assert.equal(
+      expectedTasks[1].reuseImageFrom,
+      singleImage ? expectedTasks[0].id : undefined,
+    );
+    assert.equal(
+      expectedTasks[2].reuseImageFrom,
+      expectedTasks[singleImage ? 0 : 1].id,
+    );
     await orders
       .getByRole('button', { name: 'Atualizar', exact: true })
       .click();
@@ -238,7 +261,7 @@ export async function validateFlowTake({
       .getByRole('button', { name: 'Ver prévia', exact: true })
       .click();
     await orders
-      .getByText('Produto fixture · factory 1 · falas', { exact: true })
+      .getByText(`Produto fixture · ${format} 1 · falas`, { exact: true })
       .click();
     await orders.screenshot({
       path: resolve(directory, 'orders.png'),
@@ -258,8 +281,8 @@ export async function validateFlowTake({
       120000,
     );
     assert.equal(projectsCreated, 1);
-    assert.equal(imageCount, 2);
-    assert.equal(uploadCount, 2);
+    assert.equal(imageCount, singleImage ? 1 : 2);
+    assert.equal(uploadCount, singleImage ? 1 : 2);
     assert.equal(videoCount, 3);
     assert.equal(
       browser
@@ -295,7 +318,7 @@ export async function validateFlowTake({
     );
     await stopServer();
     await startServer();
-    api = await localClient();
+    api = await localClient(base);
     assert.equal((await api('/manage/orders/1')).order.state, 'completed');
     const cleanup = await api('/manage/cleanup');
     assert.equal(cleanup.materials.length, 1);
@@ -325,10 +348,10 @@ export async function validateFlowTake({
         ),
       40000,
     );
-    assert.equal(imageCount, 2);
+    assert.equal(imageCount, singleImage ? 1 : 2);
     assert.equal(videoCount, 3);
     console.log(
-      'Chrome isolado: pedido pelo painel, preparação pela API, autorização, duas imagens e três MP4s com CTA reutilizado, painel fechado, reinício e limpeza passaram com fixtures locais.',
+      `Chrome isolado (${format}): pedido pelo painel, checkout, preparação, autorização, ${singleImage ? 'uma imagem compartilhada pelos três takes' : 'duas imagens com CTA reutilizado'}, três MP4s, painel fechado, reinício e limpeza passaram com fixtures locais.`,
     );
   } finally {
     await orders.close().catch(() => {});

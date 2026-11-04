@@ -18,18 +18,21 @@ export const preparationFormatSchema = z.enum([
   'factory-truck',
   'factory-inclined',
   'pov',
+  'full-pov',
   'seller',
   'clone',
 ]);
-export const preparationFormatLabels: Record<
-  z.infer<typeof preparationFormatSchema>,
-  string
-> = {
+export type PreparationFormat = z.infer<typeof preparationFormatSchema>;
+export function usesSingleImage(format: PreparationFormat): boolean {
+  return format === 'full-pov' || format === 'seller';
+}
+export const preparationFormatLabels: Record<PreparationFormat, string> = {
   factory: 'Fábrica Padrão',
   'factory-group': 'Fábrica Grupo',
   'factory-truck': 'Fábrica + Caminhão',
   'factory-inclined': 'Fábrica Esteira Inclinada',
-  pov: 'POV',
+  pov: 'POV + Vendedora',
+  'full-pov': 'Full POV',
   seller: 'Full Vendedora',
   clone: 'Clonar formato de vídeo',
 };
@@ -58,7 +61,7 @@ export const preparationSchema = z
             name: z.string().trim().min(1).max(80),
             format: preparationFormatSchema,
             hookImage: creativeImageSchema,
-            presenterImage: creativeImageSchema,
+            presenterImage: creativeImageSchema.optional(),
             cloneVideo: cloneVideoSchema.optional(),
             copy: z.strictObject({
               hook: nonblankText,
@@ -66,6 +69,17 @@ export const preparationSchema = z
               cta: nonblankText,
             }),
           })
+          .refine(
+            (variation) =>
+              usesSingleImage(variation.format)
+                ? variation.presenterImage === undefined
+                : variation.presenterImage !== undefined,
+            {
+              message:
+                'Full POV e Full Vendedora usam somente hookImage; os demais formatos exigem presenterImage.',
+              path: ['presenterImage'],
+            },
+          )
           .refine(
             (variation) =>
               (variation.format === 'clone') ===

@@ -1,4 +1,7 @@
-import { materialFilename } from '../packages/protocol/dist/index.js';
+import {
+  materialFilename,
+  usesSingleImage,
+} from '../packages/protocol/dist/index.js';
 import { Buffer } from 'node:buffer';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -103,11 +106,15 @@ export async function checkout(api, number, worker, directory, revise = false) {
             }
           : {}),
         hookImage: { prompt: '', negative_prompt: '', aspect_ratio: '9:16' },
-        presenterImage: {
-          prompt: '',
-          negative_prompt: '',
-          aspect_ratio: '9:16',
-        },
+        ...(!usesSingleImage(format)
+          ? {
+              presenterImage: {
+                prompt: '',
+                negative_prompt: '',
+                aspect_ratio: '9:16',
+              },
+            }
+          : {}),
         copy: { hook: '', body: '', cta: '' },
       })),
   }));

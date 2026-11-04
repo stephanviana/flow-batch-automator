@@ -4,7 +4,7 @@ import {
   QUEUE_BODY_LIMIT,
   type ImportManifest,
 } from './imports.js';
-import { stableImportId } from './import-identity.js';
+import { compileVariation } from './preparation-variation.js';
 
 function readTemplates(markdown: string): Map<string, string> {
   const templates = new Map<string, string>();
@@ -33,67 +33,13 @@ export async function compilePreparation(
 ): Promise<ImportManifest> {
   const preparation = preparationSchema.parse(input);
   const templates = readTemplates(markdown);
-  const seconds = /^abra_i2v_(\d+)s/.exec(preparation.videoModel)?.[1] ?? '8';
-  const tasks = [];
-  for (const variation of preparation.variations) {
-    const bodyId = await stableImportId([
-      'flow-preparation-v1',
-      preparation.id,
-      variation.id,
-      'body',
-    ]);
-    for (const [stage, label] of [
-      ['hook', '01-Gancho'],
-      ['body', '02-Body'],
-      ['cta', '03-CTA'],
-    ] as const) {
-      const role =
-        variation.format === 'clone'
-          ? 'clone'
-          : stage !== 'hook'
-            ? 'seller'
-            : variation.format.startsWith('factory')
-              ? 'factory'
-              : variation.format;
-      const template = templates.get(role);
-      if (!template)
-        throw new Error(`Template de animação indisponível: ${role}.`);
-      const speech = variation.copy[stage];
-      const videoPrompt = template
-        .replaceAll('{{duracao_segundos}}', seconds)
-        .replaceAll('{{fala}}', speech)
-        .replaceAll(
-          '{{direcao}}',
-          variation.cloneVideo?.directions[stage] ?? '',
-        );
-      if (/\{\{|\[INSERIR/.test(videoPrompt))
-        throw new Error('O prompt contém um placeholder não resolvido.');
-      tasks.push({
-        id: await stableImportId([
-          'flow-preparation-v1',
-          preparation.id,
-          variation.id,
-          stage,
-        ]),
-        product: preparation.product,
-        video: `${variation.format} · ${variation.name}`,
-        take: label,
-        reference: preparation.reference,
-        ...(stage === 'cta' ? { reuseImageFrom: bodyId } : {}),
-        output: { groupId: variation.id, filename: `${label}.mp4` },
-        original: {
-          imagePrompt: JSON.stringify(
-            stage === 'hook' ? variation.hookImage : variation.presenterImage,
-          ),
-          videoPrompt,
-          copy: speech,
-        },
-        imageModel: preparation.imageModel,
-        videoModel: preparation.videoModel,
-        aspect: '9:16',
-      });
-    }
-  }
+  const tasks = (
+    await Promise.all(
+      preparation.variations.map((variation) =>
+        compileVariation(preparation, variation, templates),
+      ),
+    )
+  ).flat();
   const manifest = importManifestSchema.parse({
     version: 1,
     id: preparation.id,

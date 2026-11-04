@@ -41,12 +41,12 @@ produto para `agents/`, documentação do repositório ou memória.
 
 ## 2. Resolver o escopo criativo
 
-Leia [copy.md](copy.md) e [imagem.md](imagem.md). Uma referência do dia só existe
-quando escolhida pelo usuário para a tarefa; na ausência dela, use o repertório
-estrutural de fábrica corrigido em `copy.md`, aplicável aos quatro formatos de
-fábrica. O swipe anterior foi substituído. POV e Full Vendedora aguardam bases de
-copy próprias; não trate disponibilidade de template visual como aprovação de
-sua direção de copy. As transcrições brutas não são dependências de execução.
+Leia [copy.md](copy.md) e [imagem.md](imagem.md). Nos formatos padrão, use
+diretamente a base de [Fábrica](copy/fabrica.md) nos quatro formatos de fábrica,
+[POV + Vendedora e Full POV](copy/pov.md) em `pov`/`full-pov` e
+[Full Vendedora](copy/vendedora.md) em
+`seller`. As estruturas já incorporam os swipes; não pedir referência adicional
+nem aplicar a abertura de fábrica aos demais formatos.
 
 Preserve a escolha de formatos em linguagem natural e a ordem canônica da V27.
 Os formatos e as quantidades vêm dos grupos salvos no pedido. Não ampliar o
@@ -58,31 +58,37 @@ direções de animação da clonagem. Essa referência não substitui a foto do
 produto nem as regras de fatos comerciais e de apoio físico.
 
 Cada criativo em vídeo tem gancho, Body e CTA. A quantidade é a escolhida no pedido;
-um formato com três variações resulta em nove takes. O par visual define o gancho
-e a apresentação; não confundir duas bases visuais com duas cenas de copy.
+um formato com três variações resulta em nove takes. A base visual segue o formato: uma imagem nos formatos Full; duas nos demais.
+Não confundir quantidade de imagens com quantidade de takes.
 
-| Formato                   | Gancho de animação disponível                | Body / CTA |
-| ------------------------- | -------------------------------------------- | ---------- |
-| Fábrica Padrão            | Fábrica, com equipe visível                  | Vendedora  |
-| Fábrica Grupo             | Fábrica, com equipe visível                  | Vendedora  |
-| Fábrica + Caminhão        | Fábrica, com equipe visível                  | Vendedora  |
-| Fábrica Esteira Inclinada | Fábrica, preservando a lógica da esteira     | Vendedora  |
-| Full Vendedora            | Vendedora; adaptar a fala de gancho sem coro | Vendedora  |
-| POV                       | Voz fora de câmera; somente mãos visíveis    | Vendedora  |
+| Formato                   | Gancho de animação disponível                | Body / CTA                        |
+| ------------------------- | -------------------------------------------- | --------------------------------- |
+| Fábrica Padrão            | Fábrica, com equipe visível                  | Vendedora                         |
+| Fábrica Grupo             | Fábrica, com equipe visível                  | Vendedora                         |
+| Fábrica + Caminhão        | Fábrica, com equipe visível                  | Vendedora                         |
+| Fábrica Esteira Inclinada | Fábrica, preservando a lógica da esteira     | Vendedora                         |
+| POV + Vendedora           | Voz fora de câmera; somente mãos visíveis    | Vendedora                         |
+| Full POV                  | Voz fora de câmera; somente mãos visíveis    | POV, com a imagem do gancho       |
+| Full Vendedora            | Vendedora; adaptar a fala de gancho sem coro | Vendedora, com a imagem do gancho |
 
 O modo de clonagem usa o template próprio de direção adaptada de `animacao.md`.
 
-Os seis formatos têm template de animação compatível. Isso não significa que
-as bases de copy de POV e Full Vendedora estejam prontas. POV usa a voz da pessoa que segura
-o produto, fora do enquadramento; Full Vendedora usa a apresentadora visível.
+Os sete formatos têm base de copy e template de animação compatível. POV usa
+a voz da pessoa que interage com o produto, fora do enquadramento;
+Full POV mantém esse ponto de vista nos três takes. Full Vendedora usa a
+apresentadora visível nos três takes. Estrutura incorporada não comprova
+qualidade de áudio, lip-sync ou conversão na conta real.
 Não substituir silenciosamente POV por fábrica ou excluir formatos pedidos.
 
 ## 3. Preparar as falas
 
-Produza as variações conforme a fonte criativa ativa. Cada uma deve ser uma copy
+Produza as variações conforme a base do formato ou o vídeo de clonagem do grupo. Cada uma deve ser uma copy
 contínua, dividida em gancho, Body e CTA. Identifique cada variação de forma estável
 e revise a duração falada, naturalidade, fatos, vocabulário rejeitado e coerência
-das três cenas. Não usar preço monetário explícito nas falas.
+das três cenas. A [regra de duração](copy.md#7-duração-e-continuidade) orienta
+fala próxima de 7–7,5 segundos por take de 8 segundos, sem sobra prolongada ou
+preenchimento artificial. Na clonagem, aplique também a regra de copy própria,
+mesmo com uma única variação. Não usar preço monetário explícito nas falas.
 
 O resultado editorial pode ser salvo como `copy.json` na pasta da preparação,
 com identificador, nome, gancho, Body e CTA de cada variação. Esse artefato não é
@@ -106,14 +112,26 @@ Não inventar bandeja ou outro suporte móvel para acomodar o conjunto. Quando a
 imagem usar balcão, a animação deve preservar esse apoio e não mandar levantar o
 kit. Rever tanto o prompt positivo quanto o negativo antes de publicar a preparação.
 
-Body e CTA do mesmo criativo devem usar **exatamente a mesma imagem gerada** da
-vendedora. O Body gera `presenterImage`; o CTA reutiliza seu ID de mídia como
-frame inicial e altera somente a animação/fala. Repetir o prompt ou a seed não
-é reutilização. O compilador liga `reuseImageFrom` ao ID do Body anterior; a
-fila resolve a imagem pelos checkpoints persistidos no mesmo lote, projeto e
-variação. Sem imagem confirmada, o CTA falha antes do envio, sem gerar outra.
-Cada variação autoriza duas imagens (gancho e Body) e três vídeos. Os três MP4s
-ficam juntos na pasta da variação: `01-Gancho.mp4`, `02-Body.mp4` e `03-CTA.mp4`.
+Nos formatos Fábrica, POV + Vendedora e clonagem, prepare `hookImage` e
+`presenterImage`: o gancho gera sua imagem, o Body gera a imagem de apresentação
+e o CTA reutiliza exatamente o ID da imagem confirmada no Body.
+
+Nos formatos Full POV (`full-pov`) e Full Vendedora (`seller`), prepare somente
+`hookImage`, sem `presenterImage`. O gancho gera a única imagem; Body e CTA
+reutilizam diretamente o ID confirmado no gancho. Full POV usa somente mãos e
+voz fora de câmera nos três takes; Full Vendedora usa a mesma apresentadora e
+cenário logístico nos três. Cada take começa na imagem compartilhada, não no
+último frame do vídeo anterior.
+
+Repetir prompt ou seed não é reutilização. O compilador liga `reuseImageFrom`
+sempre ao take gerador original; a fila resolve a imagem pelos checkpoints do
+mesmo dono, lote, projeto e variação. Sem imagem confirmada, o take falha antes
+do envio, sem gerar outra. Take gerador autoriza uma imagem e um vídeo; take com
+reutilização autoriza zero imagens e um vídeo. A prévia e o despacho contam as
+imagens efetivamente geradas no manifesto, preservando preparações já gravadas.
+
+Os três MP4s ficam juntos por variação: `01-Gancho.mp4`, `02-Body.mp4` e
+`03-CTA.mp4`.
 
 ## 5. Renderizar a animação
 
@@ -135,12 +153,13 @@ criativos. Renove a reserva durante trabalhos longos com `pnpm orders renew`.
 O agente publica `preparacao.json` com `pnpm orders publish CAMINHO`. O servidor
 confere a correspondência exata com os produtos/grupos, renderiza os templates
 ativos de animação e divide os manifestos respeitando 20 takes e 64 KiB por
-admissão. Gancho, Body e CTA ficam juntos. O CTA reutiliza a imagem do Body.
+admissão. Gancho, Body e CTA ficam juntos. A reutilização segue a base visual do formato.
 Novos takes usam Nano Banana Pro e Omni 1.1 Flash Frames, 8 s/720p e 9:16.
 Os IDs são determinísticos para retomadas. O compilador compartilhado não invoca IA.
 
 Apresente a prévia com produtos, formatos, variações, falas, prompts, referências,
-modelos e a contagem máxima: duas imagens e três vídeos por variação. O painel
+modelos e a contagem máxima por variação: uma imagem nos formatos Full, duas
+nos demais, sempre três vídeos. O painel
 mostra a preparação publicada. Uma revisão antes do despacho exige checkout
 com `--revise`, nova publicação e nova conferência; as versões são preservadas
 no SQLite e o hash anterior não autoriza a preparação nova.

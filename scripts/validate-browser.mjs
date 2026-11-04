@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { chromium } from 'playwright';
@@ -12,8 +12,21 @@ import { validateFlowTake } from './browser-flow-take.mjs';
 import { startMediaFixture } from './browser-media.mjs';
 
 const directory = resolve('.cache', `browser-${randomUUID()}`);
+const requestedFormat = process.argv
+  .find((argument) => argument.startsWith('--format='))
+  ?.slice(9);
+if (requestedFormat && !['pov', 'full-pov', 'seller'].includes(requestedFormat))
+  throw new Error('Unsupported browser fixture format');
 const reuseOnly = process.argv.includes('--reuse-only');
-const ordersOnly = process.argv.includes('--orders-only') || reuseOnly;
+const ordersOnly =
+  process.argv.includes('--orders-only') ||
+  reuseOnly ||
+  Boolean(requestedFormat);
+const port = requestedFormat ? 4339 : 4319;
+const base = `http://127.0.0.1:${port}`;
+const extensionDirectory = requestedFormat
+  ? resolve(directory, 'extension')
+  : resolve('packages/extension/dist');
 await mkdir(directory, { recursive: true });
 const log = createWriteStream(resolve(directory, 'server.log'));
 let server;
@@ -26,6 +39,18 @@ let asynchronousFailure;
 process.on('unhandledRejection', (error) => {
   asynchronousFailure = error;
 });
+
+async function prepareIsolatedExtension() {
+  if (!requestedFormat) return;
+  await cp('packages/extension/dist', extensionDirectory, { recursive: true });
+  // Rewrite only the fixture copy's loopback address, leaving production artifacts intact.
+  for (const filename of await readdir(extensionDirectory)) {
+    if (!/\.(js|html|json)$/.test(filename)) continue;
+    const path = resolve(extensionDirectory, filename);
+    const content = await readFile(path, 'utf8');
+    await writeFile(path, content.replaceAll(/\b4319\b/g, String(port)));
+  }
+}
 
 async function eventually(check, timeout = 15000) {
   const end = Date.now() + timeout;
@@ -41,7 +66,7 @@ async function startServer() {
     env: {
       ...process.env,
       HOST: '127.0.0.1',
-      PORT: '4319',
+      PORT: String(port),
       DATABASE_PATH: resolve(directory, 'state.sqlite'),
       LOG_LEVEL: 'silent',
     },
@@ -52,10 +77,10 @@ async function startServer() {
   await eventually(async () => {
     if (server.exitCode !== null)
       throw new Error(
-        'Isolated server could not start; ensure port 4319 is free',
+        `Isolated server could not start; ensure port ${port} is free`,
       );
     try {
-      return (await fetch('http://127.0.0.1:4319/health')).ok;
+      return (await fetch(`${base}/health`)).ok;
     } catch {
       return false;
     }
@@ -77,8 +102,8 @@ async function openBrowser() {
       downloadsPath: resolve(directory, 'downloads'),
       args: [
         ...media.args,
-        `--disable-extensions-except=${resolve('packages/extension/dist')}`,
-        `--load-extension=${resolve('packages/extension/dist')}`,
+        `--disable-extensions-except=${extensionDirectory}`,
+        `--load-extension=${extensionDirectory}`,
       ],
     },
   );
@@ -155,11 +180,11 @@ async function connect() {
 
 try {
   try {
-    await fetch('http://127.0.0.1:4319/health', {
+    await fetch(`${base}/health`, {
       signal: AbortSignal.timeout(500),
     });
     throw new Error(
-      'Port 4319 is already in use. Stop the local orchestrator before running browser validation.',
+      `Port ${port} is already in use. Run browser validation with that test port free.`,
     );
   } catch (error) {
     if (
@@ -168,6 +193,7 @@ try {
     )
       throw error;
   }
+  await prepareIsolatedExtension();
   media = await startMediaFixture(directory);
   await mkdir(resolve(directory, 'profile/Default'), { recursive: true });
   await mkdir(resolve(directory, 'downloads'), { recursive: true });
@@ -230,7 +256,7 @@ try {
     assert.equal(await assertNonExportableIdentity(), identity);
     assert.equal(await popup.locator('#history li').count(), 2);
     management = await browser.newPage();
-    await management.goto('http://127.0.0.1:4319/connect');
+    await management.goto(`${base}/connect`);
     await management.getByRole('button', { name: 'Revogar acesso' }).click();
     await eventually(() => statusContains('Acesso revogado'));
     await popup
@@ -263,8 +289,10 @@ try {
     media,
     directory,
     reuseOnly,
+    format: requestedFormat,
+    base,
   });
-  await management.goto('http://127.0.0.1:4319/connect');
+  await management.goto(`${base}/connect`);
   console.log(
     reuseOnly
       ? 'Real Chrome for Testing: automatic dispatch, exact Body/CTA frame reuse and grouped MP4 downloads passed against local fixtures.'

@@ -1,8 +1,43 @@
-# Formatos — POV e Vendedora
+# Formatos — POV + Vendedora, Full POV e Full Vendedora
 
 Parte da direção V27; leia primeiro [imagem.md](../imagem.md).
 
-## SEÇÃO DE FORMATO — POV
+## Aplicação no pedido
+
+| Formato                   | Artefatos de imagem                                       | Reutilização                                   |
+| ------------------------- | --------------------------------------------------------- | ---------------------------------------------- |
+| POV + Vendedora (`pov`)   | `hookImage` em POV e `presenterImage` de vendedora        | CTA usa a imagem do Body                       |
+| Full POV (`full-pov`)     | Somente `hookImage` em POV                                | Body e CTA usam diretamente a imagem do gancho |
+| Full Vendedora (`seller`) | Somente `hookImage` de apresentadora em cenário logístico | Body e CTA usam diretamente a imagem do gancho |
+
+O frame inicial compartilhado é o mesmo ID confirmado da imagem gerada. Não
+preparar imagem nova, seed alternativa, fallback ou uma composição diferente
+para um take que reutiliza imagem. Preservar produto, apoio, mãos ou pessoa,
+roupa, escala e ambiente nos takes que partem dessa imagem.
+
+A direção de copy fica em [POV](../copy/pov.md) e
+[Full Vendedora](../copy/vendedora.md). Não incluir a fala no JSON de imagem.
+
+## Anti-overlay nos três percursos
+
+O prompt positivo deve pedir fotografia UGC real de smartphone, com apenas
+objetos e pessoas físicos. A captura de loja identifica o produto, não o layout
+de uma peça publicitária. Não transportar interface, preço, carrinho, selo,
+comissão ou texto sobreposto; preservar rótulos e marcas físicos do produto.
+
+Acrescente ao `negative_prompt` de cada base, além das restrições anatômicas e de
+produto específicas, estas exclusões:
+
+```text
+overlays, captions, subtitles, floating text, speech bubbles, stickers, emojis, arrows, shopping-cart icons, CTA buttons, notification icons, bell icons, app interface, UI, HUD, pop-ups, banners, lower thirds, price graphics, discount graphics, promotional badges, decorative graphics, motion graphics, graphic VFX, split screen, collage, storyboard
+```
+
+São exclusões de elementos gráficos acrescentados. Não mandar apagar rótulos,
+estampas, inscrições ou sinalizações que pertençam fisicamente à cena. Não
+desenhar um CTA como objeto nem reservar área vazia para um botão ou legenda.
+Na animação, manter também o bloco integral de [animacao.md](../animacao.md).
+
+## SEÇÃO DE FORMATO — POV + VENDEDORA E FULL POV
 
 ## FINALIDADE
 
@@ -43,10 +78,15 @@ Criar uma imagem em primeira pessoa mostrando o produto em uso ou demonstração
 
 ## REGRAS DE INTERAÇÃO
 
-- quando o produto for composto, as mãos devem segurar o PRODUCT UNIT completo e montado exatamente como referência; nunca mostrar apenas um componente interno como se fosse o produto inteiro;
-- a mão dominante deve segurar o produto de forma ergonômica;
+- quando o produto for composto, apresentar o PRODUCT UNIT completo e montado exatamente como referência, nas mãos ou diretamente no balcão; nunca mostrar apenas um componente interno como se fosse o produto inteiro;
+- quando segurado, a mão dominante deve apoiar o produto de forma ergonômica;
 - a outra mão pode apoiar, apontar ou interagir com um detalhe;
 - se o produto exigir duas mãos, use duas mãos femininas segurando naturalmente;
+- kits amplos ou pesados permanecem diretamente sobre um balcão fixo; as mãos
+  apenas tocam ou apontam detalhes sem desmontar ou suspender todo o conjunto;
+- escolher apoio concreto no prompt; não exigir ao mesmo tempo que o conjunto
+  esteja nas mãos e apoiado no balcão;
+- não inventar bandeja, cesta, tábua ou base portátil para sustentar o produto;
 - nunca distorcer o produto para caber entre as mãos;
 - reposicionar dedos e punhos de acordo com a anatomia real do produto.
 
@@ -55,7 +95,7 @@ Criar uma imagem em primeira pessoa mostrando o produto em uso ou demonstração
 - usar a imagem de referência para identidade, não para determinar tamanho aparente;
 - dimensionar o produto pela categoria real, medidas conhecidas e relação com as mãos femininas;
 - evitar proximidade excessiva da lente e perspectiva que infle o objeto;
-- o produto deve caber naturalmente na pegada, sem mãos excessivamente abertas;
+- quando segurado, o produto deve caber naturalmente na pegada, sem mãos excessivamente abertas; quando apoiado no balcão, preservar a escala real sem reduzi-lo para caber nas mãos;
 - se o produto for compacto, mantê-lo claramente compacto mesmo em primeiro plano.
 
 ## CENA DE POV — GANCHO VISUAL
@@ -66,6 +106,12 @@ Quando a cena for “POV GANCHO VISUAL”, a imagem deve ser visualmente forte, 
 
 Use e adapte conforme o produto:
 "masculine hands, thick hands, hairy hands, extra fingers, deformed fingers, unnatural grip, oversized product, tiny product, wrong proportions, pasted product, plastic look, CGI look, flat lay, studio shot, visible presenter face, distorted perspective, unrealistic pose, messy background"
+
+Incluir também rosto ou boca visíveis em espelhos, vitrines, telas ou reflexos
+entre as exclusões. Somente as mesmas duas mãos adultas devem aparecer; não
+adicionar uma pessoa demonstradora ao fundo para acomodar a locução. Quando os
+apoios móveis não forem componentes reais, acrescentar as exclusões de bandeja,
+cesta e base portátil descritas na seção de apresentação abaixo.
 
 ## SEÇÃO DE FORMATO — FULL VENDEDORA
 
@@ -159,10 +205,10 @@ Quando a cena for “FULL VENDEDORA GANCHO VISUAL”, a imagem deve ser mais cha
 
 Quando a cena for “VENDEDORA APRESENTANDO PRODUTO”, criar uma imagem estática de demonstração clara, confiável e orientada à conversão. A vendedora deve apresentar o mesmo produto do gancho anterior em ambiente comercial plausível, com expressão amigável, escala física realista, produto próximo ao tronco, mãos naturais e boa leitura dos detalhes principais. Quando o produto for composto, ela deve apresentar o PRODUCT UNIT completo e montado, nunca um componente interno isolado. A roupa deve ser funcional de varejo e escolhida da whitelist positiva de varejo/apresentação. Esta cena deve ser menos explosiva que o gancho e mais focada em clareza, confiança e apresentação do produto.
 
-No Body e CTA, o produto pode ficar diretamente sobre um balcão fixo, com a
+Na apresentação de vendedora, o produto pode ficar diretamente sobre um balcão fixo, com a
 vendedora atrás dele e as mãos naturalmente próximas ao conjunto. Nesse caso,
-não instruir que ela segure ou levante todo o produto. A mesma imagem do Body é
-o frame inicial do CTA. O PRODUCT UNIT LOCK preserva o kit, sem exigir uma bandeja
+não instruir que ela segure ou levante todo o produto. Nos formatos mistos, o CTA usa a imagem do Body; no
+Full Vendedora, Body e CTA usam a imagem do gancho. O PRODUCT UNIT LOCK preserva o kit, sem exigir uma bandeja
 ou qualquer outro apoio móvel inventado. Quando não fizerem parte do produto,
 incluir no negative prompt: “serving tray, carrying tray, serving board, platter,
 display basket, portable display base, unadvertised accessories, bonus items”.

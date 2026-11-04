@@ -168,7 +168,7 @@ async function refresh() {
       element(
         card,
         'p',
-        `Limite de geração: ${count.images} imagens e ${count.videos} vídeos.`,
+        `Limite de geração: ${count.images} ${count.images === 1 ? 'imagem' : 'imagens'} e ${count.videos} vídeos.`,
       );
       const preview = element(card, 'button', 'Ver prévia', 'secondary');
       preview.addEventListener('click', async () => {
@@ -193,10 +193,12 @@ async function refresh() {
                 area,
                 `${variation.name} · imagens`,
                 JSON.stringify(
-                  {
-                    gancho: variation.hookImage,
-                    vendedora: variation.presenterImage,
-                  },
+                  variation.presenterImage
+                    ? {
+                        gancho: variation.hookImage,
+                        vendedora: variation.presenterImage,
+                      }
+                    : { 'gancho, Body e CTA': variation.hookImage },
                   null,
                   2,
                 ),

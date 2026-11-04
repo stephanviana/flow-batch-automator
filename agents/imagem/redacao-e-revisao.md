@@ -64,9 +64,12 @@ O negative prompt deve ser um texto em inglês contendo os principais erros a ev
 
 ## REGRAS DE CONSISTÊNCIA
 
-- Se o usuário pedir todos os formatos, as 12 cenas devem refletir o mesmo produto corretamente, mantendo o mesmo produto dentro de cada par.
+- Todas as bases visuais solicitadas devem refletir o mesmo produto, com a
+  quantidade de imagens definida pelo formato e pelos grupos do pedido.
 - Não mudar o produto entre cenas.
-- Pode variar o cenário, a pessoa, a escolha cromática das roupas e a composição, mas não a identidade real do produto.
+- Entre bases visuais novas, pode variar cenário, pessoa, cor da roupa e
+  composição, mantendo a identidade do produto. Takes que reutilizam imagem
+  preservam também pessoa ou mãos, roupa, apoio e ambiente da imagem de origem.
 - Em cenas com equipe, a variação de roupa ocorre entre gerações; dentro de cada imagem, todos os trabalhadores devem manter o mesmo arquétipo e a mesma solução cromática contextual de uniforme.
 - Sempre priorizar legibilidade do produto sem aumentar sua escala física.
 - Sempre manter coerência visual entre produto, escala humana e ambiente.
@@ -78,7 +81,8 @@ O negative prompt deve ser um texto em inglês contendo os principais erros a ev
 
 ## REGRAS FINAIS OBRIGATÓRIAS
 
-1. Preparar um artefato JSON independente por cena.
+1. Preparar um artefato JSON independente por base visual nova; takes com
+   reutilização usam a imagem confirmada, sem preparar outro artefato.
 2. Título e identificador ficam na prévia ou no nome do arquivo, fora do JSON.
 3. Cada artefato representa uma imagem estática, sem depender de delimitadores de chat.
 4. Cada JSON deve conter exatamente e somente:
@@ -90,35 +94,18 @@ O negative prompt deve ser um texto em inglês contendo os principais erros a ev
 5. Aspect ratio sempre "9:16".
 6. Nunca explicar o raciocínio.
 7. O artefato de imagem não agrupa formatos em um array; o manifesto externo do orquestrador pode conter tasks.
-8. Criar obrigatoriamente uma cena “VENDEDORA APRESENTANDO PRODUTO” após cada formato de gancho solicitado.
-9. Quando não houver formato informado ou quando o usuário pedir todos, gerar exatamente 12 cenas nesta ordem:
-
-## - CENA 1 - FORMATO FÁBRICA PADRÃO GANCHO VISUAL
-
-## - CENA 2 - VENDEDORA APRESENTANDO PRODUTO
-
-## - CENA 3 - FORMATO FÁBRICA GRUPO GANCHO VISUAL
-
-## - CENA 4 - VENDEDORA APRESENTANDO PRODUTO
-
-## - CENA 5 - FORMATO FÁBRICA + CAMINHÃO CHEIO DO PRODUTO GANCHO VISUAL
-
-## - CENA 6 - VENDEDORA APRESENTANDO PRODUTO
-
-## - CENA 7 - FORMATO FÁBRICA ESTEIRA INCLINADA GANCHO VISUAL
-
-## - CENA 8 - VENDEDORA APRESENTANDO PRODUTO
-
-## - CENA 9 - POV GANCHO VISUAL
-
-## - CENA 10 - VENDEDORA APRESENTANDO PRODUTO
-
-## - CENA 11 - FULL VENDEDORA GANCHO VISUAL
-
-## - CENA 12 - VENDEDORA APRESENTANDO PRODUTO
-
-10. Quando houver formato específico em linguagem natural, gerar exatamente o par correspondente: gancho + Vendedora apresentando produto.
-11. Quando houver múltiplos formatos específicos, gerar apenas os pares correspondentes, renumerados e ordenados pela ordem canônica.
+8. Nos formatos mistos (fábricas e POV + Vendedora), preparar gancho e imagem de
+   vendedora; CTA reutiliza a imagem do Body. Nos formatos Full, preparar somente
+   a imagem do gancho, reutilizada diretamente no Body e CTA.
+9. Seguir a ordem canônica dos sete formatos em [imagem.md](../imagem.md): quatro
+   fábricas, POV + Vendedora, Full POV e Full Vendedora. Os grupos salvos definem
+   formatos e quantidades; não gerar o catálogo inteiro por ausência de pedido
+   adicional no chat.
+10. Para um formato específico, preparar somente suas bases visuais: uma nos
+    formatos Full, duas nos formatos mistos. Não criar imagem nova para take que
+    reutiliza uma imagem confirmada.
+11. Para múltiplos formatos, preparar somente as bases correspondentes aos grupos
+    selecionados, na ordem canônica.
 12. No Formato Fábrica Grupo, posicionar o grupo praticamente todo atrás da mesa; nunca nas duas laterais como linha de produção.
 13. No Formato Fábrica Grupo, permitir que a mesa oculte naturalmente a parte inferior dos corpos, mas manter rostos, cabeças, ombros e braços completos e sem cortes laterais.
 14. No Formato Fábrica + Caminhão Cheio do Produto, alinhar a mesa longa ao caminhão aberto e carregado no eixo central da composição.
@@ -141,7 +128,8 @@ O negative prompt deve ser um texto em inglês contendo os principais erros a ev
 31. Em cenas com Full Vendedora, manter o produto próximo ao tronco, usar perspectiva natural equivalente a 35–50 mm e evitar braços estendidos em direção à câmera.
 32. Quando o usuário informar capacidade, volume ou medidas, usar esses dados como âncoras obrigatórias e positivas no prompt principal.
 33. Nunca ampliar o produto apenas para favorecer destaque, legibilidade ou composição.
-34. Nunca omitir a cena parceira “VENDEDORA APRESENTANDO PRODUTO” após um gancho solicitado.
+34. Nos formatos mistos, nunca omitir a imagem de vendedora do Body. Nos formatos
+    Full, Body e CTA usam a imagem do gancho, sem uma imagem parceira adicional.
 35. Em cada imagem de fábrica/warehouse com equipe, escolher EXATAMENTE UM arquétipo de uniforme e aplicá-lo a todos os trabalhadores; nunca misturar tipos de uniforme dentro da mesma equipe.
 36. Em cada imagem com equipe, escolher UMA solução cromática contextual e coerente e mantê-la em todos os uniformes; o arquétipo e a solução cromática podem variar somente entre novas gerações ou cenas independentes.
 37. No FORMATO FÁBRICA GRUPO, nunca usar mesa longa com trabalhadores nas laterais; usar grupo compacto e muito próximo atrás de mesa curta, bancada curta ou caixas com muitos produtos expostos na frente.
@@ -168,7 +156,7 @@ O negative prompt deve ser um texto em inglês contendo os principais erros a ev
 58. Em produto composto multicolorido, nunca criar estoque separado por cor, pilhas monocromáticas ou fileiras de componentes individuais quando a referência mostra o conjunto completo como uma unidade comercial.
 59. No FORMATO FÁBRICA ESTEIRA INCLINADA, cada posição das duas fileiras deve conter um PRODUCT UNIT completo; o recipiente também deve preservar PRODUCT UNITS reconhecíveis quando o produto for composto.
 60. No Formato Fábrica + Caminhão Cheio do Produto, a mesa e a carga do caminhão devem repetir PRODUCT UNITS completos; nunca preencher o caminhão com componentes internos separados ou agrupados por cor.
-61. Em POV, Full Vendedora e Vendedora Apresentando Produto, quando o produto for composto, mãos e pessoa devem segurar/apresentar o PRODUCT UNIT completo exatamente montado como referência.
+61. Em POV + Vendedora, Full POV, Full Vendedora e Vendedora Apresentando Produto, quando o produto for composto, mãos e pessoa devem segurar/apresentar o PRODUCT UNIT completo exatamente montado como referência.
 62. Antes de responder, validar silenciosamente que toda roupa descrita no prompt pertence à whitelist positiva apropriada ao contexto e que nenhuma roupa fora da whitelist foi introduzida.
 63. Antes de responder, validar silenciosamente que cada equipe de fábrica/warehouse usa apenas um arquétipo de uniforme na imagem inteira.
 64. Antes de responder, validar silenciosamente que todos os integrantes da mesma equipe compartilham a mesma solução cromática contextual e a mesma combinação de peças.

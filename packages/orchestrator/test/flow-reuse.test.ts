@@ -240,6 +240,40 @@ test('persisted Body image supplies the exact CTA frame and four fenced checkpoi
   assert.deepEqual(reused.input, f.cta);
 });
 
+test('Body and CTA both reuse the direct Hook image with four checkpoints each', async (t) => {
+  const f = await reuseFixture(t);
+  const hookInput = f.body;
+  hookInput.take = 'Gancho';
+  hookInput.flow.output!.filename = '01-Gancho.mp4';
+  const bodyInput = structuredClone(f.cta);
+  bodyInput.take = 'Body';
+  bodyInput.flow.output!.filename = '02-Body.mp4';
+  const ctaInput = structuredClone(f.cta);
+  ctaInput.taskKey = randomUUID();
+  const inputs = [hookInput, bodyInput, ctaInput];
+  const tasks = f.repository.enqueue(f.clientId, randomUUID(), inputs);
+  const hook = tasks[0]!;
+  f.repository.control(f.clientId, true);
+  const imageId = complete(f, hook.id, hookInput);
+  for (const index of [1, 2]) {
+    const input = inputs[index]!,
+      task = tasks[index]!;
+    assert.deepEqual(new FlowImages(f.database).resolve(f.clientId, input), {
+      taskId: hook.id,
+      mediaId: imageId,
+    });
+    complete(f, task.id, input, hook.id, imageId);
+    const detail = f.queueDatabase.detail(task.id, f.clientId);
+    assert.equal(detail.checkpoints.length, 4);
+    assert.equal(detail.checkpoints[0]?.checkpoint.stage, 'image_reused');
+    assert.equal(detail.task.state, 'completed');
+  }
+  assert.equal(
+    f.queueDatabase.detail(hook.id, f.clientId).checkpoints.length,
+    5,
+  );
+});
+
 test('engine transmits the persisted source ID and never dispatches CTA after a cancelled Body', async (t) => {
   for (const success of [true, false]) {
     const f = await reuseFixture(t);

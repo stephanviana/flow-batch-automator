@@ -9,20 +9,20 @@ A montagem do lote pertence ao [orquestrador](orquestrador.md), e a animação a
 
 Para grupos `clone`, siga [clonagem.md](clonagem.md) e a composição observada no
 vídeo selecionado, junto das regras comuns de produto, realismo e vestuário.
-Esse modo não aciona a geração automática dos seis formatos do catálogo: crie
+Esse modo não aciona a geração automática dos sete formatos do catálogo: crie
 somente o par visual e a quantidade de variações do grupo salvo.
 
 Leia sempre as regras de [produto e realismo](imagem/produto-e-realismo.md),
 [roupas e uniformes](imagem/roupas-e-uniformes.md) e
 [redação e revisão](imagem/redacao-e-revisao.md). Depois leia os formatos pedidos:
 
-| Formato                             | Regras                                                 |
-| ----------------------------------- | ------------------------------------------------------ |
-| Fábrica Padrão                      | [Fábrica Padrão](imagem/fabrica-padrao.md)             |
-| Fábrica Grupo                       | [Fábrica Grupo](imagem/fabrica-grupo.md)               |
-| Fábrica + Caminhão                  | [Fábrica + Caminhão](imagem/fabrica-caminhao.md)       |
-| Fábrica Esteira Inclinada           | [Fábrica Esteira Inclinada](imagem/fabrica-esteira.md) |
-| POV e Full Vendedora / apresentação | [POV e Vendedora](imagem/pov-e-vendedora.md)           |
+| Formato                                    | Regras                                                 |
+| ------------------------------------------ | ------------------------------------------------------ |
+| Fábrica Padrão                             | [Fábrica Padrão](imagem/fabrica-padrao.md)             |
+| Fábrica Grupo                              | [Fábrica Grupo](imagem/fabrica-grupo.md)               |
+| Fábrica + Caminhão                         | [Fábrica + Caminhão](imagem/fabrica-caminhao.md)       |
+| Fábrica Esteira Inclinada                  | [Fábrica Esteira Inclinada](imagem/fabrica-esteira.md) |
+| POV + Vendedora, Full POV e Full Vendedora | [POV e Vendedora](imagem/pov-e-vendedora.md)           |
 
 ## Entrada do workflow
 
@@ -42,7 +42,7 @@ uma edição específica; a instrução textual deve distinguir produto e interf
 
 ## Contrato do artefato de imagem
 
-Cada cena prepara um JSON independente com exatamente estas três chaves:
+Cada imagem nova prepara um JSON independente com exatamente estas três chaves:
 
 ```json
 {
@@ -110,7 +110,8 @@ Exemplos de pedidos que devem ser interpretados corretamente:
 - Formato Fábrica Grupo
 - Formato Fábrica + Caminhão Cheio do Produto
 - Formato Fábrica Esteira Inclinada
-- POV
+- POV + Vendedora
+- Full POV
 - Full Vendedora
 
 ## ORDEM CANÔNICA DOS FORMATOS
@@ -121,8 +122,9 @@ Sempre que dois ou mais formatos forem gerados, respeitar esta ordem:
 2. Formato Fábrica Grupo
 3. Formato Fábrica + Caminhão Cheio do Produto
 4. Formato Fábrica Esteira Inclinada
-5. POV
-6. Full Vendedora
+5. POV + Vendedora
+6. Full POV
+7. Full Vendedora
 
 ## PRIORIDADE DE DESAMBIGUAÇÃO
 
@@ -188,9 +190,12 @@ Interprete como FORMATO FÁBRICA PADRÃO quando o usuário mencionar:
 - mesa industrial longa com trabalhadores dos dois lados;
 - esteira comum, sem indicar inclinação forte, grupo atrás da mesa ou caminhão carregado.
 
-Interprete como POV quando o usuário mencionar:
+Interprete como FULL POV quando o usuário mencionar “full POV”, “só POV” ou
+“somente mãos nos três takes”. Essa escolha prevalece sobre o termo genérico POV.
 
-- pov;
+Interprete como POV + VENDEDORA quando o usuário mencionar:
+
+- pov sem especificar full;
 - primeira pessoa;
 - mãos;
 - segurando em primeira pessoa;
@@ -210,114 +215,25 @@ Interprete como FULL VENDEDORA quando o usuário mencionar:
 - pessoa apresentando;
 - funcionária de loja.
 
-Se o usuário mencionar mais de um formato específico, gerar apenas as cenas correspondentes, seguindo a ordem canônica.
-Se o usuário não mencionar nenhum formato, gerar os seis formatos.
-Se o usuário pedir “todos”, “todos os formatos”, “variações completas” ou equivalente, gerar os seis formatos.
-Se o usuário disser “sem [formato]”, gerar todos os formatos exceto o formato excluído, preservando a ordem canônica.
+Se o usuário mencionar mais de um formato específico, preparar somente os
+formatos correspondentes na ordem canônica. Em pedidos salvos, os grupos e as
+quantidades do pedido governam o escopo; não gerar todo o catálogo por falta de
+uma indicação adicional no chat.
 
-## MODO DE OPERAÇÃO
+## Bases visuais por formato
 
-## REGRA CENTRAL DE PARES
+| Formato                    | Imagens estáticas novas por variação             | Frames iniciais dos vídeos                                    |
+| -------------------------- | ------------------------------------------------ | ------------------------------------------------------------- |
+| Quatro formatos de fábrica | Gancho do formato + vendedora                    | Gancho próprio; Body e CTA compartilham a imagem de vendedora |
+| POV + Vendedora            | Gancho POV + vendedora                           | Gancho POV; Body e CTA compartilham a imagem de vendedora     |
+| Full POV                   | Uma imagem POV                                   | Gancho, Body e CTA compartilham essa imagem                   |
+| Full Vendedora             | Uma imagem de apresentadora em cenário logístico | Gancho, Body e CTA compartilham essa imagem                   |
 
-Cada formato de gancho deve ser seguido obrigatoriamente por uma cena parceira chamada “VENDEDORA APRESENTANDO PRODUTO”.
-Nunca entregar apenas os ganchos quando o usuário pedir formatos completos.
-Cada par representa um criativo:
+Nos formatos com duas imagens, os artefatos são `hookImage` e `presenterImage`.
+Nos formatos Full, preparar somente `hookImage`. O compilador registra a
+reutilização dos IDs confirmados; não preparar nova imagem ou repetir o prompt
+como substituto de reutilização. As falas dos três takes continuam distintas.
 
-- primeira cena = gancho visual do formato solicitado;
-- segunda cena = vendedora apresentando o mesmo produto.
-
-## MODO 1 — SEM FORMATO INFORMADO OU PEDIDO DE TODOS OS FORMATOS
-
-Se o usuário não informar o formato, ou pedir todos os formatos, gerar exatamente 12 cenas organizadas em 6 pares, nesta ordem obrigatória:
-
-## PAR 1
-
-- CENA 1 - FORMATO FÁBRICA PADRÃO GANCHO VISUAL
-- CENA 2 - VENDEDORA APRESENTANDO PRODUTO
-
-## PAR 2
-
-- CENA 3 - FORMATO FÁBRICA GRUPO GANCHO VISUAL
-- CENA 4 - VENDEDORA APRESENTANDO PRODUTO
-
-## PAR 3
-
-- CENA 5 - FORMATO FÁBRICA + CAMINHÃO CHEIO DO PRODUTO GANCHO VISUAL
-- CENA 6 - VENDEDORA APRESENTANDO PRODUTO
-
-## PAR 4
-
-- CENA 7 - FORMATO FÁBRICA ESTEIRA INCLINADA GANCHO VISUAL
-- CENA 8 - VENDEDORA APRESENTANDO PRODUTO
-
-## PAR 5
-
-- CENA 9 - POV GANCHO VISUAL
-- CENA 10 - VENDEDORA APRESENTANDO PRODUTO
-
-## PAR 6
-
-- CENA 11 - FULL VENDEDORA GANCHO VISUAL
-- CENA 12 - VENDEDORA APRESENTANDO PRODUTO
-
-## MODO 2 — COM FORMATO ÚNICO IDENTIFICADO EM LINGUAGEM NATURAL
-
-Se o usuário pedir apenas um formato, gerar exatamente duas cenas: o gancho solicitado e sua cena parceira de Vendedora.
-
-- FORMATO FÁBRICA PADRÃO:
-
-## - CENA 1 - FORMATO FÁBRICA PADRÃO GANCHO VISUAL
-
-## - CENA 2 - VENDEDORA APRESENTANDO PRODUTO
-
-- FORMATO FÁBRICA GRUPO:
-
-## - CENA 1 - FORMATO FÁBRICA GRUPO GANCHO VISUAL
-
-## - CENA 2 - VENDEDORA APRESENTANDO PRODUTO
-
-- FORMATO FÁBRICA + CAMINHÃO CHEIO DO PRODUTO:
-
-## - CENA 1 - FORMATO FÁBRICA + CAMINHÃO CHEIO DO PRODUTO GANCHO VISUAL
-
-## - CENA 2 - VENDEDORA APRESENTANDO PRODUTO
-
-- FORMATO FÁBRICA ESTEIRA INCLINADA:
-
-## - CENA 1 - FORMATO FÁBRICA ESTEIRA INCLINADA GANCHO VISUAL
-
-## - CENA 2 - VENDEDORA APRESENTANDO PRODUTO
-
-- POV:
-
-## - CENA 1 - POV GANCHO VISUAL
-
-## - CENA 2 - VENDEDORA APRESENTANDO PRODUTO
-
-- FULL VENDEDORA:
-
-## - CENA 1 - FULL VENDEDORA GANCHO VISUAL
-
-## - CENA 2 - VENDEDORA APRESENTANDO PRODUTO
-
-## MODO 3 — COM MÚLTIPLOS FORMATOS ESPECÍFICOS
-
-Se o usuário mencionar dois ou mais formatos, gerar somente os pares correspondentes e renumerá-los sequencialmente a partir de CENA 1, seguindo sempre a ordem canônica:
-
-1. Formato Fábrica Padrão
-2. Formato Fábrica Grupo
-3. Formato Fábrica + Caminhão Cheio do Produto
-4. Formato Fábrica Esteira Inclinada
-5. POV
-6. Full Vendedora
-
-Exemplo: se o usuário pedir “grupo, caminhão e POV”, gerar:
-
-- CENA 1 - FORMATO FÁBRICA GRUPO GANCHO VISUAL
-- CENA 2 - VENDEDORA APRESENTANDO PRODUTO
-- CENA 3 - FORMATO FÁBRICA + CAMINHÃO CHEIO DO PRODUTO GANCHO VISUAL
-- CENA 4 - VENDEDORA APRESENTANDO PRODUTO
-- CENA 5 - POV GANCHO VISUAL
-- CENA 6 - VENDEDORA APRESENTANDO PRODUTO
-
-Sempre manter a Vendedora como cena parceira de cada gancho solicitado.
+Cada artefato contém somente as três chaves do contrato de imagem. O par de
+imagens dos formatos mistos representa duas bases visuais para três vídeos.
+Na clonagem, seguir o par definido em [clonagem.md](clonagem.md).

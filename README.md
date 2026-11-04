@@ -31,15 +31,28 @@ materiais, cria as copys e os prompts; a extensão executa os lotes autorizados.
 6. A extensão cria ou recupera o projeto de cada lote e processa a fila, inclusive
    com o painel fechado. O side panel acompanha etapas, pausa, falhas e revisão.
 
-Por variação: gancho, Body e CTA; duas imagens novas e três vídeos. O CTA usa
-exatamente a imagem gerada pelo Body. Defaults: Nano Banana Pro e Omni 1.1 Flash
-Frames com frame inicial, 8 segundos, 720p, 9:16. Cada MP4 permanece separado:
-`01-Gancho.mp4`, `02-Body.mp4`, `03-CTA.mp4`, juntos por variação. A pasta global
-existente de downloads do Chrome não é alterada. Não há montagem de vídeo final.
+Cada variação gera três vídeos: gancho, Body e CTA. As imagens seguem o formato:
 
-As bases de copy de POV e Full Vendedora ainda aguardam seus swipes específicos.
-O pedido pode selecionar esses formatos; o agente deve resolver essa pendência
-criativa antes de publicar conteúdo para execução.
+| Formato                             | Imagens novas | Reutilização do frame inicial                                  |
+| ----------------------------------- | ------------- | -------------------------------------------------------------- |
+| Fábrica, POV + Vendedora e clonagem | 2             | CTA usa a imagem do Body                                       |
+| Full POV                            | 1             | Gancho, Body e CTA usam a imagem POV gerada no gancho          |
+| Full Vendedora                      | 1             | Gancho, Body e CTA usam a imagem da vendedora gerada no gancho |
+
+Defaults: Nano Banana Pro e Omni 1.1 Flash Frames com frame inicial, 8 segundos,
+720p, 9:16. Cada MP4 permanece separado: `01-Gancho.mp4`, `02-Body.mp4` e
+`03-CTA.mp4`, juntos por variação. A pasta global existente de downloads do Chrome
+não é alterada. Não há montagem de vídeo final. As falas são planejadas
+para ocupar perto de 7–7,5 segundos de cada take de 8 segundos, com margem curta
+e ritmo natural. Essa é uma estimativa editorial; o áudio gerado exige conferência. A nova regra de imagem única
+vale para novas preparações; manifestos já registrados permanecem imutáveis.
+
+Os sete formatos têm bases de copy incorporadas: [Fábrica](agents/copy/fabrica.md),
+[POV + Vendedora e Full POV](agents/copy/pov.md) e [Full Vendedora](agents/copy/vendedora.md).
+As bases já incorporam os swipes e orientam diretamente sintaxe e progressão
+de venda. Para testar uma copy ou formato de referência, use a opção de clonagem
+do pedido. As regras incluem fidelidade factual, anti-overlay, apoio físico e
+continuidade Body/CTA; não representam validação de conversão ou de mídia real.
 
 ## Clonar o formato de um vídeo
 
@@ -48,7 +61,7 @@ Em **Criação dos vídeos**, escolha **Clonar um vídeo**. Depois importe um ú
 MP4 baixado do TikTok Shop em **Materiais adicionais**.
 Ele será vinculado automaticamente à clonagem, sem
 uma segunda seleção. Para clonar outra referência, prepare outro pedido/lote.
-**Usar formatos padrão** mostra os seis formatos do catálogo. A quantidade
+**Usar formatos padrão** mostra os sete formatos do catálogo. A quantidade
 de variações pode ser definida junto de outros formatos no mesmo produto. A prévia pode ser
 reproduzida antes de salvar e consultada novamente no pedido salvo. Use
 **Adicionar criação** para combinar os dois caminhos no mesmo produto.
@@ -59,10 +72,14 @@ imagem de referência do produto são mantidas. Os materiais adicionais são
 compartilhados pelas criações do produto.
 
 Salve e peça ao agente que prepare o pedido. O checkout baixa o MP4 verificado
-e identifica o vídeo de cada variação. O agente analisa a estrutura, adapta
+e identifica o vídeo de cada variação. O agente extrai a estrutura narrativa,
+a sintaxe frase por frase, o formato, o template e as regras de fidelidade; adapta
 as falas e cenas para o produto e publica a análise e as direções de gancho,
 Body e CTA para sua conferência. O servidor não chama IA e o vídeo não é
-enviado ao Flow; a foto do produto continua como referência de geração.
+enviado ao Flow; a foto do produto continua como referência de geração. Mesmo com
+uma única variação, a copy é criada para o produto a partir da estrutura do vídeo.
+Com várias, os argumentos ou ênfases mudam dentro dessa mesma arquitetura;
+copiar a transcrição ou trocar apenas palavras não atende à preparação.
 
 A skill [flow-clone-video](skills/flow-clone-video.md) orienta essa análise
 e aplica as regras comuns de copy, imagem e animação de `agents/`, preservando
@@ -188,6 +205,7 @@ docker compose config --quiet
 pnpm test:docker
 pnpm test:browser:orders
 pnpm test:browser:reuse
+pnpm test:browser:formats
 pnpm test:browser:queue
 pnpm test:browser:navigation
 pnpm test:browser:cloning
@@ -196,9 +214,12 @@ pnpm test:browser
 
 Os testes de navegador usam Chrome for Testing em perfil isolado, referências e
 MP4s sintéticos e endpoints HTTPS locais. Não usam perfil pessoal nem consomem
-créditos do Google. Exigem navegador de teste instalado e porta 4319 livre.
-`test:browser:cloning` usa servidor e SQLite isolados na porta 4329, sem precisar
-parar a instalação local; `test:browser:navigation` usa somente páginas sintéticas.
+créditos do Google. Exigem navegador de teste instalado; os percursos da porta
+padrão precisam de 4319 livre.
+`test:browser:formats` valida POV + Vendedora, Full POV e Full Vendedora na
+porta 4339, com uma cópia da extensão e dados sintéticos em `.cache/`, sem
+interromper a instalação local. `test:browser:cloning` usa servidor e SQLite
+isolados na porta 4329, sem precisar parar a instalação local; `test:browser:navigation` usa somente páginas sintéticas.
 `test:docker` usa projeto e volume sintéticos próprios e preserva as evidências
 em `.cache/`. Esses testes não comprovam qualidade criativa ou uma nova geração
 paga na conta real. A autorização de implementação não autoriza essas gerações.

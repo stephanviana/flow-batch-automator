@@ -8,7 +8,7 @@ export {
   materialFilename,
   type Material,
 } from './materials.js';
-export const ORDER_GROUP_LIMIT = 7;
+export const ORDER_GROUP_LIMIT = 8;
 export const orderProductSchema = z
   .strictObject({
     id: z.uuid(),
