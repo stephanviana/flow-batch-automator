@@ -7,6 +7,11 @@ A montagem do lote pertence ao [orquestrador](orquestrador.md), e a animação a
 
 ## Leitura das regras
 
+Para grupos `clone`, siga [clonagem.md](clonagem.md) e a composição observada no
+vídeo selecionado, junto das regras comuns de produto, realismo e vestuário.
+Esse modo não aciona a geração automática dos seis formatos do catálogo: crie
+somente o par visual e a quantidade de variações do grupo salvo.
+
 Leia sempre as regras de [produto e realismo](imagem/produto-e-realismo.md),
 [roupas e uniformes](imagem/roupas-e-uniformes.md) e
 [redação e revisão](imagem/redacao-e-revisao.md). Depois leia os formatos pedidos:

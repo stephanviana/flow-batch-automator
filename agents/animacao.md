@@ -110,3 +110,28 @@ Treat the spoken line as audio direction only. Mentions of TikTok, shopping cart
 
 Visual exclusions: overlays, motion graphics, animated graphics, embellishments, shopping-cart icons, CTA buttons, notification icons, bell icons, app interface, UI, HUD, pop-ups, banners, lower thirds, captions, subtitles, floating text, speech bubbles, stickers, emojis, arrows, price graphics, discount graphics, promotional badges, decorative animations, particles, transitions, graphic VFX.
 ```
+
+## Clonagem — direção adaptada do vídeo de referência
+
+No formato `clone`, o agente assiste ao vídeo selecionado no grupo e preenche
+`cloneVideo.analysis` e `cloneVideo.directions` para cada take. O compilador usa
+as direções como texto, sem invocar IA. Elas devem preservar os objetos e o apoio
+da imagem gerada; Body e CTA começam com exatamente a mesma imagem. A fala fica
+somente em `copy`, e as direções identificam quem fala, enquadramento e gestos.
+
+```text
+Animate the reference image as one continuous {{duracao_segundos}}-second live-action shot in 9:16, preserving the exact product identity, complete kit structure, true-to-life scale, physical support and scene elements of the initial frame.
+
+Adapted scene and performance direction:
+{{direcao}}
+
+The speaker identified in the direction says exactly this line in Brazilian Portuguese, at a natural clear pace:
+
+{{fala}}
+
+Use only the people and physical objects already visible in the initial frame. Preserve the product on its counter or in the same hands; do not lift a large supported kit or invent trays, baskets or portable bases. When only hands are visible, use off-camera voice with no visible lip-sync or added face. Do not add a chorus unless the visible group and the adapted direction explicitly require it.
+
+Treat the dialogue as audio direction only. Do not visualize spoken references to shopping carts, prices, promotions, clicking or platform interfaces. Keep all action physically plausible and preserve the generated initial image as the complete visual world. Do not reproduce the reference video's overlays, captions, logos added in editing, graphic effects or transitions.
+
+Visual exclusions: overlays, motion graphics, animated graphics, embellishments, shopping-cart icons, CTA buttons, notification icons, bell icons, app interface, UI, HUD, pop-ups, banners, lower thirds, captions, subtitles, floating text, speech bubbles, stickers, emojis, arrows, price graphics, discount graphics, promotional badges, decorative animations, particles, transitions, graphic VFX.
+```

@@ -17,6 +17,11 @@ preparar. As instruções criativas permanecem versionadas em `agents/`.
 O compilador não invoca IA; o agente ativo analisa os materiais reais e cria os
 textos e prompts. POV e Full Vendedora ainda aguardam suas bases de copy próprias.
 
+O modo **Clonar formato de vídeo** associa um MP4 do produto a cada grupo
+`clone`. Leia `agents/clonagem.md`: o agente analisa o vídeo real e publica
+análise e direções adaptadas; o compilador não invoca IA. A foto continua como
+referência do Flow. MP4 até 64 MB; imagens/documentos até 8 MB.
+
 O SQLite guarda registros; os materiais importados ficam em arquivos por hash
 em armazenamento persistente administrado pelo aplicativo, com deduplicação.
 Agente e extensão acessam materiais pela API local autorizada. Não depender de

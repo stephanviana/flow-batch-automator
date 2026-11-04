@@ -18,6 +18,10 @@ e Full Vendedora ainda serão fornecidos.
 4. [Animação](animacao.md): renderização da fala exata nos templates técnicos,
    preservando o bloco anti-overlay.
 
+Para grupos **Clonar formato de vídeo**, leia também [clonagem.md](clonagem.md).
+O vídeo selecionado é a fonte estrutural; a foto continua como referência visual
+do produto. Registre a análise e as direções adaptadas antes de publicar.
+
 Os arquivos em `imagem/` dividem as regras por responsabilidade: identidade e
 escala do produto, roupas/uniformes, composição de cada formato e revisão final.
 Leia as regras comuns e as dos formatos pedidos antes de preparar seus prompts.

@@ -12,8 +12,10 @@ function readTemplates(markdown: string): Map<string, string> {
     ['Fábrica', 'factory'],
     ['Vendedora', 'seller'],
     ['POV', 'pov'],
+    ['Clonagem', 'clone'],
   ] as const) {
     const section = markdown.split(`## ${heading} — `)[1]?.split('\n## ')[0];
+    if (!section && name === 'clone') continue;
     const template = section?.match(/```text\n([\s\S]*?)\n```/)?.[1];
     if (
       !template?.includes('{{fala}}') ||
@@ -46,16 +48,24 @@ export async function compilePreparation(
       ['cta', '03-CTA'],
     ] as const) {
       const role =
-        stage !== 'hook'
-          ? 'seller'
-          : variation.format.startsWith('factory')
-            ? 'factory'
-            : variation.format;
-      const template = templates.get(role)!;
+        variation.format === 'clone'
+          ? 'clone'
+          : stage !== 'hook'
+            ? 'seller'
+            : variation.format.startsWith('factory')
+              ? 'factory'
+              : variation.format;
+      const template = templates.get(role);
+      if (!template)
+        throw new Error(`Template de animação indisponível: ${role}.`);
       const speech = variation.copy[stage];
       const videoPrompt = template
         .replaceAll('{{duracao_segundos}}', seconds)
-        .replaceAll('{{fala}}', speech);
+        .replaceAll('{{fala}}', speech)
+        .replaceAll(
+          '{{direcao}}',
+          variation.cloneVideo?.directions[stage] ?? '',
+        );
       if (/\{\{|\[INSERIR/.test(videoPrompt))
         throw new Error('O prompt contém um placeholder não resolvido.');
       tasks.push({

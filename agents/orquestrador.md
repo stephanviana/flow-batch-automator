@@ -52,6 +52,11 @@ Preserve a escolha de formatos em linguagem natural e a ordem canônica da V27.
 Os formatos e as quantidades vêm dos grupos salvos no pedido. Não ampliar o
 escopo para todos os formatos do catálogo sem solicitação do usuário.
 
+O modo **Clonar formato de vídeo** segue [clonagem.md](clonagem.md). Analise o
+MP4 ligado ao grupo, adapte sua estrutura ao produto e preencha a análise e as
+direções de animação da clonagem. Essa referência não substitui a foto do
+produto nem as regras de fatos comerciais e de apoio físico.
+
 Cada criativo em vídeo tem gancho, Body e CTA. A quantidade é a escolhida no pedido;
 um formato com três variações resulta em nove takes. O par visual define o gancho
 e a apresentação; não confundir duas bases visuais com duas cenas de copy.
@@ -64,6 +69,8 @@ e a apresentação; não confundir duas bases visuais com duas cenas de copy.
 | Fábrica Esteira Inclinada | Fábrica, preservando a lógica da esteira     | Vendedora  |
 | Full Vendedora            | Vendedora; adaptar a fala de gancho sem coro | Vendedora  |
 | POV                       | Voz fora de câmera; somente mãos visíveis    | Vendedora  |
+
+O modo de clonagem usa o template próprio de direção adaptada de `animacao.md`.
 
 Os seis formatos têm template de animação compatível. Isso não significa que
 as bases de copy de POV e Full Vendedora estejam prontas. POV usa a voz da pessoa que segura

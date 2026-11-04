@@ -76,6 +76,15 @@ export class OrderRepository {
             400,
             'Escolha uma imagem como referência de geração.',
           );
+        for (const group of product.groups)
+          if (
+            group.videoReferenceId &&
+            this.materials.get(group.videoReferenceId).mime !== 'video/mp4'
+          )
+            throw new HttpError(
+              400,
+              'Escolha um vídeo MP4 como referência da clonagem.',
+            );
       }
       this.database
         .prepare(

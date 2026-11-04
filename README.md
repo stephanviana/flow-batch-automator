@@ -60,8 +60,8 @@ trabalhos longos. `FLOW_AGENT_NAME` identifica o agente na reserva.
 Preencha os campos criativos mantendo os IDs, formatos e quantidades indicados.
 O servidor valida o pedido e compila os templates ativos de animação, dividindo
 os lotes automaticamente sem separar o CTA de seu Body. Limites: 30 produtos e
-120 variações por pedido; até 30 materiais por produto, cada um de até 8 MB;
-JPEG, PNG, WebP, PDF, TXT, Markdown e JSON. A referência de geração deve ser imagem.
+120 variações por pedido; até 30 materiais por produto, imagens/documentos de até 8 MB e MP4 de até 64 MB;
+JPEG, PNG, WebP, PDF, TXT, Markdown, JSON e MP4. A referência de geração deve ser imagem.
 Os manifestos respeitam os limites existentes de 20 takes e 64 KiB de admissão.
 
 Para revisar antes do despacho:

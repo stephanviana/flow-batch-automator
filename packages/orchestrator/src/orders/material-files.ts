@@ -11,7 +11,11 @@ import {
 import { resolve } from 'node:path';
 import { Transform, type Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { MATERIAL_LIMIT, type Material } from '@flow-batch/protocol';
+import {
+  MATERIAL_LIMIT,
+  VIDEO_MATERIAL_LIMIT,
+  type Material,
+} from '@flow-batch/protocol';
 import type { MaterialStore } from './material-store.js';
 import { HttpError } from '../security/errors.js';
 
@@ -28,9 +32,23 @@ function detectMime(prefix: Buffer, name: string): Material['mime'] {
   )
     return 'image/webp';
   if (prefix.toString('ascii', 0, 5) === '%PDF-') return 'application/pdf';
+  if (
+    /\.mp4$/i.test(name) &&
+    prefix.length >= 16 &&
+    prefix.toString('ascii', 4, 8) === 'ftyp' &&
+    prefix.readUInt32BE(0) >= 16 &&
+    prefix.readUInt32BE(0) <= prefix.length &&
+    ['isom', 'iso2', 'mp41', 'mp42', 'avc1', 'dash', 'M4V '].some((brand) =>
+      prefix.subarray(8).includes(Buffer.from(brand)),
+    )
+  )
+    return 'video/mp4';
   if (/\.(txt|md|json)$/i.test(name) && !prefix.includes(0))
     return /\.json$/i.test(name) ? 'application/json' : 'text/plain';
-  throw new HttpError(400, 'Use JPEG, PNG, WebP, PDF, TXT, Markdown ou JSON.');
+  throw new HttpError(
+    400,
+    'Use JPEG, PNG, WebP, PDF, TXT, Markdown, JSON ou vídeo MP4.',
+  );
 }
 
 export class MaterialFiles {
@@ -49,13 +67,19 @@ export class MaterialFiles {
     await this.root();
     const temporary = resolve(this.directory, `.${randomUUID()}.upload`);
     const digest = createHash('sha256');
+    const limit = /\.mp4$/i.test(name) ? VIDEO_MATERIAL_LIMIT : MATERIAL_LIMIT;
     let size = 0,
       prefix = Buffer.alloc(0);
     const meter = new Transform({
       transform(chunk: Buffer, _encoding, done): void {
         size += chunk.length;
-        if (size > MATERIAL_LIMIT)
-          return done(new HttpError(413, 'Cada material deve ter até 8 MB.'));
+        if (size > limit)
+          return done(
+            new HttpError(
+              413,
+              'Use até 8 MB por imagem/documento ou 64 MB por vídeo MP4.',
+            ),
+          );
         digest.update(chunk);
         if (prefix.length < 512)
           prefix = Buffer.concat([
@@ -74,6 +98,8 @@ export class MaterialFiles {
       if (!size) throw new HttpError(400, 'O material está vazio.');
       const mime = detectMime(prefix, name),
         sha256 = digest.digest('hex');
+      if (mime !== 'video/mp4' && size > MATERIAL_LIMIT)
+        throw new HttpError(413, 'Imagens e documentos devem ter até 8 MB.');
       this.store.byHash(sha256);
       try {
         await link(temporary, resolve(this.directory, sha256));

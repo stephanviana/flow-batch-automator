@@ -4,22 +4,12 @@ import {
   type OrderPublication,
   type ImportManifest,
   type Preparation,
-  type Material,
+  materialFilename,
 } from '@flow-batch/protocol';
 import type { PreparedOrder, ProductionOrder } from './repository.js';
 import { HttpError } from '../security/errors.js';
 
-export function referencePath(material: Material): string {
-  const extension = {
-    'image/png': 'png',
-    'image/jpeg': 'jpg',
-    'image/webp': 'webp',
-    'application/pdf': 'pdf',
-    'text/plain': 'txt',
-    'application/json': 'json',
-  }[material.mime];
-  return `${material.id}.${extension}`;
-}
+export { materialFilename as referencePath } from '@flow-batch/protocol';
 
 export async function variationPlan(order: ProductionOrder): Promise<
   {
@@ -27,6 +17,7 @@ export async function variationPlan(order: ProductionOrder): Promise<
     id: string;
     format: Preparation['variations'][number]['format'];
     name: string;
+    videoReferenceId?: string;
   }[]
 > {
   const plan = [];
@@ -43,6 +34,9 @@ export async function variationPlan(order: ProductionOrder): Promise<
             String(index),
           ]),
           format: group.format,
+          ...(group.videoReferenceId
+            ? { videoReferenceId: group.videoReferenceId }
+            : {}),
           name: `${group.format} ${index + 1}`,
         });
   return plan;
@@ -54,7 +48,7 @@ async function compileProduct(
   variations: Preparation['variations'],
   templates: string,
 ): Promise<ImportManifest[]> {
-  const reference = referencePath(
+  const reference = materialFilename(
     order.materials.find((material) => material.id === product.referenceId)!,
   );
   const manifests: ImportManifest[] = [];
@@ -122,7 +116,9 @@ export async function prepareOrder(
         (entry) =>
           !variations.some(
             (planned) =>
-              planned.id === entry.id && planned.format === entry.format,
+              planned.id === entry.id &&
+              planned.format === entry.format &&
+              planned.videoReferenceId === entry.cloneVideo?.materialId,
           ),
       )
     )

@@ -1,3 +1,4 @@
+import { materialFilename } from '../packages/protocol/dist/index.js';
 import { Buffer } from 'node:buffer';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -41,17 +42,6 @@ export async function localClient(base = 'http://127.0.0.1:4319') {
     return binary ? Buffer.from(await response.arrayBuffer()) : response.json();
   };
 }
-function materialPath(material) {
-  const extension = {
-    'image/png': 'png',
-    'image/jpeg': 'jpg',
-    'image/webp': 'webp',
-    'application/pdf': 'pdf',
-    'text/plain': 'txt',
-    'application/json': 'json',
-  }[material.mime];
-  return `${material.id}.${extension}`;
-}
 export async function checkout(api, number, worker, directory, revise = false) {
   const { order, variationPlan } = await api(`/manage/orders/${number}`);
   let existing;
@@ -91,7 +81,7 @@ export async function checkout(api, number, worker, directory, revise = false) {
       createHash('sha256').update(bytes).digest('hex') !== material.sha256
     )
       throw new Error('Material recebido difere do arquivo registrado.');
-    await writeFile(resolve(directory, materialPath(material)), bytes, {
+    await writeFile(resolve(directory, materialFilename(material)), bytes, {
       mode: 0o600,
     });
   }
@@ -99,10 +89,19 @@ export async function checkout(api, number, worker, directory, revise = false) {
     id: product.id,
     variations: variationPlan
       .filter((variation) => variation.productId === product.id)
-      .map(({ id, name, format }) => ({
+      .map(({ id, name, format, videoReferenceId }) => ({
         id,
         name,
         format,
+        ...(videoReferenceId
+          ? {
+              cloneVideo: {
+                materialId: videoReferenceId,
+                analysis: '',
+                directions: { hook: '', body: '', cta: '' },
+              },
+            }
+          : {}),
         hookImage: { prompt: '', negative_prompt: '', aspect_ratio: '9:16' },
         presenterImage: {
           prompt: '',

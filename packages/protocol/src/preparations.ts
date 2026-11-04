@@ -19,7 +19,29 @@ export const preparationFormatSchema = z.enum([
   'factory-inclined',
   'pov',
   'seller',
+  'clone',
 ]);
+export const preparationFormatLabels: Record<
+  z.infer<typeof preparationFormatSchema>,
+  string
+> = {
+  factory: 'Fábrica Padrão',
+  'factory-group': 'Fábrica Grupo',
+  'factory-truck': 'Fábrica + Caminhão',
+  'factory-inclined': 'Fábrica Esteira Inclinada',
+  pov: 'POV',
+  seller: 'Full Vendedora',
+  clone: 'Clonar formato de vídeo',
+};
+export const cloneVideoSchema = z.strictObject({
+  materialId: z.uuid(),
+  analysis: nonblankText,
+  directions: z.strictObject({
+    hook: nonblankText,
+    body: nonblankText,
+    cta: nonblankText,
+  }),
+});
 export const preparationSchema = z
   .strictObject({
     version: z.literal(1),
@@ -30,18 +52,26 @@ export const preparationSchema = z
     videoModel: flowVideoModelSchema.default('abra_i2v_8s'),
     variations: z
       .array(
-        z.strictObject({
-          id: z.uuid(),
-          name: z.string().trim().min(1).max(80),
-          format: preparationFormatSchema,
-          hookImage: creativeImageSchema,
-          presenterImage: creativeImageSchema,
-          copy: z.strictObject({
-            hook: nonblankText,
-            body: nonblankText,
-            cta: nonblankText,
-          }),
-        }),
+        z
+          .strictObject({
+            id: z.uuid(),
+            name: z.string().trim().min(1).max(80),
+            format: preparationFormatSchema,
+            hookImage: creativeImageSchema,
+            presenterImage: creativeImageSchema,
+            cloneVideo: cloneVideoSchema.optional(),
+            copy: z.strictObject({
+              hook: nonblankText,
+              body: nonblankText,
+              cta: nonblankText,
+            }),
+          })
+          .refine(
+            (variation) =>
+              (variation.format === 'clone') ===
+              (variation.cloneVideo !== undefined),
+            'A clonagem exige análise e direções do vídeo; os demais formatos não usam cloneVideo.',
+          ),
       )
       .min(1)
       .max(6),

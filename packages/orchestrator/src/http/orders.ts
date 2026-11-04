@@ -2,7 +2,10 @@ import { readFileSync } from 'node:fs';
 import { Readable } from 'node:stream';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { orderPublicationSchema } from '@flow-batch/protocol';
+import {
+  orderPublicationSchema,
+  VIDEO_MATERIAL_LIMIT,
+} from '@flow-batch/protocol';
 import type { LocalSessions } from '../security/local-session.js';
 import type { ClientStore } from '../persistence/clients.js';
 import type { OrderRepository } from '../orders/repository.js';
@@ -98,37 +101,41 @@ export function registerOrders(
     sessions.require(request);
     return repository.cancel(id(request.params));
   });
-  app.post('/manage/materials', { bodyLimit: 8_388_608 }, async (request) => {
-    sessions.require(request);
-    const encoded = z
-      .string()
-      .max(1000)
-      .parse(request.headers['x-flow-filename']);
-    let name: string;
-    try {
-      name = decodeURIComponent(encoded);
-    } catch {
-      throw new HttpError(400, 'Nome de arquivo inválido.');
-    }
-    name = z
-      .string()
-      .trim()
-      .min(1)
-      .max(180)
-      .refine((value) =>
-        [...value].every(
-          (character) =>
-            character.charCodeAt(0) >= 32 && !'/\\'.includes(character),
-        ),
-      )
-      .parse(name);
-    if (!(request.body instanceof Readable))
-      throw new HttpError(
-        415,
-        'Envie o arquivo como application/octet-stream.',
-      );
-    return files.import(request.body, name);
-  });
+  app.post(
+    '/manage/materials',
+    { bodyLimit: VIDEO_MATERIAL_LIMIT },
+    async (request) => {
+      sessions.require(request);
+      const encoded = z
+        .string()
+        .max(1000)
+        .parse(request.headers['x-flow-filename']);
+      let name: string;
+      try {
+        name = decodeURIComponent(encoded);
+      } catch {
+        throw new HttpError(400, 'Nome de arquivo inválido.');
+      }
+      name = z
+        .string()
+        .trim()
+        .min(1)
+        .max(180)
+        .refine((value) =>
+          [...value].every(
+            (character) =>
+              character.charCodeAt(0) >= 32 && !'/\\'.includes(character),
+          ),
+        )
+        .parse(name);
+      if (!(request.body instanceof Readable))
+        throw new HttpError(
+          415,
+          'Envie o arquivo como application/octet-stream.',
+        );
+      return files.import(request.body, name);
+    },
+  );
   app.get('/manage/materials/:id', async (request, reply) => {
     sessions.require(request);
     const { material, stream } = await files.read(id(request.params));

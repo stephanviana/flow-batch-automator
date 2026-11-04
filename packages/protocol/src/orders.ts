@@ -1,23 +1,14 @@
 import { z } from 'zod';
 import { preparationFormatSchema, preparationSchema } from './preparations.js';
 
-export const MATERIAL_LIMIT = 8_388_608;
-export const materialSchema = z.strictObject({
-  id: z.uuid(),
-  name: z.string().min(1).max(180),
-  mime: z.enum([
-    'image/png',
-    'image/jpeg',
-    'image/webp',
-    'application/pdf',
-    'text/plain',
-    'application/json',
-  ]),
-  size: z.number().int().min(1).max(MATERIAL_LIMIT),
-  sha256: z.string().regex(/^[a-f0-9]{64}$/),
-  available: z.boolean(),
-});
-export type Material = z.infer<typeof materialSchema>;
+export {
+  MATERIAL_LIMIT,
+  VIDEO_MATERIAL_LIMIT,
+  materialSchema,
+  materialFilename,
+  type Material,
+} from './materials.js';
+export const ORDER_GROUP_LIMIT = 7;
 export const orderProductSchema = z
   .strictObject({
     id: z.uuid(),
@@ -31,12 +22,25 @@ export const orderProductSchema = z
           id: z.uuid(),
           format: preparationFormatSchema,
           count: z.number().int().min(1).max(20),
+          videoReferenceId: z.uuid().optional(),
         }),
       )
       .min(1)
-      .max(6),
+      .max(ORDER_GROUP_LIMIT),
   })
   .superRefine((product, context) => {
+    for (const group of product.groups) {
+      if (
+        (group.format === 'clone') !== (group.videoReferenceId !== undefined) ||
+        (group.videoReferenceId &&
+          !product.materials.includes(group.videoReferenceId))
+      )
+        context.addIssue({
+          code: 'custom',
+          message:
+            'Clonar formato exige um vídeo dos materiais deste produto; os demais formatos não usam vídeo de referência.',
+        });
+    }
     if (
       !product.materials.includes(product.referenceId) ||
       new Set(product.materials).size !== product.materials.length ||

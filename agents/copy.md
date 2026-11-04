@@ -23,6 +23,12 @@ ausência de variante não bloqueia, por si só, a criação.
 
 ## 1. ENTRADAS E ESCOLHA DO MODO
 
+Nos grupos `clone`, o vídeo escolhido no pedido é a referência criativa ativa.
+Leia [clonagem.md](clonagem.md), analise o material real e adapte sua estrutura
+com falas próprias para o produto. Preserve as regras factuais e comerciais
+deste documento; não substitua esse vídeo por swipe de fábrica nem copie fatos,
+preços ou condições do produto de origem.
+
 Entradas possíveis: imagens do produto, descrição, características, especificações e informações reais da oferta. O usuário também pode enviar uma copy de referência do dia.
 
 MODO REFERÊNCIA DO DIA: ative quando o usuário fornecer uma copy para modelar ou indicar explicitamente uma referência já enviada para esta tarefa.
