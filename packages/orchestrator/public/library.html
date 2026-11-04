@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Biblioteca · Flow Batch</title>
+    <link rel="stylesheet" href="/theme.css" />
+    <link rel="stylesheet" href="/library.css" />
+  </head>
+  <body>
+    <main>
+      <header class="app-bar">
+        <a class="brand" href="/orders"
+          ><span class="brand-mark" aria-hidden="true">F</span>Flow Batch</a
+        >
+        <nav aria-label="Navegação principal">
+          <a href="/orders">Pedidos</a
+          ><a href="/library" aria-current="page">Biblioteca</a
+          ><a href="/connect">Conexão da extensão</a>
+        </nav>
+      </header>
+      <div class="page-intro">
+        <p class="eyebrow">Sua direção criativa</p>
+        <h1>Biblioteca de instruções e swipes</h1>
+        <p>
+          Edite o rascunho, compare com uma revisão e publique quando estiver
+          pronto. Cada pedido preserva a revisão usada na preparação.
+        </p>
+      </div>
+      <p id="status" role="status" aria-live="polite"></p>
+      <section>
+        <h2>Arquivos</h2>
+        <div class="actions">
+          <label>Arquivo<select id="files"></select></label
+          ><button id="refresh" class="secondary">Atualizar</button>
+        </div>
+        <div class="actions">
+          <label
+            >Novo arquivo<input
+              id="new-path"
+              placeholder="swipes/pov.txt" /></label
+          ><button id="new-file" class="secondary">Criar rascunho</button
+          ><label
+            >Importar swipe<input id="swipe" type="file" accept=".txt,.md"
+          /></label>
+        </div>
+        <p class="hint">
+          Use instrucoes/ para regras, swipes/ para referências e fluxos/ para
+          orientações de trabalho. Atualize as instruções do formato após
+          analisar um novo swipe. Os swipes não são enviados automaticamente a
+          cada geração.
+        </p>
+        <div class="editors">
+          <label
+            >Rascunho<textarea
+              id="editor"
+              rows="22"
+              spellcheck="false"
+            ></textarea></label
+          ><label
+            >Comparar com revisão<select id="revision"></select
+            ><textarea
+              id="comparison"
+              rows="20"
+              readonly
+              spellcheck="false"
+            ></textarea>
+          </label>
+        </div>
+        <p id="difference" class="hint"></p>
+        <div class="actions">
+          <button id="save">Salvar rascunho</button
+          ><button id="restore" class="secondary">
+            Restaurar revisão no rascunho
+          </button>
+        </div>
+      </section>
+      <section>
+        <h2>Publicar atualização</h2>
+        <p>
+          Novas reservas usarão a revisão publicada. Salve suas edições antes de
+          publicar.
+        </p>
+        <label
+          >Descrição da atualização<input
+            id="message"
+            maxlength="500"
+            placeholder="Atualização das estruturas de POV" /></label
+        ><button id="publish">Publicar biblioteca</button>
+        <p id="published" class="hint"></p>
+      </section>
+      <section>
+        <h2>Backup e nova instalação</h2>
+        <p>
+          Exporte instruções, swipes, rascunho e histórico. Guarde o arquivo em
+          outro local para recuperar a biblioteca em um novo computador.
+        </p>
+        <div class="actions">
+          <button id="export" class="secondary">Exportar biblioteca</button
+          ><label
+            >Importar biblioteca existente<input
+              type="file"
+              id="backup"
+              accept=".json"
+          /></label>
+        </div>
+        <pre id="import-preview"></pre>
+        <button id="import" disabled>Importar o backup revisado</button>
+        <p class="hint">
+          A importação preserva os arquivos substituídos no armazenamento local.
+          Pedidos e materiais de produtos têm armazenamento próprio.
+        </p>
+      </section>
+      <section>
+        <h2>Conectar seu agente por MCP</h2>
+        <p>
+          Baixe o conector e salve-o em uma pasta da sua escolha. Ele usa a
+          aplicação local em execução. Abra a conversa de produção em uma pasta
+          de trabalho própria.
+        </p>
+        <button id="download-mcp" class="secondary">Baixar conector MCP</button>
+        <p class="hint">
+          Requer Node.js 24.22.2 ou 26.12.1. Use command: node e args com o
+          caminho absoluto do conector na configuração MCP do agente.
+        </p>
+        <pre>
+{"mcpServers":{"flow-batch":{"command":"node","args":["/CAMINHO/flow-batch-mcp.mjs"]}}}</pre>
+      </section>
+    </main>
+    <script type="module" src="/library.js"></script>
+  </body>
+</html>

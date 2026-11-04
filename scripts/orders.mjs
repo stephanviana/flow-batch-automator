@@ -1,146 +1,15 @@
 import {
-  materialFilename,
-  usesSingleImage,
-} from '../packages/protocol/dist/index.js';
-import { Buffer } from 'node:buffer';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+  localClient,
+  requireContract,
+} from '../packages/orchestrator/dist/agent-client/http.js';
+import { checkout } from '../packages/orchestrator/dist/agent-client/workspace.js';
+import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createHash } from 'node:crypto';
-
-export async function localClient(base = 'http://127.0.0.1:4319') {
-  const url = new URL(base);
-  if (
-    !['127.0.0.1', 'localhost'].includes(url.hostname) ||
-    url.protocol !== 'http:'
-  )
-    throw new Error('Use a API HTTP local.');
-  // Only retry this read-only session bootstrap, never a mutation or dispatch.
-  const open = () =>
-    fetch(`${base}/orders`, {
-      redirect: 'error',
-      signal: AbortSignal.timeout(5000),
-    });
-  const response = await open().catch(() => open());
-  if (!response.ok) throw new Error('Não foi possível iniciar a sessão local.');
-  await response.arrayBuffer();
-  const cookie = response.headers.get('set-cookie')?.split(';')[0];
-  if (!cookie) throw new Error('Sessão local indisponível.');
-  return async (path, body, binary = false) => {
-    const response = await fetch(`${base}${path}`, {
-      method: body === undefined ? 'GET' : 'POST',
-      redirect: 'error',
-      headers: {
-        cookie,
-        origin: base,
-        'X-Flow-Management': '1',
-        ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
-      },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error ?? 'Operação recusada.');
-    }
-    return binary ? Buffer.from(await response.arrayBuffer()) : response.json();
-  };
-}
-export async function checkout(api, number, worker, directory, revise = false) {
-  const { order, variationPlan } = await api(`/manage/orders/${number}`);
-  let existing;
-  try {
-    existing = JSON.parse(
-      await readFile(resolve(directory, 'pedido.json'), 'utf8'),
-    );
-  } catch (error) {
-    if (error.code !== 'ENOENT') throw error;
-  }
-  let lease;
-  if (
-    existing &&
-    existing.order.id === order.id &&
-    order.state === 'preparing'
-  ) {
-    const renewed = await api(`/manage/orders/${order.id}/heartbeat`, {
-      leaseId: existing.leaseId,
-    });
-    lease = { leaseId: existing.leaseId, order: renewed };
-  } else
-    lease = await api(`/manage/orders/${order.id}/claim`, { worker, revise });
-  await mkdir(directory, { recursive: true, mode: 0o700 });
-  await writeFile(
-    resolve(directory, 'pedido.json'),
-    JSON.stringify({ ...lease, variationPlan }, null, 2) + '\n',
-    { mode: 0o600 },
-  );
-  for (const material of order.materials) {
-    const bytes = await api(
-      `/manage/materials/${material.id}`,
-      undefined,
-      true,
-    );
-    if (
-      bytes.length !== material.size ||
-      createHash('sha256').update(bytes).digest('hex') !== material.sha256
-    )
-      throw new Error('Material recebido difere do arquivo registrado.');
-    await writeFile(resolve(directory, materialFilename(material)), bytes, {
-      mode: 0o600,
-    });
-  }
-  const products = order.products.map((product) => ({
-    id: product.id,
-    variations: variationPlan
-      .filter((variation) => variation.productId === product.id)
-      .map(({ id, name, format, videoReferenceId }) => ({
-        id,
-        name,
-        format,
-        ...(videoReferenceId
-          ? {
-              cloneVideo: {
-                materialId: videoReferenceId,
-                analysis: '',
-                directions: { hook: '', body: '', cta: '' },
-              },
-            }
-          : {}),
-        hookImage: { prompt: '', negative_prompt: '', aspect_ratio: '9:16' },
-        ...(!usesSingleImage(format)
-          ? {
-              presenterImage: {
-                prompt: '',
-                negative_prompt: '',
-                aspect_ratio: '9:16',
-              },
-            }
-          : {}),
-        copy: { hook: '', body: '', cta: '' },
-      })),
-  }));
-  let preparation = {
-    leaseId: lease.leaseId,
-    products: order.preparation?.products ?? products,
-  };
-  try {
-    const previous = JSON.parse(
-      await readFile(resolve(directory, 'preparacao.json'), 'utf8'),
-    );
-    if (existing?.order.id === order.id)
-      preparation = { ...previous, leaseId: lease.leaseId };
-  } catch (error) {
-    if (error.code !== 'ENOENT') throw error;
-  }
-  await writeFile(
-    resolve(directory, 'preparacao.json'),
-    JSON.stringify(preparation, null, 2) + '\n',
-    { mode: 0o600 },
-  );
-  return { number, directory, expiresAt: lease.order.lease.expiresAt };
-}
+export { localClient, checkout };
 async function run() {
   const [command, ...args] = process.argv.slice(2),
-    api = await localClient();
+    api = await localClient(process.env.FLOW_API_URL);
   if (command === 'list') {
     const { orders } = await api('/manage/orders');
     console.log(
@@ -163,21 +32,28 @@ async function run() {
     for (const number of selected) {
       if (!/^\d+$/.test(number)) throw new Error('Use números de pedido.');
       const directory = resolve('.cache/orders', number);
+      const prepared = await checkout(
+        api,
+        Number(number),
+        process.env.FLOW_AGENT_NAME ?? 'agente-local',
+        directory,
+        args.includes('--revise'),
+      );
       console.log(
-        JSON.stringify(
-          await checkout(
-            api,
-            Number(number),
-            process.env.FLOW_AGENT_NAME ?? 'agente-local',
-            directory,
-            args.includes('--revise'),
-          ),
-        ),
+        JSON.stringify({
+          number: prepared.number,
+          directory: prepared.directory,
+          expiresAt: prepared.expiresAt,
+          preparationFile: prepared.preparationFile,
+          contextFile: resolve(directory, 'contexto.json'),
+          libraryRevision: prepared.context.revision,
+        }),
       );
     }
     return;
   }
   if (command === 'publish' || command === 'renew') {
+    if (command === 'publish') await requireContract(api);
     const filename = resolve(args[0] ?? '');
     const folder = command === 'publish' ? resolve(filename, '..') : filename;
     const { order, leaseId } = JSON.parse(

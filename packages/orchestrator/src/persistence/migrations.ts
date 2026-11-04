@@ -83,6 +83,14 @@ export const migrations: readonly Migration[] = [
     CREATE INDEX dispatch_manifest ON dispatch_commands(client_id,json_extract(body,'$.manifest.id'));`,
   },
   { version: 7, sql: orderMigration },
+  {
+    version: 8,
+    sql: `CREATE TABLE order_library_bindings (
+    order_id TEXT NOT NULL REFERENCES production_orders(id),
+    lease_id TEXT NOT NULL, revision TEXT NOT NULL,
+    PRIMARY KEY(order_id,lease_id)
+  ) STRICT;`,
+  },
 ];
 
 export function migrate(

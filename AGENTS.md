@@ -13,7 +13,23 @@ A arquitetura 0.6.0 usa painel em `/orders`, com produtos, materiais selecionado
 de qualquer pasta, formatos e quantidades por produto. Não há presets nesta
 etapa. O usuário pede ao Codex/Antigravity que prepare um ou vários números de
 pedido. Consulte `skills/flow-orders.md` e `agents/instrucoes.md` antes de
-preparar. As instruções criativas permanecem versionadas em `agents/`.
+preparar. `agents/` e `skills/` guardam os padrões de instalação. A biblioteca ativa é
+externa ao código, em `LIBRARY_DIR` (padrão: `biblioteca/` junto ao SQLite),
+com rascunho, histórico e revisão publicada. Manutenção criativa acontece nessa
+biblioteca; atualizar software não sobrescreve as personalizações.
+
+Para **operação de pedidos**, prefira o MCP local: consulte `flow_list_orders`,
+reserve com `flow_checkout`, leia integralmente o contexto retornado e os
+materiais reais e publique com `flow_publish`. O conector pode rodar fora deste
+repositório. Não investigue código, containers ou testes durante uma preparação;
+reporte erros operacionais com o contrato e os campos fornecidos pela API.
+A autorização de consumo continua explícita no chat, vinculada ao hash.
+A CLI continua disponível para manutenção e compatibilidade. O checkout fornece
+`contexto.json` e apenas as instruções dos formatos do pedido. Cada reserva
+fixa uma revisão; o compilador usa os mesmos templates dessa revisão.
+O contrato `flow-orders/2` verifica imagem única de Full POV/Full Vendedora
+antes de criar rascunhos ou publicar. Incompatibilidade exige atualizar o runtime,
+sem acrescentar `presenterImage` para satisfazer um servidor antigo.
 O compilador não invoca IA; o agente ativo analisa os materiais reais e cria os
 textos e prompts. As bases específicas de Fábrica, POV e Full Vendedora ficam
 em `agents/copy/`, selecionadas pelas regras comuns de `agents/copy.md`. Os
@@ -179,6 +195,11 @@ mudanças apenas documentais não exigem criar testes de código.
 
 ### Comandos e evidências
 
+- `pnpm mcp`: servidor MCP stdio local; o painel `/library` oferece o conector
+  independente para download, sem dependência do checkout do código.
+- `pnpm library init CAMINHO`: inicializa ou abre uma biblioteca existente.
+- `pnpm test:browser:library`: editor, revisões, importação/exportação e conector
+  em Chrome isolado, sem Flow nem consumo.
 - `pnpm orders list` / `show NUMERO`: consulta do agente pela API local.
 - `pnpm orders checkout 12 15`: reserva e materiais para preparação; `--revise`
   permite revisar uma preparação ainda não despachada.

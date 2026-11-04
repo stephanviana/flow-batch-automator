@@ -9,6 +9,7 @@ RUN pnpm install --frozen-lockfile
 COPY tsconfig.base.json ./
 COPY packages ./packages
 COPY agents ./agents
+COPY skills ./skills
 RUN pnpm build
 RUN pnpm --filter @flow-batch/orchestrator deploy --prod /release
 

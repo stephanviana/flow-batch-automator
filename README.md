@@ -22,9 +22,8 @@ materiais, cria as copys e os prompts; a extensão executa os lotes autorizados.
    Os seletores exibem os arquivos escolhidos e acompanham as remoções na lista.
    Distribua formatos/quantidades por produto. O mesmo produto pode
    ter vários formatos. Esta versão não possui presets.
-4. Salve e peça no chat: **“Prepare os pedidos 12 e 15”**. A skill
-   [flow-orders](skills/flow-orders.md) orienta a preparação. As regras
-   criativas estão em [agents/instrucoes.md](agents/instrucoes.md).
+4. Salve e peça no chat: **“Prepare os pedidos 12 e 15”**. O MCP local reserva os pedidos e entrega as instruções da biblioteca
+   e os materiais reais. A CLI também permanece disponível.
 5. Confira a prévia publicada, também visível no painel, e autorize no chat o
    conteúdo e o limite de gerações da revisão exata. Salvar/publicar não consome
    créditos. O agente despacha a preparação autorizada.
@@ -53,6 +52,113 @@ As bases já incorporam os swipes e orientam diretamente sintaxe e progressão
 de venda. Para testar uma copy ou formato de referência, use a opção de clonagem
 do pedido. As regras incluem fidelidade factual, anti-overlay, apoio físico e
 continuidade Body/CTA; não representam validação de conversão ou de mídia real.
+
+## Biblioteca criativa e backup
+
+Abra <http://127.0.0.1:4319/library>. A primeira inicialização cria uma biblioteca
+com `instrucoes/`, `fluxos/`, `swipes/`, `biblioteca.json` e `.historico/`.
+O caminho padrão é `biblioteca/` junto ao banco; em Compose fica no volume
+persistente, em `/data/biblioteca`. Configure `LIBRARY_DIR` ao iniciar diretamente
+para usar outra pasta. Os Markdown de `agents/` e `skills/` são apenas os padrões
+iniciais da instalação; mudanças neles não sobrescrevem bibliotecas existentes.
+
+Edite os arquivos no painel ou na pasta, salve o rascunho e compare com uma
+revisão anterior. **Publicar biblioteca** cria uma revisão completa. Novas
+reservas usam essa revisão; as existentes continuam com suas instruções e seus
+templates originais. Para adotar regras novas em um pedido preparado, faça uma
+revisão explícita antes do despacho: o conteúdo publicado recebe novo hash.
+A publicação da biblioteca não gera mídia.
+
+Swipes são referências de manutenção. Importe TXT/Markdown, peça ao agente para
+extrair a estrutura e incorporar o que for relevante às instruções do formato,
+revise e publique. Eles não são dependências automáticas da geração e não há
+arquivamento obrigatório de estudos A–E. `instrucoes/rotas.json` define documentos
+comuns e os de cada formato. Ao acrescentar um documento obrigatório, inclua-o
+nessas rotas. O contrato técnico continua determinando os formatos executáveis.
+
+**Exportar biblioteca** baixa um JSON com a revisão publicada, todas as revisões
+pertencentes à biblioteca ativa e o rascunho salvo. Guarde o backup fora deste
+computador. Em outra instalação, **Importar biblioteca existente** mostra os
+arquivos afetados antes da importação. **Restaurar revisão no rascunho** permite
+rever uma versão anterior antes de publicá-la. Rascunhos substituídos por
+restauração/importação ficam arquivados localmente em `.rascunhos/`; esses
+arquivos de recuperação não integram o backup exportado. Pedidos, produtos,
+materiais e vídeos têm armazenamento próprio e não integram esse backup.
+
+Para uma pasta diretamente acessível no host:
+
+```sh
+pnpm build
+pnpm library init /caminho/Minha-Biblioteca-Flow
+# Defina FLOW_LIBRARY_DIR no .env com esse mesmo caminho.
+docker compose -f compose.yaml -f compose.library.yaml up -d --build
+```
+
+A pasta precisa existir e permitir escrita pelo usuário 1000 do container.
+Em uma nova instalação, selecione o mesmo caminho ou importe o backup pelo painel.
+O override monta somente a biblioteca criativa; os materiais continuam no volume
+administrado pelo aplicativo. Para mudar uma instalação existente, exporte e
+importe sua biblioteca ativa antes de passar a usar a nova pasta.
+
+## Operação por MCP
+
+Na biblioteca, clique **Baixar conector MCP** e salve `flow-batch-mcp.mjs` em uma
+pasta de sua escolha. O arquivo inclui suas dependências e exige somente Node.js
+24.22.2 LTS ou 26.12.1 e o servidor local em execução. Exemplo de configuração
+para clientes que usam `mcpServers`:
+
+```json
+{
+  "mcpServers": {
+    "flow-batch": {
+      "command": "node",
+      "args": ["/CAMINHO/flow-batch-mcp.mjs"],
+      "env": {
+        "FLOW_API_URL": "http://127.0.0.1:4319",
+        "FLOW_AGENT_WORKSPACE": "/CAMINHO/Trabalhos-Flow"
+      }
+    }
+  }
+}
+```
+
+Use caminhos absolutos do sistema onde o agente executa o conector. No Windows,
+use caminhos Windows com as barras escapadas no JSON. A configuração específica
+de cada cliente pode variar. `FLOW_AGENT_WORKSPACE` é opcional; o padrão é
+`.flow-batch/pedidos` na pasta pessoal. Abra a conversa de produção nessa pasta,
+fora do código do projeto, para evitar carregar instruções de desenvolvimento.
+Não é necessário instalar as skills globais para operar pelo MCP.
+
+Ao editar uma configuração existente, acrescente `flow-batch` ao mapa
+`mcpServers` já existente, ao lado dos demais servidores. Evite criar outra
+camada `mcpServers` dentro dele. Se o agente já roda no WSL, use o Node e o
+caminho do conector no Linux diretamente. Após editar, recarregue os servidores
+no cliente MCP.
+
+`flow_list_orders` consulta; `flow_checkout` reserva e retorna contexto completo,
+contrato, arquivo de preparação e materiais verificados; `flow_read_material`
+fornece imagens/textos/binários ao agente; `flow_renew` renova a reserva;
+`flow_publish` recebe a preparação diretamente ou lê o arquivo editado e publica
+sem consumo. `flow_show_order` e `flow_status` mostram prévia e andamento.
+`flow_approve` exige autorização explícita no chat para número, hash e extensão.
+A confirmação no argumento da ferramenta não substitui essa autorização.
+As ferramentas `flow_library_*` permitem consultar e atualizar a biblioteca.
+O MCP usa stdio e o [SDK oficial](https://github.com/modelcontextprotocol/typescript-sdk).
+
+A análise de PDF e MP4 depende das capacidades do agente conectado. Um agente que
+não consiga analisar o vídeo deve informar essa limitação; o servidor não chama
+uma IA nem inventa a análise. Instruções e materiais são entregues pela API local;
+credenciais de Flow permanecem no navegador. Não há retry automático de mutações.
+
+Na raiz do projeto, `pnpm mcp` também inicia o conector. Se a API reportar contrato
+incompatível ou não fornecer suas capacidades, atualize a aplicação antes de
+preparar/publicar. Não acrescente campos de imagens para satisfazer um runtime
+antigo. Erros de validação retornam `issues` com caminhos exatos dos campos.
+Para atualizar apenas o orquestrador preservando o volume:
+
+```sh
+docker compose up -d --build --no-deps orchestrator
+```
 
 ## Clonar o formato de um vídeo
 
@@ -95,7 +201,7 @@ créditos; a execução depende da autorização da revisão exata no chat.
 
 ## Preparação pelo agente
 
-Os comandos são executados na raiz deste repositório, com a API local em execução:
+Como alternativa ao MCP, execute a CLI na raiz deste repositório após o build, com a API local em execução:
 
 ```sh
 pnpm orders list
@@ -106,7 +212,7 @@ pnpm orders publish .cache/orders/12/preparacao.json
 ```
 
 O checkout reserva cada pedido por 30 minutos e baixa cópias verificadas dos
-materiais para `.cache/orders/NUMERO/`, junto com `pedido.json` e o contrato de
+materiais para `.cache/orders/NUMERO/`, junto com `pedido.json`, `contexto.json`, as instruções da revisão reservada e o contrato de
 preparação. Outro agente não pode reservar o mesmo pedido enquanto essa reserva
 estiver válida. Repita checkout para retomar a reserva local; renove durante
 trabalhos longos. `FLOW_AGENT_NAME` identifica o agente na reserva.
@@ -137,7 +243,8 @@ pnpm orders approve 12 --approve --hash HASH_DA_PREPARACAO
 Com várias extensões autorizadas, acrescente `--client UUID`. “Todos os pendentes”
 seleciona os números encontrados no início, sem incluir pedidos criados depois.
 A skill pode ser lida por qualquer agente; no Codex, está disponível por referência
-no `AGENTS.md`. Não é necessário adicionar provedor de IA ou servidor MCP.
+no `AGENTS.md`. Pelo MCP, a criação continua com o agente conectado, sem configurar
+um provedor de IA no servidor.
 
 ## Armazenamento e limpeza
 
@@ -188,7 +295,9 @@ pnpm start
 - `packages/ui/theme.css`: tema escuro compartilhado pelo painel, conexão e extensão,
   com botões em verde-menta, foco visível e suporte a movimento reduzido. Os builds
   copiam esse arquivo para os respectivos artefatos, sem recursos externos.
-- `agents`: instruções criativas versionadas.
+- `agents` e `skills`: padrões iniciais da biblioteca criativa e fluxos.
+- `packages/orchestrator/src/library`: arquivos externos, revisões e backup.
+- `packages/orchestrator/src/mcp`: servidor MCP stdio e ferramentas operacionais.
 - `skills/flow-orders.md`: procedimento de consulta, preparação, revisão e despacho.
 - `skills/flow-clone-video.md`: análise e adaptação criativa dos grupos de clonagem.
 - `scripts/orders.mjs`: cliente local usado pelo agente.
@@ -206,6 +315,7 @@ pnpm test:docker
 pnpm test:browser:orders
 pnpm test:browser:reuse
 pnpm test:browser:formats
+pnpm test:browser:library
 pnpm test:browser:queue
 pnpm test:browser:navigation
 pnpm test:browser:cloning
@@ -228,6 +338,10 @@ O caminho anterior já teve validação real de Omni Frames e MP4s no Chrome Win
 O piloto anterior de três takes comprovou o percurso técnico, sem comprovar fala
 exata, lip-sync ou aprovação de qualidade criativa. A reutilização do CTA teve
 cobertura com fixtures; não atribuir a ela teste pago do piloto anterior.
+
+Em 4 de novembro de 2026, o usuário confirmou que o workflow completo funcionou
+no teste pelo Antigravity após a configuração do MCP no WSL. Esse relato confirma
+o percurso de uso; não registra avaliação específica de copy, áudio ou lip-sync.
 
 A integração de RPCs no contexto autenticado da aba é inspirada no
 [FlowKit](https://github.com/crisng95/flowkit), referência `19cb87d`. O código

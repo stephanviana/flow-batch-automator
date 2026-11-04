@@ -3,9 +3,19 @@ name: flow-orders
 description: Consultar e preparar um ou vários pedidos do painel Flow Batch Automator para TikTok Shop, criando copys e prompts a partir dos materiais importados e despachando somente após autorização específica no chat.
 ---
 
-Trabalhe na raiz do Flow Batch Automator. Leia `agents/instrucoes.md` e os
-arquivos criativos indicados por ela; estes continuam sendo a fonte das regras
-de copy, imagem e animação. O painel define produtos, formatos e quantidades.
+Prefira as ferramentas do MCP local. Use `flow_list_orders`, `flow_show_order`,
+`flow_checkout`, `flow_renew` e `flow_publish`; leia integralmente o contexto da
+biblioteca e os materiais retornados. O agente cria os textos; o servidor valida
+e compila. Trabalhe em uma pasta de produção fora do código da aplicação.
+Não analise código, containers ou testes para preparar pedidos. Erros de contrato
+ou campos devem ser reportados a partir do diagnóstico da API.
+`flow_approve` depende de autorização explícita no chat para número, hash e extensão.
+
+As instruções ativas vêm da revisão da biblioteca vinculada à reserva.
+`agents/` guarda os padrões de instalação; swipes alimentam a manutenção das
+bases de cada formato, não são necessários em cada geração. O painel define
+produtos, formatos e quantidades. Os comandos abaixo são a alternativa pela CLI,
+executada na raiz do projeto após o build.
 
 ## Consultar e selecionar
 
@@ -21,7 +31,7 @@ de copy, imagem e animação. O painel define produtos, formatos e quantidades.
 
 Execute `pnpm orders checkout 12 15`. Cada pedido fica reservado por 30 minutos
 para este agente; uma reserva ativa impede outro agente de preparar o mesmo
-pedido. O comando cria `.cache/orders/12/` com `pedido.json`, cópias verificadas
+pedido. O comando cria `.cache/orders/12/` com `pedido.json`, `contexto.json`, as instruções da biblioteca, cópias verificadas
 dos materiais e `preparacao.json` com IDs e formatos já definidos.
 
 Leia os materiais reais: imagens, prints, documentos, vídeos e as informações de cada
@@ -40,7 +50,7 @@ do produto continua sendo a referência do Flow; não use o vídeo como frame.
 
 Edite os campos criativos vazios de `preparacao.json`, respeitando os IDs,
 formatos e a quantidade exata. Crie falas e prompts próprios; não copie o texto
-de exemplo. O servidor compila a animação com os templates ativos, divide os
+de exemplo. O servidor compila a animação com os templates da revisão reservada, divide os
 lotes conforme os limites e registra os vínculos de imagem. Em Full POV e Full
 Vendedora, preencha somente `hookImage`: Body e CTA reutilizam o gancho. Nos
 demais formatos, preencha também `presenterImage`: CTA reutiliza o Body.
@@ -70,3 +80,7 @@ fila existente; não precisa vincular pastas nem abrir o painel para executar.
 Consulte pedidos já despachados para acompanhar. Resultado incerto exige revisão;
 reconexão ou uma nova conversa não autorizam repetição. Arquivos removidos pela
 limpeza não podem ser reconstruídos a partir dos hashes do histórico.
+
+O checkout e a publicação verificam o contrato do runtime. Se houver incompatibilidade,
+atualize a aplicação; não inclua `presenterImage` em Full POV/Full Vendedora para
+satisfazer um schema antigo. A API retorna os campos que falharam em `issues`.

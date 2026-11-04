@@ -20,6 +20,13 @@ export function registerManagement(
     ['/orders', ['orders.html', 'text/html; charset=utf-8']],
     ['/orders.js', ['orders.js', 'text/javascript; charset=utf-8']],
     ['/orders.css', ['orders.css', 'text/css; charset=utf-8']],
+    ['/library', ['library.html', 'text/html; charset=utf-8']],
+    ['/library.js', ['library.js', 'text/javascript; charset=utf-8']],
+    ['/library.css', ['library.css', 'text/css; charset=utf-8']],
+    [
+      '/management-api.js',
+      ['management-api.js', 'text/javascript; charset=utf-8'],
+    ],
     [
       '/orders-editor.js',
       ['orders-editor.js', 'text/javascript; charset=utf-8'],
@@ -36,7 +43,7 @@ export function registerManagement(
   for (const [route, [filename, contentType]] of files) {
     const contents = readFileSync(new URL(filename, assets));
     app.get(route, async (request, reply): Promise<Buffer> => {
-      if (route === '/connect' || route === '/orders')
+      if (route === '/connect' || route === '/orders' || route === '/library')
         sessions.open(request, reply);
       reply.header(
         'Content-Security-Policy',
@@ -56,6 +63,16 @@ export function registerManagement(
         connected: hub.connected(client.id),
       })),
     };
+  });
+  app.get('/manage/agent/download', async (request, reply) => {
+    sessions.require(request);
+    reply
+      .type('text/javascript; charset=utf-8')
+      .header(
+        'Content-Disposition',
+        'attachment; filename="flow-batch-mcp.mjs"',
+      );
+    return readFileSync(new URL('flow-batch-mcp.mjs', assets));
   });
   app.post('/manage/requests/:id', async (request) => {
     sessions.require(request);

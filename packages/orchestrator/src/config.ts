@@ -7,6 +7,7 @@ const configSchema = z.object({
   PORT: z.coerce.number().int().min(1024).max(65535).default(DEFAULT_PORT),
   DATABASE_PATH: z.string().min(1).default('./data/flow-batch.sqlite'),
   MATERIALS_DIR: z.string().min(1).optional(),
+  LIBRARY_DIR: z.string().min(1).optional(),
   SQLITE_BUSY_TIMEOUT_MS: z.coerce
     .number()
     .int()
@@ -23,6 +24,7 @@ export interface AppConfig {
   port: number;
   databasePath: string;
   materialsDirectory: string;
+  libraryDirectory: string;
   busyTimeoutMs: number;
   logLevel: z.infer<typeof configSchema>['LOG_LEVEL'];
 }
@@ -48,6 +50,9 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
     port: config.PORT,
     databasePath,
     materialsDirectory,
+    libraryDirectory: resolve(
+      config.LIBRARY_DIR ?? resolve(dirname(databasePath), 'biblioteca'),
+    ),
     busyTimeoutMs: config.SQLITE_BUSY_TIMEOUT_MS,
     logLevel: config.LOG_LEVEL,
   };

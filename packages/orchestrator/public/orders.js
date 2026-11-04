@@ -1,3 +1,5 @@
+import { api } from './management-api.js';
+export { api };
 import { referenceVideoPreview } from './orders-video-preview.js';
 import { element, productEditor, formats } from './orders-editor.js';
 const status = document.querySelector('#status'),
@@ -7,29 +9,6 @@ const products = [],
 const previewDisposers = [];
 let draftId = crypto.randomUUID(),
   busy = false;
-export async function api(path, body, headers = {}, asBlob = false) {
-  const binary = body instanceof File;
-  const response = await fetch(path, {
-    method: body === undefined ? 'GET' : 'POST',
-    credentials: 'same-origin',
-    redirect: 'error',
-    headers: {
-      'X-Flow-Management': '1',
-      ...(body !== undefined && !binary
-        ? { 'Content-Type': 'application/json' }
-        : {}),
-      ...headers,
-    },
-    ...(body !== undefined
-      ? { body: binary ? body : JSON.stringify(body) }
-      : {}),
-  });
-  if (response.ok && asBlob) return response.blob();
-  const result = await response.json();
-  if (!response.ok)
-    throw new Error(result.error ?? 'Não foi possível confirmar a operação.');
-  return result;
-}
 function addProduct() {
   const editor = productEditor(container);
   products.push(editor);

@@ -1,6 +1,7 @@
 # Instruções de preparação de lotes
 
-Esta pasta guarda as instruções operacionais ativas. As bases em `copy/` já
+Esta pasta guarda os padrões de instalação. A operação usa as instruções da
+revisão da biblioteca externa entregue pelo MCP ou pelo checkout da CLI. As bases em `copy/` já
 incorporam os swipes de cada formato e contêm as estruturas necessárias para
 criar as falas. Para testar uma copy ou formato de referência, use a clonagem.
 

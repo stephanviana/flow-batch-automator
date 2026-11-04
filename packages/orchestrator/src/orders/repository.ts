@@ -13,6 +13,7 @@ import { MaterialStore } from './material-store.js';
 import { HttpError } from '../security/errors.js';
 
 export interface PreparedOrder {
+  library?: { libraryId: string; revision: string };
   products: OrderPublication['products'];
   manifests: ImportManifest[];
 }

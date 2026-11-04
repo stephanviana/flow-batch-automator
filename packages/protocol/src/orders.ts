@@ -76,6 +76,10 @@ export const orderDraftSchema = z
 export type OrderDraft = z.infer<typeof orderDraftSchema>;
 export const orderPublicationSchema = z.strictObject({
   leaseId: z.uuid(),
+  libraryRevision: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
   products: z
     .array(
       z.strictObject({

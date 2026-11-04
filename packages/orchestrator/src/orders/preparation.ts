@@ -8,8 +8,28 @@ import {
 } from '@flow-batch/protocol';
 import type { PreparedOrder, ProductionOrder } from './repository.js';
 import { HttpError } from '../security/errors.js';
+import { ZodError } from 'zod';
 
 export { materialFilename as referencePath } from '@flow-batch/protocol';
+
+function compilationError(
+  product: string,
+  variation: Preparation['variations'][number],
+  error: unknown,
+): HttpError {
+  const reason =
+    error instanceof ZodError
+      ? error.issues
+          .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
+          .join('; ')
+      : error instanceof Error
+        ? error.message
+        : 'Prompts incompatíveis com o contrato.';
+  return new HttpError(
+    400,
+    `Produto ${product}, variação ${variation.name} (${variation.id}): ${reason}`,
+  );
+}
 
 export async function variationPlan(order: ProductionOrder): Promise<
   {
@@ -71,15 +91,15 @@ async function compileProduct(
     try {
       await compile([...chunk, variation]);
       chunk.push(variation);
-    } catch {
-      if (!chunk.length)
-        throw new HttpError(
-          400,
-          'Uma variação excede os limites ou contém prompts incompatíveis.',
-        );
+    } catch (error) {
+      if (!chunk.length) throw compilationError(product.name, variation, error);
       manifests.push(await compile(chunk));
       chunk = [variation];
-      await compile(chunk);
+      try {
+        await compile(chunk);
+      } catch (error) {
+        throw compilationError(product.name, variation, error);
+      }
     }
   }
   if (chunk.length) manifests.push(await compile(chunk));

@@ -16,6 +16,7 @@
     "test:browser": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser.mjs",
     "test:browser:flow": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser.mjs --flow-only",
     "test:browser:reuse": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser.mjs --reuse-only",
+    "test:browser:formats": "node scripts/validate-browser-formats.mjs",
     "test:browser:queue": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser.mjs --queue-only",
     "test:browser:navigation": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser-navigation.mjs",
     "test:browser:cloning": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser-cloning.mjs",
@@ -26,7 +27,9 @@
     "start": "node packages/orchestrator/dist/main.js",
     "orders": "node scripts/orders.mjs",
     "test:browser:orders": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser.mjs --orders-only",
-    "test:browser:formats": "node scripts/validate-browser-formats.mjs"
+    "mcp": "node packages/orchestrator/dist/mcp/main.js",
+    "library": "node scripts/library.mjs",
+    "test:browser:library": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser-library.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

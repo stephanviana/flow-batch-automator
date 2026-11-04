@@ -6,6 +6,7 @@ import {
 } from '@flow-batch/protocol';
 import { cp, mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { build } from 'esbuild';
 const destination = resolve(process.argv[2], 'public');
 await mkdir(destination, { recursive: true });
 await cp(new URL('./public/', import.meta.url), destination, {
@@ -19,8 +20,27 @@ await cp(
   new URL('../../agents/animacao.md', import.meta.url),
   resolve(destination, 'animacao.md'),
 );
+await cp(
+  new URL('../../agents/', import.meta.url),
+  resolve(destination, 'library-seed/instrucoes'),
+  { recursive: true },
+);
+await cp(
+  new URL('../../skills/', import.meta.url),
+  resolve(destination, 'library-seed/fluxos'),
+  { recursive: true },
+);
 
 await writeFile(
   resolve(destination, 'orders-config.js'),
   `export const MATERIAL_LIMIT = ${MATERIAL_LIMIT};\nexport const VIDEO_MATERIAL_LIMIT = ${VIDEO_MATERIAL_LIMIT};\nexport const ORDER_GROUP_LIMIT = ${ORDER_GROUP_LIMIT};\nexport const formats = ${JSON.stringify(Object.entries(preparationFormatLabels))};\n`,
 );
+await build({
+  entryPoints: [new URL('./src/mcp/main.ts', import.meta.url).pathname],
+  outfile: resolve(destination, 'flow-batch-mcp.mjs'),
+  bundle: true,
+  platform: 'node',
+  format: 'esm',
+  target: 'node24',
+  legalComments: 'inline',
+});

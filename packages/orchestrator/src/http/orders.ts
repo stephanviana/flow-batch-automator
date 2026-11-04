@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { Readable } from 'node:stream';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -13,6 +12,7 @@ import type { MaterialFiles } from '../orders/material-files.js';
 import { prepareOrder, variationPlan } from '../orders/preparation.js';
 import { dispatchOrder } from '../orders/dispatch.js';
 import { HttpError } from '../security/errors.js';
+import type { LibraryBindings } from '../library/bindings.js';
 
 export function registerOrders(
   app: FastifyInstance,
@@ -20,9 +20,8 @@ export function registerOrders(
   repository: OrderRepository,
   files: MaterialFiles,
   clients: ClientStore,
-  assets: URL,
+  bindings: LibraryBindings,
 ): void {
-  const templates = readFileSync(new URL('animacao.md', assets), 'utf8');
   app.addContentTypeParser(
     'application/octet-stream',
     (_request, payload, done): void => done(null, payload),
@@ -55,7 +54,17 @@ export function registerOrders(
         revise: z.boolean().default(false),
       })
       .parse(request.body);
-    return repository.claim(id(request.params), worker, revise);
+    const lease = repository.claim(id(request.params), worker, revise);
+    bindings.bind(lease.order.id, lease.leaseId);
+    return lease;
+  });
+  app.post('/manage/orders/:id/context', async (request) => {
+    sessions.require(request);
+    const { leaseId } = z
+      .strictObject({ leaseId: z.uuid() })
+      .parse(request.body);
+    const order = repository.requireLease(id(request.params), leaseId);
+    return bindings.context(order, leaseId);
   });
   app.post('/manage/orders/:id/heartbeat', async (request) => {
     sessions.require(request);
@@ -74,7 +83,21 @@ export function registerOrders(
       const order = repository.get(key);
       if (order.state !== 'prepared')
         repository.requireLease(key, input.leaseId);
-      const prepared = await prepareOrder(order, input, templates);
+      const revision = bindings.bind(key, input.leaseId);
+      if (input.libraryRevision && input.libraryRevision !== revision.revision)
+        throw new HttpError(
+          409,
+          'A preparação usa outra revisão da biblioteca. Consulte o contexto da reserva.',
+        );
+      const prepared = await prepareOrder(
+        order,
+        input,
+        revision.files['instrucoes/animacao.md']!,
+      );
+      prepared.library = {
+        libraryId: revision.libraryId,
+        revision: revision.revision,
+      };
       return repository.publish(key, input.leaseId, prepared);
     },
   );

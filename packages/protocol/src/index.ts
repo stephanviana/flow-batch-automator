@@ -9,6 +9,7 @@ export * from './imports.js';
 export * from './preparations.js';
 export * from './preparation-compiler.js';
 export * from './orders.js';
+export * from './library.js';
 export * from './dispatch.js';
 export * from './import-identity.js';
 
