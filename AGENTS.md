@@ -246,6 +246,11 @@ real, execução no navegador ou funcionamento de serviços externos.
 Não crie commits nem envie alterações sem solicitação do usuário. Quando
 solicitado, revise o diff e corrija falhas das verificações exigidas antes do commit.
 
+Separe alterações pendentes por feature em commits lógicos e revisáveis,
+incluindo os testes e a documentação correspondentes. Mudanças independentes
+devem ter commits próprios. Não reúna features distintas em um único commit,
+salvo solicitação explícita do usuário.
+
 Use Conventional Commits com mensagens em inglês:
 
 - `feat:` nova funcionalidade.
