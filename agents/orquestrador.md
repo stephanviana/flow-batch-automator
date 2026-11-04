@@ -17,7 +17,7 @@ provedor, serviço, dashboard, TTS ou publicação para preencher essa lacuna.
 
 ## 1. Ler o produto e o pedido
 
-Consulte o pedido salvo no painel com a skill `skills/flow-orders/SKILL.md`.
+Consulte o pedido salvo no painel com a skill `skills/flow-orders.md`.
 Leia os materiais obtidos pelo checkout e as informações de cada produto em
 `pedido.json`, sem exigir renomear imagens ou reorganizá-las por take.
 Identifique nome, aparência, detalhes visíveis, características fornecidas,

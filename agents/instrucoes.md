@@ -18,7 +18,9 @@ e Full Vendedora ainda serão fornecidos.
 4. [Animação](animacao.md): renderização da fala exata nos templates técnicos,
    preservando o bloco anti-overlay.
 
-Para grupos **Clonar formato de vídeo**, leia também [clonagem.md](clonagem.md).
+Para grupos **Clonar formato de vídeo**, use a skill
+[flow-clone-video](../skills/flow-clone-video.md) e leia
+[clonagem.md](clonagem.md).
 O vídeo selecionado é a fonte estrutural; a foto continua como referência visual
 do produto. Registre a análise e as direções adaptadas antes de publicar.
 
@@ -44,7 +46,7 @@ Leia as regras comuns e as dos formatos pedidos antes de preparar seus prompts.
 
 Estas instruções descrevem o trabalho do agente que prepara pedidos salvos no
 painel local. Não são um serviço de IA autônomo. Consulte a skill
-[`flow-orders`](../skills/flow-orders/SKILL.md): `pnpm orders list` lista os pedidos;
+[`flow-orders`](../skills/flow-orders.md): `pnpm orders list` lista os pedidos;
 `pnpm orders checkout 12 15` reserva e obtém os materiais pela API local. O agente
 edita a preparação, publica com `pnpm orders publish` e apresenta a prévia.
 Somente após autorização específica no chat, `pnpm orders approve` despacha a

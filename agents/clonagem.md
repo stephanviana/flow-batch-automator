@@ -3,6 +3,9 @@
 Este modo usa o MP4 escolhido pelo usuário como referência estrutural para um
 produto do pedido. O agente ativo analisa o material real e adapta a criação.
 O servidor não faz análise autônoma nem chama outro provedor de IA.
+O procedimento especializado está na skill
+[flow-clone-video](../skills/flow-clone-video.md); as operações de pedido
+continuam em [flow-orders](../skills/flow-orders.md).
 
 ## Ler as duas referências
 
@@ -95,4 +98,4 @@ falas ficam na preparação e entram no hash da revisão, junto dos manifestos.
 Apresente a associação produto/vídeo, a análise e as adaptações para conferência,
 além das falas, imagens e limites de geração. Preparar/publicar não autoriza
 consumir créditos. O despacho continua exigindo autorização específica no chat
-para a revisão exata, conforme `skills/flow-orders/SKILL.md`.
+para a revisão exata, conforme `skills/flow-orders.md`.

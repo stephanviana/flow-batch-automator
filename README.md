@@ -23,7 +23,7 @@ materiais, cria as copys e os prompts; a extensão executa os lotes autorizados.
    Distribua formatos/quantidades por produto. O mesmo produto pode
    ter vários formatos. Esta versão não possui presets.
 4. Salve e peça no chat: **“Prepare os pedidos 12 e 15”**. A skill
-   [flow-orders](skills/flow-orders/SKILL.md) orienta a preparação. As regras
+   [flow-orders](skills/flow-orders.md) orienta a preparação. As regras
    criativas estão em [agents/instrucoes.md](agents/instrucoes.md).
 5. Confira a prévia publicada, também visível no painel, e autorize no chat o
    conteúdo e o limite de gerações da revisão exata. Salvar/publicar não consome
@@ -63,6 +63,12 @@ e identifica o vídeo de cada variação. O agente analisa a estrutura, adapta
 as falas e cenas para o produto e publica a análise e as direções de gancho,
 Body e CTA para sua conferência. O servidor não chama IA e o vídeo não é
 enviado ao Flow; a foto do produto continua como referência de geração.
+
+A skill [flow-clone-video](skills/flow-clone-video.md) orienta essa análise
+e aplica as regras comuns de copy, imagem e animação de `agents/`, preservando
+a arquitetura do vídeo escolhido. Ela complementa `flow-orders` em pedidos
+mistos. Exemplo de pedido no chat: **“Use $flow-clone-video para preparar os
+grupos de clonagem do pedido 12.”**
 
 MP4s podem ter até 64 MB; imagens e documentos continuam limitados a 8 MB.
 O modo mantém duas imagens, três vídeos e reutilização exata da imagem de Body
@@ -166,7 +172,8 @@ pnpm start
   com botões em verde-menta, foco visível e suporte a movimento reduzido. Os builds
   copiam esse arquivo para os respectivos artefatos, sem recursos externos.
 - `agents`: instruções criativas versionadas.
-- `skills/flow-orders`: procedimento de consulta, preparação, revisão e despacho.
+- `skills/flow-orders.md`: procedimento de consulta, preparação, revisão e despacho.
+- `skills/flow-clone-video.md`: análise e adaptação criativa dos grupos de clonagem.
 - `scripts/orders.mjs`: cliente local usado pelo agente.
 
 `MATERIALS_DIR` escolhe o armazenamento no uso fora do Compose; o padrão é

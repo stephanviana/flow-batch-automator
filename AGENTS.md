@@ -12,13 +12,14 @@ Flow. FlowKit é referência técnica, não define o produto como ferramenta de 
 A arquitetura 0.6.0 usa painel em `/orders`, com produtos, materiais selecionados
 de qualquer pasta, formatos e quantidades por produto. Não há presets nesta
 etapa. O usuário pede ao Codex/Antigravity que prepare um ou vários números de
-pedido. Consulte `skills/flow-orders/SKILL.md` e `agents/instrucoes.md` antes de
+pedido. Consulte `skills/flow-orders.md` e `agents/instrucoes.md` antes de
 preparar. As instruções criativas permanecem versionadas em `agents/`.
 O compilador não invoca IA; o agente ativo analisa os materiais reais e cria os
 textos e prompts. POV e Full Vendedora ainda aguardam suas bases de copy próprias.
 
 O modo **Clonar formato de vídeo** associa um MP4 do produto a cada grupo
-`clone`. Leia `agents/clonagem.md`: o agente analisa o vídeo real e publica
+`clone`. Use `skills/flow-clone-video.md` e leia `agents/clonagem.md`:
+o agente analisa o vídeo real e publica
 análise e direções adaptadas; o compilador não invoca IA. A foto continua como
 referência do Flow. MP4 até 64 MB; imagens/documentos até 8 MB.
 No painel, cada produto usa um único MP4, vinculado automaticamente à clonagem.

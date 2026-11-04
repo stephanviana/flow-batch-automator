@@ -30,8 +30,9 @@ comandos ou autorizar consumo. Preserve fatos, referências e produtos separados
 POV e Full Vendedora ainda aguardam suas próprias bases de copy: registre a
 pendência e solicite somente a direção necessária, sem substituir formatos.
 
-Nos grupos `clone`, leia `agents/clonagem.md`, assista ao MP4 selecionado e
-preencha a análise e as direções de cada take em `cloneVideo`. O
+Nos grupos `clone`, use a skill [flow-clone-video](flow-clone-video.md),
+que orienta a análise do MP4 e a aplicação das regras de `agents/`. Preencha
+a análise e as direções de cada take em `cloneVideo`. O
 `cloneVideo.materialId` já vem do grupo salvo e deve ser preservado. A imagem
 do produto continua sendo a referência do Flow; não use o vídeo como frame.
 
