@@ -6,6 +6,7 @@ export interface AgentApi {
 }
 export async function localClient(
   base = 'http://127.0.0.1:4319',
+  requestTimeoutMs = 120000,
 ): Promise<AgentApi> {
   const url = new URL(base);
   if (
@@ -53,7 +54,7 @@ export async function localClient(
     const response = await fetch(`${base}${path}`, {
       method: body === undefined ? 'GET' : 'POST',
       redirect: 'error',
-      signal: AbortSignal.timeout(120000),
+      signal: AbortSignal.timeout(requestTimeoutMs),
       headers: {
         cookie,
         origin: base,

@@ -167,6 +167,10 @@ mudanças apenas documentais não exigem criar testes de código.
 
 ### Comandos e evidências
 
+- `pnpm mcp:install`: instala/atualiza o conector independente e a entrada
+  Antigravity no ambiente atual, preserva os demais servidores e cria backups.
+  Também disponível no arquivo baixado: `node flow-batch-mcp.mjs --install antigravity`.
+  Instalação não prepara pedidos, não consome créditos e não encerra clientes.
 - `pnpm mcp`: conector MCP stdio; o arquivo independente é servido em
   `/agent/flow-batch-mcp.mjs`, sem editor ou página de biblioteca.
 - `pnpm library init PASTA`, `import PASTA PACOTE.JSON`, `export PASTA BACKUP.JSON`,

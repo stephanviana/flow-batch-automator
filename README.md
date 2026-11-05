@@ -72,11 +72,43 @@ passar a fazer parte do pacote ou de cada geração.
 
 ## Conectar o MCP
 
-Baixe o conector independente para uma pasta de sua escolha. O arquivo inclui
-suas dependências e exige Node.js 24.22.2 LTS ou 26.12.1:
+Após iniciar o servidor, configure o Antigravity com um único comando:
+
+```sh
+pnpm mcp:install
+```
+
+O instalador copia o conector independente para `~/.flow-batch/mcp/`, registra
+`flow-batch` em `~/.gemini/config/mcp_config.json` e configura o Node e os caminhos
+absolutos do ambiente atual. Ele preserva outros servidores, variáveis e ajustes
+existentes, cria backups antes de alterar arquivos e consulta o servidor sem
+preparar ou despachar pedidos. Executar novamente atualiza a instalação; sem
+alterações, não reescreve os arquivos nem cria backups adicionais.
+
+Execute o instalador no mesmo ambiente do Antigravity: no WSL para o CLI do WSL,
+ou no Windows para um cliente Windows. Depois recarregue os servidores em `/mcp`
+ou reabra o cliente. O instalador não encerra suas conversas.
+
+Para escolher caminhos ou porta:
+
+```sh
+pnpm mcp:install --workspace /CAMINHO/Trabalhos-Flow --server http://127.0.0.1:4319
+```
+
+`--config ARQUIVO` escolhe outro JSON compatível com `mcpServers`;
+`--directory PASTA` escolhe onde guardar o conector. Os backups ficam em
+`.flow-batch-backups/` junto aos arquivos alterados. JSON inválido, conflitos de
+entradas e links simbólicos são recusados, preservando os arquivos existentes.
+Se o servidor estiver parado, a configuração é instalada e o resultado informa
+que será necessário iniciá-lo antes de preparar pedidos. `--skip-check` dispensa
+a consulta ao servidor.
+
+Também é possível instalar a partir do arquivo baixado, fora do repositório.
+O conector inclui suas dependências e exige Node.js 24.22.2 LTS ou 26.12.1:
 
 ```sh
 curl --fail http://127.0.0.1:4319/agent/flow-batch-mcp.mjs -o /CAMINHO/flow-batch-mcp.mjs
+node /CAMINHO/flow-batch-mcp.mjs --install antigravity
 ```
 
 Exemplo para clientes que usam `mcpServers`:

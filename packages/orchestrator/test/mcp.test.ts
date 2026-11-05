@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Client } from '@modelcontextprotocol/client';
@@ -72,15 +73,44 @@ test('official MCP client completes stdio checkout, material reading and publica
   assert.equal(connector.statusCode, 200, connector.body);
   const connectorPath = join(workspace, 'flow-batch-mcp.mjs');
   writeFileSync(connectorPath, connector.rawPayload);
+  const configFile = join(workspace, 'antigravity-config.json');
+  writeFileSync(
+    configFile,
+    JSON.stringify({
+      mcpServers: { agentmemory: { command: 'preserved-server' } },
+    }),
+  );
+  const installation = spawnSync(
+    process.execPath,
+    [
+      connectorPath,
+      '--install',
+      'antigravity',
+      '--config',
+      configFile,
+      '--directory',
+      join(workspace, 'installed connector'),
+      '--workspace',
+      workspace,
+      '--server',
+      `http://127.0.0.1:${address.port}`,
+      '--skip-check',
+    ],
+    { cwd: tmpdir(), encoding: 'utf8', timeout: 15000 },
+  );
+  assert.equal(installation.status, 0, installation.stderr);
+  const installedConfig = JSON.parse(readFileSync(configFile, 'utf8'));
+  assert.equal(
+    installedConfig.mcpServers.agentmemory.command,
+    'preserved-server',
+  );
+  const installed = installedConfig.mcpServers['flow-batch'];
   const client = new Client({ name: 'integration-fixture', version: '1.0.0' });
   const transport = new StdioClientTransport({
-    command: process.execPath,
-    args: [connectorPath],
+    command: installed.command,
+    args: installed.args,
     cwd: tmpdir(),
-    env: {
-      FLOW_API_URL: `http://127.0.0.1:${address.port}`,
-      FLOW_AGENT_WORKSPACE: workspace,
-    },
+    env: installed.env,
     stderr: 'pipe',
   });
   await client.connect(transport);

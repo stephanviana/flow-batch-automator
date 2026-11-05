@@ -24,6 +24,7 @@ await build({
   entryPoints: [new URL('./src/mcp/main.ts', import.meta.url).pathname],
   outfile: resolve(destination, 'flow-batch-mcp.mjs'),
   bundle: true,
+  banner: { js: '// flow-batch-standalone-mcp:1' },
   platform: 'node',
   format: 'esm',
   target: 'node24',

@@ -29,7 +29,8 @@
     "test:browser:orders": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser.mjs --orders-only",
     "mcp": "node packages/orchestrator/dist/mcp/main.js",
     "library": "node scripts/library.mjs",
-    "test:browser:library": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser-library.mjs"
+    "test:browser:library": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser-library.mjs",
+    "mcp:install": "node packages/orchestrator/dist/public/flow-batch-mcp.mjs --install antigravity"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
