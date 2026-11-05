@@ -99,6 +99,7 @@ qualquer geração paga continua dependendo de autorização específica no chat
   Node de execução; não antecipar contratos de fases futuras.
 - `packages/orchestrator`: Fastify, configuração Zod, persistência `node:sqlite`
   e rotas HTTP. Separe configuração, persistência, comunicação e segurança.
+  O registro Codex usa `smol-toml`, com backup e preservação dos valores.
 - `packages/extension`: Chrome Manifest V3, Chrome 120+, side panel e service worker
   empacotados com esbuild. Identidade em IndexedDB; storage e alarms para estado
   de conexão e recuperação. Referências de execução em IndexedDB separado, com SHA-256;
@@ -171,6 +172,8 @@ mudanças apenas documentais não exigem criar testes de código.
   Antigravity no ambiente atual, preserva os demais servidores e cria backups.
   Também disponível no arquivo baixado: `node flow-batch-mcp.mjs --install antigravity`.
   Instalação não prepara pedidos, não consome créditos e não encerra clientes.
+- `pnpm mcp:install codex`: registra o conector em `CODEX_HOME/config.toml`
+  ou `~/.codex/config.toml`, preservando os demais servidores e valores.
 - `pnpm mcp`: conector MCP stdio; o arquivo independente é servido em
   `/agent/flow-batch-mcp.mjs`, sem editor ou página de biblioteca.
 - `pnpm library init PASTA`, `import PASTA PACOTE.JSON`, `export PASTA BACKUP.JSON`,

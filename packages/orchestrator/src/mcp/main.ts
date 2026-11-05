@@ -30,7 +30,7 @@ try {
     await runMcpInstaller(args.slice(1), fileURLToPath(import.meta.url));
   else if (args.length)
     throw new Error(
-      'Use --install antigravity para instalar ou execute sem argumentos para iniciar o MCP.',
+      'Use --install antigravity|codex para instalar ou execute sem argumentos para iniciar o MCP.',
     );
   else await startServer();
 } catch (error) {

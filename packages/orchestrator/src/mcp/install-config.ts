@@ -1,9 +1,12 @@
 import { resolve, join, isAbsolute } from 'node:path';
 import { Buffer } from 'node:buffer';
+import { parse, stringify } from 'smol-toml';
 
 export const STANDALONE_MARKER = '// flow-batch-standalone-mcp:1';
 type JsonObject = Record<string, unknown>;
 export interface McpInstallOptions {
+  client?: 'antigravity' | 'codex';
+  codexHome?: string;
   sourceFile: string;
   homeDirectory: string;
   configFile?: string;
@@ -18,7 +21,7 @@ export interface McpInstallPlan {
   connectorFile: string;
   workspace: string;
   server: string;
-  config: JsonObject;
+  contents: Buffer;
 }
 function object(value: unknown, label: string): JsonObject {
   if (!value || typeof value !== 'object' || Array.isArray(value))
@@ -48,16 +51,20 @@ export function localServer(value: string): string {
     );
   return url.origin;
 }
-function parseConfig(original: Buffer | null): JsonObject {
+function parseConfig(original: Buffer | null, codex: boolean): JsonObject {
   if (original === null) return {};
   try {
     return object(
-      JSON.parse(original.toString('utf8').replace(/^\uFEFF/, '')) as unknown,
+      codex
+        ? parse(original.toString('utf8'), { integersAsBigInt: true })
+        : (JSON.parse(
+            original.toString('utf8').replace(/^\uFEFF/, ''),
+          ) as unknown),
       'raiz',
     );
   } catch {
     throw new Error(
-      'A configuração MCP contém JSON inválido. O arquivo original foi preservado.',
+      `A configuração MCP contém ${codex ? 'TOML' : 'JSON'} inválido. O arquivo original foi preservado.`,
     );
   }
 }
@@ -89,11 +96,16 @@ export function installPlan(
   options: McpInstallOptions,
   original: Buffer | null,
 ): McpInstallPlan {
-  const config = parseConfig(original);
+  const codex = options.client === 'codex';
+  const config = parseConfig(original, codex);
+  const serialize = (): string =>
+    codex
+      ? stringify(config, { numbersAsFloat: true })
+      : JSON.stringify(config, null, 2) + '\n';
+  const before = serialize();
+  const serverKey = codex ? 'mcp_servers' : 'mcpServers';
   const servers =
-    config.mcpServers === undefined
-      ? {}
-      : object(config.mcpServers, 'mcpServers');
+    config[serverKey] === undefined ? {} : object(config[serverKey], serverKey);
   const previous = ownServer(servers);
   const env =
     previous.env === undefined ? {} : object(previous.env, 'flow-batch.env');
@@ -121,24 +133,31 @@ export function installPlan(
   const executable = options.nodeExecutable ?? process.execPath;
   if (!isAbsolute(executable))
     throw new Error('O executável Node deve usar um caminho absoluto.');
-  servers['flow-batch'] = {
+  const nextServer = {
     ...previous,
     command: executable,
     args: [connectorFile],
     env: { ...env, FLOW_API_URL: server, FLOW_AGENT_WORKSPACE: workspace },
   };
-  config.mcpServers = servers;
+  servers['flow-batch'] = nextServer;
+  config[serverKey] = servers;
   return {
-    configFile: resolve(
-      options.configFile ??
-        join(options.homeDirectory, '.gemini', 'config', 'mcp_config.json'),
-    ),
+    configFile: resolve(options.configFile ?? defaultConfigFile(options)),
     connectorFile,
     workspace,
     server,
-    config,
+    contents:
+      before === serialize() && original ? original : Buffer.from(serialize()),
   };
 }
+export function defaultConfigFile(options: McpInstallOptions): string {
+  return options.client === 'codex'
+    ? join(
+        options.codexHome ?? join(options.homeDirectory, '.codex'),
+        'config.toml',
+      )
+    : join(options.homeDirectory, '.gemini', 'config', 'mcp_config.json');
+}
 export function configBytes(plan: McpInstallPlan): Buffer {
-  return Buffer.from(JSON.stringify(plan.config, null, 2) + '\n');
+  return plan.contents;
 }

@@ -1,5 +1,5 @@
 import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { localClient, requireContract } from '../agent-client/http.js';
 import {
@@ -12,13 +12,14 @@ import {
 } from './install-files.js';
 import {
   configBytes,
+  defaultConfigFile,
   installPlan,
   STANDALONE_MARKER,
   type McpInstallOptions,
 } from './install-config.js';
 
 export interface McpInstallResult {
-  client: 'antigravity';
+  client: 'antigravity' | 'codex';
   configFile: string;
   connectorFile: string;
   workspace: string;
@@ -65,10 +66,7 @@ export async function installMcpConnector(
     throw new Error(
       'Use o conector independente gerado pelo build: pnpm mcp:install, ou node flow-batch-mcp.mjs --install antigravity.',
     );
-  const configFile = resolve(
-    options.configFile ??
-      join(options.homeDirectory, '.gemini', 'config', 'mcp_config.json'),
-  );
+  const configFile = resolve(options.configFile ?? defaultConfigFile(options));
   const originalConfig = await regularFile(configFile),
     plan = installPlan(options, originalConfig);
   const originalConnector = await regularFile(plan.connectorFile),
@@ -100,7 +98,7 @@ export async function installMcpConnector(
     throw error;
   }
   return {
-    client: 'antigravity',
+    client: options.client ?? 'antigravity',
     configFile,
     connectorFile: plan.connectorFile,
     workspace: plan.workspace,
@@ -109,12 +107,15 @@ export async function installMcpConnector(
     backups,
     ...(await runtimeCheck(plan.server, options.skipCheck)),
     nextStep:
-      'Recarregue os servidores em /mcp no Antigravity ou reabra o cliente.',
+      options.client === 'codex'
+        ? 'Reabra o Codex para carregar o MCP atualizado.'
+        : 'Recarregue os servidores em /mcp no Antigravity ou reabra o cliente.',
   };
 }
 export async function runMcpInstaller(
   args: string[],
   sourceFile: string,
+  defaults: Partial<McpInstallOptions> = {},
 ): Promise<void> {
   const { values, positionals } = parseArgs({
     args,
@@ -130,20 +131,21 @@ export async function runMcpInstaller(
   });
   if (values.help) {
     console.log(
-      'Uso: node flow-batch-mcp.mjs --install [antigravity] [--config ARQUIVO] [--directory PASTA] [--workspace PASTA] [--server URL] [--skip-check]',
+      'Uso: node flow-batch-mcp.mjs --install [antigravity|codex] [--config ARQUIVO] [--directory PASTA] [--workspace PASTA] [--server URL] [--skip-check]',
     );
     return;
   }
   if (
     positionals.length > 1 ||
-    (positionals[0] && positionals[0] !== 'antigravity')
+    (positionals[0] && !['antigravity', 'codex'].includes(positionals[0]))
   )
-    throw new Error(
-      'A instalação automática suporta Antigravity. Use --config para escolher um arquivo JSON compatível com mcpServers.',
-    );
+    throw new Error('A instalação automática suporta Antigravity e Codex.');
   const result = await installMcpConnector({
+    ...defaults,
     sourceFile,
     homeDirectory: homedir(),
+    client: positionals[0] === 'codex' ? 'codex' : 'antigravity',
+    ...(process.env.CODEX_HOME ? { codexHome: process.env.CODEX_HOME } : {}),
     ...(values.config ? { configFile: values.config } : {}),
     ...(values.directory ? { installDirectory: values.directory } : {}),
     ...(values.workspace ? { workspace: values.workspace } : {}),

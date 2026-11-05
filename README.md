@@ -76,6 +76,7 @@ Após iniciar o servidor, configure o Antigravity com um único comando:
 
 ```sh
 pnpm mcp:install
+pnpm mcp:install codex
 ```
 
 O instalador copia o conector independente para `~/.flow-batch/mcp/`, registra
@@ -95,9 +96,12 @@ Para escolher caminhos ou porta:
 pnpm mcp:install --workspace /CAMINHO/Trabalhos-Flow --server http://127.0.0.1:4319
 ```
 
-`--config ARQUIVO` escolhe outro JSON compatível com `mcpServers`;
+`codex` registra em `~/.codex/config.toml` (ou em `CODEX_HOME`), na tabela
+`mcp_servers.flow-batch`. O instalador usa um parser TOML e preserva os valores
+das demais configurações, com backup do texto original antes de reserializar.
+`--config ARQUIVO` escolhe outro arquivo do cliente selecionado;
 `--directory PASTA` escolhe onde guardar o conector. Os backups ficam em
-`.flow-batch-backups/` junto aos arquivos alterados. JSON inválido, conflitos de
+`.flow-batch-backups/` junto aos arquivos alterados. JSON/TOML inválido, conflitos de
 entradas e links simbólicos são recusados, preservando os arquivos existentes.
 Se o servidor estiver parado, a configuração é instalada e o resultado informa
 que será necessário iniciá-lo antes de preparar pedidos. `--skip-check` dispensa
