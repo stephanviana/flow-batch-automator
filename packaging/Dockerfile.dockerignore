@@ -1,0 +1,11 @@
+**
+!package.json
+!dist/
+!dist/**
+!runtime/
+!runtime/Dockerfile
+!runtime/package-lock.json
+!runtime/healthcheck.mjs
+!runtime/sync-extension.mjs
+!runtime/extension/
+!runtime/extension/**

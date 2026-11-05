@@ -176,10 +176,33 @@ mudanças apenas documentais não exigem criar testes de código.
   Instalação não prepara pedidos, não consome créditos e não encerra clientes.
 - `pnpm mcp:install codex`: registra o conector em `CODEX_HOME/config.toml`
   ou `~/.codex/config.toml`, preservando os demais servidores e valores.
+- Distribuição npm: `@nahpets01-org/flow-batch-automator`, acesso público. A
+  decisão atual substitui a distribuição exclusivamente local privada. Somente
+  o manifesto de distribuição é publicável; raiz e workspaces ficam privados.
+- `pnpm package:npm` compila e gera o `.tgz` auditado em `dist/npm`, sem publicar.
+  `pnpm package:local` é um alias. `packaging/npm.json` define o destino e a
+  visibilidade; `packaging/npm-files.json`, os únicos arquivos permitidos.
+- A distribuição 0.6.1 usa arquivos compilados e dependências npm normais,
+  sem `app.tar.gz` ou `node_modules` embutido. `runtime/package-lock.json` é gerado
+  exclusivamente para o artefato a partir da árvore de produção do lockfile
+  pnpm, com versões, URLs e integridades verificadas. O protocolo privado é
+  incorporado ao código; MCP independente e extensão preservam seus bundles.
+- `pnpm audit:npm` verifica manifesto, arquivos, lockfile de produção, caminhos pessoais,
+  padrões de segredos, links, metadados e source maps. Não imprimir achados que
+  revelem valores sensíveis. Preservar as licenças de terceiros. O Docker faz
+  `npm ci` com o lockfile de produção e não recebe os módulos instalados no host.
+- `pnpm publish:npm --dry-run` simula; `pnpm publish:npm` audita uma cópia exata
+  antes da publicação no destino configurado. Autenticação somente local, sem
+  tokens no chat, documentação ou pacote. Não publicar raiz ou implantação.
 - `flow-batch setup --library PASTA --extension PASTA`: configura a instalação
   WSL e registra Antigravity/Codex. `up`, `down`, `status`, `logs` e `doctor`
   operam o Compose; `down` mantém o volume. Não executar instalação global nem
   adotar dados existentes durante testes; usar HOME/prefixo/volume sintéticos.
+- `pnpm test:package` valida instalação npm com dependências do registro em
+  prefixo temporário, versões diretas, MCP, stdio e reinstalação offline.
+  `pnpm test:package --docker` acrescenta Compose isolado, painel HTTP, árvore de
+  produção fixada e persistência entre `down`/`up`, sem créditos.
+  `FLOW_TEST_NPM=CAMINHO` seleciona outra versão do npm somente nesse teste.
 - `pnpm mcp`: conector MCP stdio; o arquivo independente é servido em
   `/agent/flow-batch-mcp.mjs`, sem editor ou página de biblioteca.
 - `pnpm library init PASTA`, `import PASTA PACOTE.JSON`, `export PASTA BACKUP.JSON`,
