@@ -5,6 +5,7 @@ import {
   dispatchRecordSchema,
   type DispatchCommand,
   type DispatchRecord,
+  type DispatchFailure,
 } from '@flow-batch/protocol';
 import { HttpError } from '../security/errors.js';
 
@@ -83,12 +84,19 @@ export class DispatchStore {
     id: string,
     state: 'pending' | 'queued' | 'blocked',
     message: string,
+    failure?: DispatchFailure,
   ): void {
     const result = this.database
       .prepare(
-        "UPDATE dispatch_commands SET state=?,message=? WHERE id=? AND client_id=? AND state='pending'",
+        "UPDATE dispatch_commands SET state=?,message=?,failure=? WHERE id=? AND client_id=? AND state='pending'",
       )
-      .run(state, message, id, clientId);
+      .run(
+        state,
+        message,
+        failure ? JSON.stringify(failure) : null,
+        id,
+        clientId,
+      );
     if (
       !result.changes &&
       this.database

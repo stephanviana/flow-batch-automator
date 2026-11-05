@@ -6,6 +6,7 @@ import {
   type DispatchCommand,
   type ApprovedImport,
   type QueueSnapshot,
+  type DispatchFailure,
 } from '@flow-batch/protocol';
 import { signedRequest, ApiError } from './api.js';
 import { preferences, readState } from './state.js';
@@ -36,11 +37,13 @@ async function finish(
   command: DispatchCommand,
   state: 'pending' | 'queued' | 'blocked',
   message: string,
+  failure?: DispatchFailure,
 ): Promise<void> {
   await signedRequest(clientId, 'POST', '/api/dispatch', {
     id: command.id,
     state,
     message,
+    ...(failure ? { failure } : {}),
   });
   await status(message);
 }
@@ -214,6 +217,7 @@ export async function processDispatches(): Promise<void> {
           error instanceof FlowInputError
             ? error.message.slice(0, 300)
             : 'Preparação bloqueada. Confira os materiais do pedido e o estado do projeto. Solicite revisão pelo chat.',
+          error instanceof FlowInputError ? error.failure : undefined,
         );
       }
       // Complete one command at a time; next batches wait for the current queue.

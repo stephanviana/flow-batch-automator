@@ -72,6 +72,11 @@ async function provision(clientId: string, batch: Batch): Promise<Batch> {
       outcome === 'not-created'
         ? 'O projeto não foi criado. Confira o acesso ao Flow e solicite revisão do pedido pelo chat.'
         : 'Criação sem confirmação. Confira o Flow e vincule o projeto aberto; não será criado outro automaticamente.',
+      {
+        stage: 'project-creation',
+        code: reply.ok ? 'invalid_project_id' : reply.code,
+        sent: reply.ok || reply.sent,
+      },
     );
   }
   const receipt = {

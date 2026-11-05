@@ -74,7 +74,12 @@ Projetos do Flow são preparados automaticamente por lote e retomados pelo vínc
 persistido. Reutilizar a mesma aba, sem abrir abas adicionais por lote. Criação
 sem resposta confirmada exige revisão, sem criar outra automaticamente. Não
 recarregar a aba para atualizar a listagem durante execução.
-Mostrar etapas reais,
+`flow_review_dispatch` consulta um grupo bloqueado. `flow_resume_dispatch` exige
+nova autorização explícita no chat para o grupo, preparação e hash da revisão.
+Só admite falha comprovadamente anterior ao envio da criação do projeto, sem
+qualquer take registrado no lote; mantém materiais e preparações imutáveis,
+registra a autorização e preserva o corpo anterior. Resultados incertos, grupos
+já enfileirados e identidades revogadas nunca são retomados por essa operação. Mostrar etapas reais,
 pausa, falha e incerteza; não inventar percentual.
 
 As Fases 1–4 e o piloto anterior tiveram validações reais no Chrome Windows,

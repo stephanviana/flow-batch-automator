@@ -30,7 +30,13 @@ export function registerDispatchRoutes(
     const client = await signatures.http(request);
     clients.authorized(client.id, client.extensionId);
     const update = dispatchUpdateSchema.parse(request.body);
-    store.update(client.id, update.id, update.state, update.message);
+    store.update(
+      client.id,
+      update.id,
+      update.state,
+      update.message,
+      update.failure,
+    );
     return { commands: store.list(client.id) };
   });
 }

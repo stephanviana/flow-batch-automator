@@ -156,6 +156,19 @@ A aprovação exige autorização explícita no chat. Com várias extensões, in
 `--client UUID`. O contrato do servidor é conferido antes da preparação; erros
 retornam os campos envolvidos. Não adapte JSON a um servidor desatualizado.
 
+## Despacho bloqueado
+
+Use `flow_review_dispatch` para consultar o grupo e o diagnóstico, sem retomar.
+O resultado apresenta os hashes, quantidades máximas e se a recuperação é segura.
+Depois de revisar e obter autorização explícita no chat, `flow_resume_dispatch`
+pode autorizar apenas esse grupo, preservando materiais, preparação e demais
+resultados. A autorização anterior e o corpo do despacho ficam no histórico.
+
+Essa recuperação exige falha comprovadamente anterior ao envio da criação do
+projeto e nenhum take registrado no lote. Resultados incertos, grupos já
+registrados e identidades revogadas são recusados. Não há repetição automática
+nem reconstrução de pedidos para contornar uma confirmação perdida.
+
 ## Desenvolvimento e validação
 
 Node.js e TypeScript estrito, pnpm Workspaces e versões exatas no lockfile.
@@ -180,6 +193,11 @@ Os testes usam contratos sintéticos, SQLite temporário e Chrome isolado com
 fixtures, sem perfil pessoal, Flow real ou consumo. `test:browser:formats` usa
 4339; `test:browser:library`, 4349; clonagem, 4329. A instalação real é preservada.
 Testes e build não comprovam nova geração paga nem qualidade criativa.
+
+Em 4 de novembro de 2026, o usuário relatou boa qualidade nos vídeos, mas o
+andamento confirmou 27 de 36 takes concluídos e um grupo bloqueado antes da
+fila. Também relatou movimento insuficiente na esteira inclinada. Essas evidências
+são distintas dos testes sintéticos e não autorizam reenvios pagos.
 
 A integração com a aba do Flow é inspirada no
 [FlowKit](https://github.com/crisng95/flowkit), referência `19cb87d`. O código

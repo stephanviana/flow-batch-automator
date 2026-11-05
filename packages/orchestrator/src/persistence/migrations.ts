@@ -91,6 +91,15 @@ export const migrations: readonly Migration[] = [
     PRIMARY KEY(order_id,lease_id)
   ) STRICT;`,
   },
+  {
+    version: 9,
+    sql: `ALTER TABLE dispatch_commands ADD COLUMN failure TEXT;
+    CREATE TABLE dispatch_recoveries (
+      sequence INTEGER PRIMARY KEY, dispatch_id TEXT NOT NULL REFERENCES dispatch_commands(id),
+      review_hash TEXT NOT NULL, previous_body TEXT NOT NULL, previous_message TEXT NOT NULL,
+      previous_failure TEXT, authorized_at INTEGER NOT NULL, UNIQUE(dispatch_id,review_hash)
+    ) STRICT;`,
+  },
 ];
 
 export function migrate(

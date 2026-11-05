@@ -1,3 +1,4 @@
+import { registerDispatchRecovery } from './http/dispatch-recovery.js';
 import Fastify, { LogController, type FastifyInstance } from 'fastify';
 import { QUEUE_BODY_LIMIT } from '@flow-batch/protocol';
 import type { AppConfig } from './config.js';
@@ -78,6 +79,7 @@ export function createApp(config: AppConfig): FastifyInstance {
   registerManagement(app, clients, hub, publicAssets, sessions);
   registerOrders(app, sessions, orders, materials, clients, bindings);
   registerLibrary(app, sessions, library);
+  registerDispatchRecovery(app, sessions, orders, clients);
   registerMaterialDownloads(app, signatures, clients, orders, materials);
   registerConnectionRoutes(app, clients, signatures, simulations, hub);
   registerBatchRoutes(app, signatures, clients, batches);

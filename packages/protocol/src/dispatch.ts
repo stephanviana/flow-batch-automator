@@ -59,7 +59,14 @@ export const dispatchRecordSchema = z.strictObject({
 export const dispatchListSchema = z.strictObject({
   commands: z.array(dispatchRecordSchema).max(100),
 });
+export const dispatchFailureSchema = z.strictObject({
+  stage: z.enum(['project-preparation', 'project-creation']),
+  code: z.string().regex(/^[a-z0-9_-]{1,80}$/),
+  sent: z.boolean(),
+});
+export type DispatchFailure = z.infer<typeof dispatchFailureSchema>;
 export const dispatchUpdateSchema = z.strictObject({
+  failure: dispatchFailureSchema.optional(),
   id: z.uuid(),
   state: z.enum(['pending', 'queued', 'blocked']),
   message: z.string().max(300),

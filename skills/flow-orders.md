@@ -77,3 +77,12 @@ limpeza não podem ser reconstruídos a partir dos hashes do histórico.
 O checkout e a publicação verificam o contrato do runtime. Se houver incompatibilidade,
 atualize a aplicação; não inclua `presenterImage` em Full POV/Full Vendedora para
 satisfazer um schema antigo. A API retorna os campos que falharam em `issues`.
+
+## Revisar um despacho bloqueado
+
+Use `flow_review_dispatch` com número e ID do despacho. Apresente o grupo, os
+hashes, as quantidades máximas e a razão registrada. Só use `flow_resume_dispatch`
+após autorização explícita no chat para essa retomada exata. A operação preserva
+os demais grupos, admite somente falha anterior à criação do projeto sem takes
+registrados e não permite repetição de resultados incertos. Uma revisão não
+retoma o grupo nem autoriza consumo por si mesma.

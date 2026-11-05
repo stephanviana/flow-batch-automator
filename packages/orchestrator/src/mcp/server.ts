@@ -245,6 +245,38 @@ export function createMcpServer(api: AgentApi, workspace: string): McpServer {
     },
     (input) => result(() => api('/manage/library/save', input)),
   );
+  server.registerTool(
+    'flow_review_dispatch',
+    {
+      description:
+        'Revisa um despacho bloqueado sem reenviar. Mostra o grupo, o hash da preparação, os custos máximos e se há prova de falha anterior à fila.',
+      inputSchema: z.object({ number, dispatchId: z.uuid() }),
+      annotations: { readOnlyHint: true },
+    },
+    ({ number, dispatchId }) =>
+      result(() =>
+        api(`/manage/orders/${number}/dispatches/${dispatchId}/review`),
+      ),
+  );
+  server.registerTool(
+    'flow_resume_dispatch',
+    {
+      description:
+        'Pode consumir créditos. Use SOMENTE após apresentar flow_review_dispatch e obter autorização explícita do usuário no chat para o grupo e hashes. Retoma apenas um grupo comprovadamente não enviado; nunca repete takes existentes ou resultados incertos.',
+      inputSchema: z.object({
+        number,
+        dispatchId: z.uuid(),
+        reviewHash: hash,
+        preparationHash: hash,
+        userAuthorized: z.literal(true),
+      }),
+      annotations: { destructiveHint: true, idempotentHint: true },
+    },
+    ({ number, dispatchId, ...input }) =>
+      result(() =>
+        api(`/manage/orders/${number}/dispatches/${dispatchId}/resume`, input),
+      ),
+  );
   server.registerResource(
     'biblioteca',
     'flow://library/status',

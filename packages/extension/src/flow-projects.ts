@@ -103,10 +103,13 @@ export async function openProject(
 export async function createProject(name: string): Promise<FlowRpcReply> {
   // Only nonpaid project creation is permitted here. Never generate media.
   let injected = false;
+  let step = 'locate_tab';
   try {
     const tab = await flowTab();
     if (tab.id === undefined) throw new Error('No Flow tab');
+    step = 'navigate';
     await navigate(tab.id, 'https://flow.google.com/');
+    step = 'wait_ready';
     await readyTab(tab.id);
     injected = true;
     const [result] = await chrome.scripting.executeScript({
@@ -132,7 +135,7 @@ export async function createProject(name: string): Promise<FlowRpcReply> {
   }
   return {
     ok: false,
-    code: 'flow_project_creation_unknown',
+    code: injected ? 'flow_project_creation_unknown' : `project_${step}_failed`,
     message:
       'Não foi possível confirmar a criação. Confira os projetos no Flow.',
     sent: injected,
