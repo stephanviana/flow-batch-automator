@@ -12,7 +12,11 @@ test('HTTP distinguishes liveness from a real SQLite failure without leaking det
   const directory = mkdtempSync(join(tmpdir(), 'flow-http-'));
   const databasePath = join(directory, 'database.sqlite');
   const app = createApp(
-    loadConfig({ DATABASE_PATH: databasePath, LOG_LEVEL: 'silent' }),
+    loadConfig({
+      DATABASE_PATH: databasePath,
+      LIBRARY_DIR: join(directory, 'instructions'),
+      LOG_LEVEL: 'silent',
+    }),
   );
   context.after(async () => {
     await app.close();
@@ -45,6 +49,7 @@ test('HTTP rejects DNS rebinding and web origins, allows extension health only w
   const app = createApp(
     loadConfig({
       DATABASE_PATH: join(directory, 'db.sqlite'),
+      LIBRARY_DIR: join(directory, 'instructions'),
       LOG_LEVEL: 'silent',
     }),
   );

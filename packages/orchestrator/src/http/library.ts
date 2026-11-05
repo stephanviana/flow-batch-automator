@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import {
   PREPARATION_CONTRACT,
-  libraryFileSchema,
+  instructionFileSchema,
   orderPublicationSchema,
   preparationFormatLabels,
   preparationFormatSchema,
@@ -11,7 +11,6 @@ import {
 import type { LocalSessions } from '../security/local-session.js';
 import type { LibraryStore } from '../library/store.js';
 
-const expectation = z.string().regex(/^[a-f0-9]{64}$/);
 export function registerLibrary(
   app: FastifyInstance,
   sessions: LocalSessions,
@@ -21,7 +20,7 @@ export function registerLibrary(
     sessions.require(request);
     return {
       contract: PREPARATION_CONTRACT,
-      library: library.current().revision,
+      library: library.status(),
       formats: preparationFormatSchema.options.map((format) => ({
         format,
         label: preparationFormatLabels[format],
@@ -30,7 +29,7 @@ export function registerLibrary(
       })),
       publicationSchema: z.toJSONSchema(orderPublicationSchema),
       workflow:
-        'Reserve o pedido, leia o contexto completo e os materiais reais, crie a preparação, publique e apresente a prévia. Despache somente após autorização explícita no chat para o hash exato. Não analise o código da aplicação para preparar pedidos.',
+        'Reserve o pedido, leia o contexto e os materiais reais, crie e publique a preparação. As instruções vêm exclusivamente da pasta local configurada. Cada reserva captura seus arquivos automaticamente. Consumo exige autorização no chat para o hash exato. Não analise o código da aplicação.',
     };
   });
   app.get('/manage/library', async (request) => {
@@ -41,8 +40,11 @@ export function registerLibrary(
     sessions.require(request);
     const { path, revision } = z
       .strictObject({
-        path: libraryFileSchema,
-        revision: expectation.optional(),
+        path: instructionFileSchema,
+        revision: z
+          .string()
+          .regex(/^[a-f0-9]{64}$/)
+          .optional(),
       })
       .parse(request.body);
     const files = revision
@@ -57,65 +59,20 @@ export function registerLibrary(
       sessions.require(request);
       const { path, text, expectedDraftHash } = z
         .strictObject({
-          path: libraryFileSchema,
+          path: instructionFileSchema,
           text: z.string().max(262144),
-          expectedDraftHash: expectation,
+          expectedDraftHash: z.string().regex(/^[a-f0-9]{64}$/),
         })
         .parse(request.body);
       return library.save(path, text, expectedDraftHash);
     },
   );
-  app.post('/manage/library/publish', async (request) => {
-    sessions.require(request);
-    const { expectedDraftHash, message } = z
-      .strictObject({
-        expectedDraftHash: expectation,
-        message: z.string().max(500).default('Atualização da biblioteca'),
-      })
-      .parse(request.body);
-    const { files, ...revision } = library.publish(expectedDraftHash, message);
-    return { ...revision, fileCount: Object.keys(files).length };
-  });
-  app.post('/manage/library/restore', async (request) => {
-    sessions.require(request);
-    const { revision, expectedDraftHash } = z
-      .strictObject({ revision: expectation, expectedDraftHash: expectation })
-      .parse(request.body);
-    return library.restore(revision, expectedDraftHash);
-  });
   app.get('/manage/library/export', async (request, reply) => {
     sessions.require(request);
     reply.header(
       'Content-Disposition',
-      'attachment; filename="flow-biblioteca.json"',
+      'attachment; filename="flow-instrucoes.json"',
     );
     return library.export();
   });
-  app.post(
-    '/manage/library/import-preview',
-    { bodyLimit: 67_108_864 },
-    async (request) => {
-      sessions.require(request);
-      const { backup, changes, conflicts } = library.preview(request.body);
-      return {
-        expectedDraftHash: library.draft().hash,
-        libraryId: backup.libraryId,
-        revision: backup.current,
-        revisions: backup.revisions.length,
-        changes,
-        conflicts,
-      };
-    },
-  );
-  app.post(
-    '/manage/library/import',
-    { bodyLimit: 67_108_864 },
-    async (request) => {
-      sessions.require(request);
-      const { backup, expectedDraftHash } = z
-        .strictObject({ backup: z.unknown(), expectedDraftHash: expectation })
-        .parse(request.body);
-      return library.import(backup, expectedDraftHash);
-    },
-  );
 }

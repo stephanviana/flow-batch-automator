@@ -26,7 +26,6 @@ import { MaterialFiles } from './orders/material-files.js';
 import { registerOrders } from './http/orders.js';
 import { registerMaterialDownloads } from './http/materials.js';
 import { LibraryStore } from './library/store.js';
-import { seedFiles } from './library/seed.js';
 import { LibraryBindings } from './library/bindings.js';
 import { registerLibrary } from './http/library.js';
 
@@ -74,10 +73,7 @@ export function createApp(config: AppConfig): FastifyInstance {
   registerHealth(app, database);
   hub.register(app, config.port);
   const publicAssets = new URL('./public/', import.meta.url);
-  const library = new LibraryStore(
-    config.libraryDirectory,
-    seedFiles(publicAssets),
-  );
+  const library = new LibraryStore(config.libraryDirectory);
   const bindings = new LibraryBindings(database, library);
   registerManagement(app, clients, hub, publicAssets, sessions);
   registerOrders(app, sessions, orders, materials, clients, bindings);

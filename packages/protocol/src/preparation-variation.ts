@@ -14,6 +14,8 @@ function animationRole(format: Variation['format'], stage: Stage): string {
   if (format === 'clone') return 'clone';
   if (format === 'full-pov' || (format === 'pov' && stage === 'hook'))
     return 'pov';
+  if (stage === 'hook' && format === 'factory-inclined')
+    return 'factory-inclined';
   if (stage === 'hook' && format.startsWith('factory')) return 'factory';
   return 'seller';
 }
@@ -60,7 +62,9 @@ export async function compileVariation(
             ? 1
             : undefined;
     const role = animationRole(variation.format, stage);
-    const template = templates.get(role);
+    const template =
+      templates.get(role) ??
+      (role === 'factory-inclined' ? templates.get('factory') : undefined);
     if (!template)
       throw new Error(`Template de animação indisponível: ${role}.`);
     return {

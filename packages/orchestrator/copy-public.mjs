@@ -16,21 +16,6 @@ await cp(
   new URL('../ui/theme.css', import.meta.url),
   resolve(destination, 'theme.css'),
 );
-await cp(
-  new URL('../../agents/animacao.md', import.meta.url),
-  resolve(destination, 'animacao.md'),
-);
-await cp(
-  new URL('../../agents/', import.meta.url),
-  resolve(destination, 'library-seed/instrucoes'),
-  { recursive: true },
-);
-await cp(
-  new URL('../../skills/', import.meta.url),
-  resolve(destination, 'library-seed/fluxos'),
-  { recursive: true },
-);
-
 await writeFile(
   resolve(destination, 'orders-config.js'),
   `export const MATERIAL_LIMIT = ${MATERIAL_LIMIT};\nexport const VIDEO_MATERIAL_LIMIT = ${VIDEO_MATERIAL_LIMIT};\nexport const ORDER_GROUP_LIMIT = ${ORDER_GROUP_LIMIT};\nexport const formats = ${JSON.stringify(Object.entries(preparationFormatLabels))};\n`,

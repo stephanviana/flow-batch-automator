@@ -1,3 +1,4 @@
+import { installInstructions } from './test-support/instruction-package.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -28,6 +29,7 @@ const extensionDirectory = requestedFormat
   ? resolve(directory, 'extension')
   : resolve('packages/extension/dist');
 await mkdir(directory, { recursive: true });
+installInstructions(resolve(directory, 'instructions'));
 const log = createWriteStream(resolve(directory, 'server.log'));
 let server;
 let browser;
@@ -68,6 +70,7 @@ async function startServer() {
       HOST: '127.0.0.1',
       PORT: String(port),
       DATABASE_PATH: resolve(directory, 'state.sqlite'),
+      LIBRARY_DIR: resolve(directory, 'instructions'),
       LOG_LEVEL: 'silent',
     },
     stdio: ['ignore', 'pipe', 'pipe'],

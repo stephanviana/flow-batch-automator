@@ -1,3 +1,4 @@
+import { installInstructions } from './test-support/instruction-package.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -10,9 +11,11 @@ const project = `flow-batch-validation-${randomBytes(4).toString('hex')}`;
 const directory = resolve('.cache', project);
 const destination = join(directory, 'extension');
 mkdirSync(destination, { recursive: true });
+installInstructions(join(directory, 'instructions'));
 const environment = {
   ...process.env,
   WIN_EXTENSION_DIR: destination,
+  FLOW_LIBRARY_DIR: join(directory, 'instructions'),
 };
 const log = join(directory, 'docker.log');
 

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { instructions } from './instruction-fixture.js';
+const { animationTemplates } = instructions;
 import { test } from 'node:test';
 import {
   compilePreparation,
@@ -8,9 +9,13 @@ import {
   importImageCount,
 } from '../src/index.js';
 
-const animationTemplates = readFileSync('../../agents/animacao.md', 'utf8');
-
-for (const format of ['factory', 'pov', 'full-pov', 'seller'] as const) {
+for (const format of [
+  'factory',
+  'factory-inclined',
+  'pov',
+  'full-pov',
+  'seller',
+] as const) {
   test(`${format} compiles exact speech with its required image sources`, async () => {
     const singleImage = format === 'full-pov' || format === 'seller';
     const hookImage = {
@@ -58,28 +63,16 @@ for (const format of ['factory', 'pov', 'full-pov', 'seller'] as const) {
         JSON.parse(task.original.imagePrompt),
         stage === 'hook' || singleImage ? hookImage : presenterImage,
       );
-      if (!(format === 'factory' && stage === 'hook')) {
-        assert.match(prompt, /fixed counter stay on that counter/);
-        assert.match(prompt, /remain spoken audio only/);
-      }
-      assert.match(
-        prompt.split('\n').at(-1)!,
-        /^Visual exclusions:.*CTA buttons.*subtitles.*promotional badges/,
-      );
-
-      if (format === 'full-pov' || (format === 'pov' && stage === 'hook')) {
-        assert.match(prompt, /continuous 8-second.*strict first-person POV/);
-        assert.match(prompt, /speaks naturally off-camera/);
-        assert.match(prompt, /No chorus and no visible lip-sync/);
-        assert.match(prompt, /Do not lift a large supported kit/);
-        assert.doesNotMatch(prompt, /presenter says/);
-      } else if (format === 'factory' && stage === 'hook') {
-        assert.match(prompt, /shout the exact same line together in chorus/);
-      } else {
-        assert.match(prompt, /presenter says.*accurate lip-sync/);
-        assert.match(prompt, /no chorus or additional speaker/);
-        assert.doesNotMatch(prompt, /speaks naturally off-camera/);
-      }
+      const role =
+        format === 'full-pov' || (format === 'pov' && stage === 'hook')
+          ? 'pov'
+          : format.startsWith('factory') && stage === 'hook'
+            ? format === 'factory-inclined'
+              ? 'factory-inclined'
+              : 'factory'
+            : 'seller';
+      assert.match(prompt, new RegExp(`Role: ${role}\\.`));
+      assert.match(prompt.split('\n').at(-1)!, /^Visual exclusions:/);
     }
     assert.equal(manifest.tasks[0]!.reuseImageFrom, undefined);
     assert.equal(

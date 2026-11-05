@@ -99,8 +99,7 @@ test('official MCP client completes stdio checkout, material reading and publica
   const reserved = JSON.parse(text.text as string);
   assert.ok(
     reserved.context.instructions.some(
-      (document: { path: string }) =>
-        document.path === 'instrucoes/copy/vendedora.md',
+      (document: { path: string }) => document.path === 'instrucoes/seller.md',
     ),
   );
   assert.deepEqual(readFileSync(reserved.materials[0].path), image);

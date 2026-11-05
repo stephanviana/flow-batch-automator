@@ -54,8 +54,9 @@ export function registerOrders(
         revise: z.boolean().default(false),
       })
       .parse(request.body);
+    const revision = bindings.capture(repository.get(id(request.params)));
     const lease = repository.claim(id(request.params), worker, revise);
-    bindings.bind(lease.order.id, lease.leaseId);
+    bindings.bind(lease.order.id, lease.leaseId, revision);
     return lease;
   });
   app.post('/manage/orders/:id/context', async (request) => {
@@ -92,7 +93,7 @@ export function registerOrders(
       const prepared = await prepareOrder(
         order,
         input,
-        revision.files['instrucoes/animacao.md']!,
+        bindings.templates(revision),
       );
       prepared.library = {
         libraryId: revision.libraryId,

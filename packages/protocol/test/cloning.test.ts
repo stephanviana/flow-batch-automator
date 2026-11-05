@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { instructions } from './instruction-fixture.js';
+const { animationTemplates } = instructions;
 import { test } from 'node:test';
 import {
   compilePreparation,
@@ -106,7 +107,7 @@ test('cloning compiles adapted directions and exact speech, with the image pair 
       reference,
       variations: [clone],
     },
-    readFileSync('../../agents/animacao.md', 'utf8'),
+    animationTemplates,
   );
   assert.equal(manifest.tasks.length, 3);
   for (const [index, stage] of (['hook', 'body', 'cta'] as const).entries()) {

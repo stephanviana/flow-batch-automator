@@ -1,3 +1,5 @@
+import { preparationFormatLabels } from '../packages/protocol/dist/index.js';
+import { installInstructions } from './test-support/instruction-package.mjs';
 import assert from 'node:assert/strict';
 import { Buffer } from 'node:buffer';
 import { randomUUID, createHash } from 'node:crypto';
@@ -15,8 +17,10 @@ const base = 'http://127.0.0.1:4329';
 const config = loadConfig({
   PORT: '4329',
   DATABASE_PATH: resolve(directory, 'state.sqlite'),
+  LIBRARY_DIR: resolve(directory, 'instructions'),
   LOG_LEVEL: 'silent',
 });
+installInstructions(config.libraryDirectory);
 let app = createApp(config);
 let browser;
 let page;
@@ -124,7 +128,11 @@ async function verifyModeSwitching(group, picker) {
   assert.equal(await standardMode.isChecked(), true);
   assert.equal(await reference.isVisible(), false);
   assert.equal(await group.locator('select').count(), 1);
-  assert.equal(await standardFormat.locator('option').count(), 6);
+  assert.equal(
+    await standardFormat.locator('option').count(),
+    Object.keys(preparationFormatLabels).filter((format) => format !== 'clone')
+      .length,
+  );
   assert.equal(await standardFormat.locator('option[value=""]').count(), 0);
   await standardFormat.selectOption('factory-truck');
   await readyVideo(page.locator('.additional-materials video'));

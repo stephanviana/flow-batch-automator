@@ -12,40 +12,26 @@ Flow. FlowKit é referência técnica, não define o produto como ferramenta de 
 A arquitetura 0.6.0 usa painel em `/orders`, com produtos, materiais selecionados
 de qualquer pasta, formatos e quantidades por produto. Não há presets nesta
 etapa. O usuário pede ao Codex/Antigravity que prepare um ou vários números de
-pedido. Consulte `skills/flow-orders.md` e `agents/instrucoes.md` antes de
-preparar. `agents/` e `skills/` guardam os padrões de instalação. A biblioteca ativa é
-externa ao código, em `LIBRARY_DIR` (padrão: `biblioteca/` junto ao SQLite),
-com rascunho, histórico e revisão publicada. Manutenção criativa acontece nessa
-biblioteca; atualizar software não sobrescreve as personalizações.
+pedido. Prefira o MCP local: `flow_list_orders`, `flow_checkout`, `flow_publish`
+e `flow_approve`. A biblioteca criativa fica exclusivamente em uma pasta local
+configurada por `LIBRARY_DIR` (Compose: `FLOW_LIBRARY_DIR`). O repositório não
+contém nem distribui copy, prompts, swipes ou modelos criativos de instalação.
+`pnpm library init PASTA` cria somente a estrutura técnica vazia;
+`pnpm library import PASTA PACOTE.JSON` importa instruções do usuário.
+O painel `/orders` mantém pedidos e andamento, sem editor de instruções.
 
-Para **operação de pedidos**, prefira o MCP local: consulte `flow_list_orders`,
-reserve com `flow_checkout`, leia integralmente o contexto retornado e os
-materiais reais e publique com `flow_publish`. O conector pode rodar fora deste
-repositório. Não investigue código, containers ou testes durante uma preparação;
-reporte erros operacionais com o contrato e os campos fornecidos pela API.
-A autorização de consumo continua explícita no chat, vinculada ao hash.
-A CLI continua disponível para manutenção e compatibilidade. O checkout fornece
-`contexto.json` e apenas as instruções dos formatos do pedido. Cada reserva
-fixa uma revisão; o compilador usa os mesmos templates dessa revisão.
-O contrato `flow-orders/2` verifica imagem única de Full POV/Full Vendedora
-antes de criar rascunhos ou publicar. Incompatibilidade exige atualizar o runtime,
-sem acrescentar `presenterImage` para satisfazer um servidor antigo.
-O compilador não invoca IA; o agente ativo analisa os materiais reais e cria os
-textos e prompts. As bases específicas de Fábrica, POV e Full Vendedora ficam
-em `agents/copy/`, selecionadas pelas regras comuns de `agents/copy.md`. Os
-formatos padrão usam diretamente essas bases de swipe incorporadas; testes de
-copy/formato de referência seguem o caminho de clonagem. Manter no repositório
-as instruções operacionais, incorporando regras úteis de sintaxe nas bases de
-cada formato, sem versionar estudos de origem ou extração dos swipes.
+Uma reserva valida o pacote local e captura automaticamente os arquivos usados,
+sem publicação manual da biblioteca. Reservas existentes e preparações publicadas
+preservam suas capturas e templates. Ausência de regras aponta os arquivos
+necessários, sem buscar conteúdo no código. A CLI e o MCP entregam o mesmo
+contexto e os mesmos materiais verificados. O compilador não invoca IA.
 
-O modo **Clonar formato de vídeo** associa um MP4 do produto a cada grupo
-`clone`. Use `skills/flow-clone-video.md` e leia `agents/clonagem.md`:
-o agente analisa o vídeo real, extrai estrutura narrativa, sintaxe, formato,
-template e regras de fidelidade antes de redigir, e publica a síntese e as
-direções adaptadas; o compilador não invoca IA. A foto continua como
-referência do Flow. MP4 até 64 MB; imagens/documentos até 8 MB.
-No painel, cada produto usa um único MP4, vinculado automaticamente à clonagem.
-Outra referência de vídeo deve ser preparada em outro pedido/lote.
+Para operação, trabalhe fora do repositório e leia o contexto integral retornado
+pelo MCP. Não investigue código ou containers durante uma preparação. As skills
+em `skills/` são orientações técnicas para operar o MCP; a análise criativa e as
+regras de copy, imagem, animação e clonagem pertencem ao pacote externo.
+O vídeo de clonagem é analisado pelo agente ativo; MP4 até 64 MB e imagens/documentos
+até 8 MB. A foto do produto continua como referência de geração do Flow.
 
 O SQLite guarda registros; os materiais importados ficam em arquivos por hash
 em armazenamento persistente administrado pelo aplicativo, com deduplicação.
@@ -78,36 +64,17 @@ Preservar referência original na geração da imagem e usar a imagem gerada no
 vídeo. Não mudar materiais/modelos de takes registrados. POV + Vendedora usa voz fora de câmera e mãos no gancho; Full POV mantém essa
 composição nos três takes, sem coro ou lip-sync visível.
 
-As falas dos três takes devem ser planejadas para ocupar perto de 7–7,5 segundos
-de cada take de 8 segundos, com margem curta e ritmo natural, conforme
-`agents/copy.md`. Não deixar gancho, Body ou CTA muito curtos para completar
-com apresentação silenciosa, nem inventar alegações ou repetir texto para encher.
-A duração é estimativa editorial; só o áudio gerado comprova a realização.
-Na clonagem, mesmo uma única variação exige copy própria baseada na estrutura
-do vídeo. Com várias, variar argumento ou ênfase sustentados, além da redação;
-não copiar a transcrição nem fazer somente substituições de palavras.
-
-A copy de fábrica segue `agents/copy/fabrica.md` e as regras comuns de
-`agents/copy.md`:
-reação comercial + produto + motivo de compra, com vantagem comercial e fechamento
-avaliativo curto integrado à frase. O usuário aprovou “por um precinho incrível”
-como exemplo, sem tornar a expressão obrigatória. Preservar gancho de venda,
-argumento concreto e CTA de compra. Não usar preço monetário explícito nem inventar
-promoção, urgência, estoque, popularidade, desconto ou oferta oficial da plataforma.
-Não bloquear a copy por falta de condição promocional; adaptar com descoberta e
-apelo comercial. Não transferir quantidade/capacidade de exemplos ao produto.
-Swipes brutos não são dependências de execução nem materiais a versionar.
-
-Nas imagens de Body/CTA, produto diretamente no balcão ou nas mãos da vendedora.
-Não inventar bandeja, cesta, tábua ou base portátil. Preservar acessórios reais
-confirmados. Kits grandes ficam no balcão sem desmontar a unidade comercial;
-a animação preserva esse apoio. Revisões exigem novos materiais conferidos e
-autorização antes de consumo. Não atribuir validação de políticas à revisão.
+Regras editoriais, duração falada, apoio físico, identidade do produto e direção
+visual vêm exclusivamente das instruções locais. Os templates são texto de
+entrada do compilador; o código não gera instruções criativas nem faz fallback
+para conteúdo embutido. Swipes podem ser fornecidos como referência em uma
+conversa de manutenção, sem pasta de swipes nem dependência de execução.
 
 Projetos do Flow são preparados automaticamente por lote e retomados pelo vínculo
 persistido. Reutilizar a mesma aba, sem abrir abas adicionais por lote. Criação
 sem resposta confirmada exige revisão, sem criar outra automaticamente. Não
-recarregar a aba para atualizar a listagem durante execução. Mostrar etapas reais,
+recarregar a aba para atualizar a listagem durante execução.
+Mostrar etapas reais,
 pausa, falha e incerteza; não inventar percentual.
 
 As Fases 1–4 e o piloto anterior tiveram validações reais no Chrome Windows,
@@ -195,11 +162,12 @@ mudanças apenas documentais não exigem criar testes de código.
 
 ### Comandos e evidências
 
-- `pnpm mcp`: servidor MCP stdio local; o painel `/library` oferece o conector
-  independente para download, sem dependência do checkout do código.
-- `pnpm library init CAMINHO`: inicializa ou abre uma biblioteca existente.
-- `pnpm test:browser:library`: editor, revisões, importação/exportação e conector
-  em Chrome isolado, sem Flow nem consumo.
+- `pnpm mcp`: conector MCP stdio; o arquivo independente é servido em
+  `/agent/flow-batch-mcp.mjs`, sem editor ou página de biblioteca.
+- `pnpm library init PASTA`, `import PASTA PACOTE.JSON`, `export PASTA BACKUP.JSON`,
+  `validate PASTA` e `restore PASTA REVISAO`: manutenção offline da pasta local.
+- `pnpm test:browser:library`: inicialização vazia, importação local, painel de
+  pedidos sem editor e download do conector em Chrome isolado.
 - `pnpm orders list` / `show NUMERO`: consulta do agente pela API local.
 - `pnpm orders checkout 12 15`: reserva e materiais para preparação; `--revise`
   permite revisar uma preparação ainda não despachada.

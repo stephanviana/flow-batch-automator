@@ -14,6 +14,7 @@ import {
 } from '@flow-batch/protocol';
 import { createApp } from '../src/app.js';
 import { loadConfig } from '../src/config.js';
+import { instructions } from './instruction-fixture.js';
 import { bodyDigest } from '../src/security/signatures.js';
 
 export async function fixture(context: TestContext): Promise<{
@@ -28,8 +29,10 @@ export async function fixture(context: TestContext): Promise<{
   const directory = mkdtempSync(join(tmpdir(), 'flow-connection-'));
   const config = loadConfig({
     DATABASE_PATH: join(directory, 'db.sqlite'),
+    LIBRARY_DIR: join(directory, 'instructions'),
     LOG_LEVEL: 'silent',
   });
+  instructions.installInstructions(config.libraryDirectory);
   const app = createApp(config);
   const database = new DatabaseSync(config.databasePath);
   context.after(async (): Promise<void> => {

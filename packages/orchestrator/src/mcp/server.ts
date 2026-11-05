@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import {
-  libraryFileSchema,
+  instructionFileSchema,
   orderPublicationSchema,
 } from '@flow-batch/protocol';
 import { checkout, publishWorkspace } from '../agent-client/workspace.js';
@@ -213,7 +213,7 @@ export function createMcpServer(api: AgentApi, workspace: string): McpServer {
     'flow_library_status',
     {
       description:
-        'Consulta revisão publicada, arquivos do rascunho e histórico da biblioteca.',
+        'Consulta a pasta local de instruções, a última captura e arquivos ausentes.',
       inputSchema: z.object({}),
       annotations: { readOnlyHint: true },
     },
@@ -223,9 +223,9 @@ export function createMcpServer(api: AgentApi, workspace: string): McpServer {
     'flow_library_read',
     {
       description:
-        'Lê uma instrução ou swipe da biblioteca. Sem revision, lê o rascunho; referências de swipe não substituem as instruções publicadas.',
+        'Lê uma instrução da pasta local. Na preparação, informe revision para ler a captura da reserva.',
       inputSchema: z.object({
-        path: libraryFileSchema,
+        path: instructionFileSchema,
         revision: hash.optional(),
       }),
       annotations: { readOnlyHint: true },
@@ -236,26 +236,14 @@ export function createMcpServer(api: AgentApi, workspace: string): McpServer {
     'flow_library_save',
     {
       description:
-        'Salva instrução ou swipe no rascunho quando o usuário pedir manutenção da biblioteca. Não publica nem altera pedidos em andamento.',
+        'Atualiza um arquivo de instruções quando o usuário pedir manutenção. Novas reservas capturam as alterações automaticamente; reservas existentes preservam sua captura.',
       inputSchema: z.object({
-        path: libraryFileSchema,
+        path: instructionFileSchema,
         text: z.string().max(262144),
         expectedDraftHash: hash,
       }),
     },
     (input) => result(() => api('/manage/library/save', input)),
-  );
-  server.registerTool(
-    'flow_library_publish',
-    {
-      description:
-        'Publica o rascunho revisado da biblioteca quando o usuário pedir a atualização. Novas reservas usarão a revisão; pedidos em andamento preservam seu contexto.',
-      inputSchema: z.object({
-        expectedDraftHash: hash,
-        message: z.string().max(500),
-      }),
-    },
-    (input) => result(() => api('/manage/library/publish', input)),
   );
   server.registerResource(
     'biblioteca',

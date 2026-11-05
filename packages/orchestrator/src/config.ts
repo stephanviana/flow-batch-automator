@@ -1,4 +1,5 @@
 import { resolve, dirname } from 'node:path';
+import { homedir } from 'node:os';
 import { z } from 'zod';
 import { DEFAULT_PORT } from '@flow-batch/protocol';
 
@@ -51,7 +52,7 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
     databasePath,
     materialsDirectory,
     libraryDirectory: resolve(
-      config.LIBRARY_DIR ?? resolve(dirname(databasePath), 'biblioteca'),
+      config.LIBRARY_DIR ?? resolve(homedir(), '.flow-batch', 'biblioteca'),
     ),
     busyTimeoutMs: config.SQLITE_BUSY_TIMEOUT_MS,
     logLevel: config.LOG_LEVEL,

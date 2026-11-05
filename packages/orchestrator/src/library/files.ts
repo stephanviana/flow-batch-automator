@@ -60,7 +60,7 @@ export function draftFiles(root: string): LibraryFiles {
       }
     }
   }
-  for (const name of ['instrucoes', 'fluxos', 'swipes']) {
+  for (const name of ['instrucoes']) {
     const path = join(root, name);
     if (existsSync(path)) {
       directory(path);

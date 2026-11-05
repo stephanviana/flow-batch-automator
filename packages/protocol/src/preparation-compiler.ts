@@ -9,16 +9,23 @@ import { compileVariation } from './preparation-variation.js';
 export function readAnimationTemplates(
   markdown: string,
   requireClone = false,
+  requireInclined = false,
 ): Map<string, string> {
   const templates = new Map<string, string>();
   for (const [heading, name] of [
     ['Fábrica', 'factory'],
+    ['Esteira inclinada', 'factory-inclined'],
     ['Vendedora', 'seller'],
     ['POV', 'pov'],
     ['Clonagem', 'clone'],
   ] as const) {
     const section = markdown.split(`## ${heading} — `)[1]?.split('\n## ')[0];
-    if (!section && name === 'clone' && !requireClone) continue;
+    if (
+      !section &&
+      ((name === 'clone' && !requireClone) ||
+        (name === 'factory-inclined' && !requireInclined))
+    )
+      continue;
     const template = section?.match(/```text\n([\s\S]*?)\n```/)?.[1];
     if (
       !template?.includes('{{fala}}') ||

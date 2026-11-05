@@ -1,111 +1,85 @@
 # Flow Batch Automator
 
-Automação local para preparar criativos de TikTok Shop e gerar imagens e vídeos
-no Google Flow. O painel monta os pedidos; Codex ou Antigravity analisa os
-materiais, cria as copys e os prompts; a extensão executa os lotes autorizados.
+Ferramenta local para preparar pedidos de TikTok Shop e gerar imagens e vídeos
+no Google Flow. O painel organiza produtos, materiais, formatos e quantidades;
+o agente conectado pelo MCP cria copy e prompts a partir das instruções locais;
+a extensão executa os grupos autorizados.
 
-## Fluxo de uso
+## Instalação e instruções locais
 
-1. Copie `.env.example` para `.env` e ajuste `WIN_EXTENSION_DIR` para uma pasta
-   existente no Windows, acessível pelo WSL. O exemplo usa `SEU_USUARIO`, que deve
-   ser substituído pelo seu perfil do Windows. Inicie com
-   `docker compose up -d --build` e carregue a extensão não empacotada dessa pasta
-   no Chrome. O caminho real fica somente no `.env` local, ignorado pelo Git.
-2. Conecte a extensão e confirme a solicitação em
-   <http://127.0.0.1:4319/connect>. Mantenha uma aba autenticada do Flow disponível.
-3. Abra <http://127.0.0.1:4319/orders> ou use **Abrir painel de pedidos** na
-   extensão, que cria uma nova aba à direita da atual, com o painel lateral
-   fechado nessa aba. Ao voltar para uma aba de pedidos já aberta, o painel
-   lateral também fecha, mesmo que tenha sido aberto em outra aba. Adicione
-   produtos e suas informações. Selecione a foto no campo **Imagem de referência para o Flow**
-   e use **Materiais adicionais** para os demais arquivos, de qualquer pasta acessível pelo seletor.
-   Os seletores exibem os arquivos escolhidos e acompanham as remoções na lista.
-   Distribua formatos/quantidades por produto. O mesmo produto pode
-   ter vários formatos. Esta versão não possui presets.
-4. Salve e peça no chat: **“Prepare os pedidos 12 e 15”**. O MCP local reserva os pedidos e entrega as instruções da biblioteca
-   e os materiais reais. A CLI também permanece disponível.
-5. Confira a prévia publicada, também visível no painel, e autorize no chat o
-   conteúdo e o limite de gerações da revisão exata. Salvar/publicar não consome
-   créditos. O agente despacha a preparação autorizada.
-6. A extensão cria ou recupera o projeto de cada lote e processa a fila, inclusive
-   com o painel fechado. O side panel acompanha etapas, pausa, falhas e revisão.
-
-Cada variação gera três vídeos: gancho, Body e CTA. As imagens seguem o formato:
-
-| Formato                             | Imagens novas | Reutilização do frame inicial                                  |
-| ----------------------------------- | ------------- | -------------------------------------------------------------- |
-| Fábrica, POV + Vendedora e clonagem | 2             | CTA usa a imagem do Body                                       |
-| Full POV                            | 1             | Gancho, Body e CTA usam a imagem POV gerada no gancho          |
-| Full Vendedora                      | 1             | Gancho, Body e CTA usam a imagem da vendedora gerada no gancho |
-
-Defaults: Nano Banana Pro e Omni 1.1 Flash Frames com frame inicial, 8 segundos,
-720p, 9:16. Cada MP4 permanece separado: `01-Gancho.mp4`, `02-Body.mp4` e
-`03-CTA.mp4`, juntos por variação. A pasta global existente de downloads do Chrome
-não é alterada. Não há montagem de vídeo final. As falas são planejadas
-para ocupar perto de 7–7,5 segundos de cada take de 8 segundos, com margem curta
-e ritmo natural. Essa é uma estimativa editorial; o áudio gerado exige conferência. A nova regra de imagem única
-vale para novas preparações; manifestos já registrados permanecem imutáveis.
-
-Os sete formatos têm bases de copy incorporadas: [Fábrica](agents/copy/fabrica.md),
-[POV + Vendedora e Full POV](agents/copy/pov.md) e [Full Vendedora](agents/copy/vendedora.md).
-As bases já incorporam os swipes e orientam diretamente sintaxe e progressão
-de venda. Para testar uma copy ou formato de referência, use a opção de clonagem
-do pedido. As regras incluem fidelidade factual, anti-overlay, apoio físico e
-continuidade Body/CTA; não representam validação de conversão ou de mídia real.
-
-## Biblioteca criativa e backup
-
-Abra <http://127.0.0.1:4319/library>. A primeira inicialização cria uma biblioteca
-com `instrucoes/`, `fluxos/`, `swipes/`, `biblioteca.json` e `.historico/`.
-O caminho padrão é `biblioteca/` junto ao banco; em Compose fica no volume
-persistente, em `/data/biblioteca`. Configure `LIBRARY_DIR` ao iniciar diretamente
-para usar outra pasta. Os Markdown de `agents/` e `skills/` são apenas os padrões
-iniciais da instalação; mudanças neles não sobrescrevem bibliotecas existentes.
-
-Edite os arquivos no painel ou na pasta, salve o rascunho e compare com uma
-revisão anterior. **Publicar biblioteca** cria uma revisão completa. Novas
-reservas usam essa revisão; as existentes continuam com suas instruções e seus
-templates originais. Para adotar regras novas em um pedido preparado, faça uma
-revisão explícita antes do despacho: o conteúdo publicado recebe novo hash.
-A publicação da biblioteca não gera mídia.
-
-Swipes são referências de manutenção. Importe TXT/Markdown, peça ao agente para
-extrair a estrutura e incorporar o que for relevante às instruções do formato,
-revise e publique. Eles não são dependências automáticas da geração e não há
-arquivamento obrigatório de estudos A–E. `instrucoes/rotas.json` define documentos
-comuns e os de cada formato. Ao acrescentar um documento obrigatório, inclua-o
-nessas rotas. O contrato técnico continua determinando os formatos executáveis.
-
-**Exportar biblioteca** baixa um JSON com a revisão publicada, todas as revisões
-pertencentes à biblioteca ativa e o rascunho salvo. Guarde o backup fora deste
-computador. Em outra instalação, **Importar biblioteca existente** mostra os
-arquivos afetados antes da importação. **Restaurar revisão no rascunho** permite
-rever uma versão anterior antes de publicá-la. Rascunhos substituídos por
-restauração/importação ficam arquivados localmente em `.rascunhos/`; esses
-arquivos de recuperação não integram o backup exportado. Pedidos, produtos,
-materiais e vídeos têm armazenamento próprio e não integram esse backup.
-
-Para uma pasta diretamente acessível no host:
+O código da aplicação não inclui instruções criativas nem swipes. Escolha uma
+pasta para seu pacote de instruções, fora do repositório:
 
 ```sh
+pnpm install --frozen-lockfile
 pnpm build
-pnpm library init /caminho/Minha-Biblioteca-Flow
-# Defina FLOW_LIBRARY_DIR no .env com esse mesmo caminho.
-docker compose -f compose.yaml -f compose.library.yaml up -d --build
+pnpm library init /CAMINHO/Minha-Biblioteca-Flow
+pnpm library import /CAMINHO/Minha-Biblioteca-Flow /CAMINHO/pacote-instrucoes.json
+pnpm library validate /CAMINHO/Minha-Biblioteca-Flow
 ```
 
-A pasta precisa existir e permitir escrita pelo usuário 1000 do container.
-Em uma nova instalação, selecione o mesmo caminho ou importe o backup pelo painel.
-O override monta somente a biblioteca criativa; os materiais continuam no volume
-administrado pelo aplicativo. Para mudar uma instalação existente, exporte e
-importe sua biblioteca ativa antes de passar a usar a nova pasta.
+`init` cria `biblioteca.json`, `.historico/` e `instrucoes/rotas.json`, com rotas
+vazias. Não instala regras padrão, não cria uma pasta de swipes e não substitui
+arquivos existentes. Você pode importar um pacote, copiar uma pasta existente
+completa ou editar os arquivos diretamente. Sem instruções completas, o servidor
+continua atendendo pedidos e informa o que falta antes de reservar a preparação.
 
-## Operação por MCP
+`instrucoes/rotas.json` aponta os documentos comuns, as bases dos formatos e o
+arquivo de templates de animação. As chaves técnicas são `version` (2), `common`,
+`formats` e `animation`. Os formatos correspondem aos identificadores executáveis
+da aplicação. Caminhos devem ficar sob `instrucoes/`; os templates precisam
+respeitar os marcadores e cabeçalhos técnicos do compilador. Pacotes históricos
+mantêm sua leitura para preservar preparações existentes.
 
-Na biblioteca, clique **Baixar conector MCP** e salve `flow-batch-mcp.mjs` em uma
-pasta de sua escolha. O arquivo inclui suas dependências e exige somente Node.js
-24.22.2 LTS ou 26.12.1 e o servidor local em execução. Exemplo de configuração
-para clientes que usam `mcpServers`:
+Copie `.env.example` para `.env`. Configure `WIN_EXTENSION_DIR` com uma pasta
+existente para a extensão do Chrome e `FLOW_LIBRARY_DIR` com a pasta de instruções.
+Ambos são caminhos do ambiente que executa Docker Compose. No WSL, use caminhos
+Linux, inclusive `/mnt/c/...` quando escolher uma pasta Windows.
+
+```sh
+docker compose up -d --build
+```
+
+O Compose monta somente a pasta escolhida de instruções em `/library`. SQLite e
+materiais dos produtos continuam no volume persistente administrado pela aplicação.
+A aplicação roda sem privilégios e publica apenas `127.0.0.1:4319`. Não altere a
+pasta global de downloads do Chrome. Carregue a extensão não empacotada no destino
+configurado e confirme a conexão em <http://127.0.0.1:4319/connect>.
+
+Fora do Compose, `LIBRARY_DIR` escolhe a pasta; o padrão é
+`~/.flow-batch/biblioteca`. `.env` é lido pelo Compose, não pela execução direta.
+Uma atualização de software preserva suas instruções e não importa conteúdo novo.
+
+## Backup e mudança de computador
+
+```sh
+pnpm library export /CAMINHO/Minha-Biblioteca-Flow /CAMINHO/backup-instrucoes.json
+pnpm library import /OUTRA/Minha-Biblioteca-Flow /CAMINHO/backup-instrucoes.json
+pnpm library restore /CAMINHO/Minha-Biblioteca-Flow HASH_DA_REVISAO
+```
+
+Guarde o backup em outro local. O JSON inclui os arquivos atuais e as capturas
+históricas da biblioteca. A pasta inteira também pode ser copiada ou versionada
+em um repositório privado próprio. Restaurações e importações preservam arquivos
+substituídos em `.rascunhos/`. Esse armazenamento de recuperação não integra o
+backup JSON. Pedidos, materiais e vídeos exigem backup próprio da operação.
+
+A cada nova reserva, os arquivos são validados e capturados automaticamente.
+Edições locais afetam as próximas reservas; as anteriores usam seus arquivos
+capturados. Não existe publicação manual de instruções pelo painel. Novos swipes
+podem ser fornecidos ao agente como referências para editar as instruções, sem
+passar a fazer parte do pacote ou de cada geração.
+
+## Conectar o MCP
+
+Baixe o conector independente para uma pasta de sua escolha. O arquivo inclui
+suas dependências e exige Node.js 24.22.2 LTS ou 26.12.1:
+
+```sh
+curl --fail http://127.0.0.1:4319/agent/flow-batch-mcp.mjs -o /CAMINHO/flow-batch-mcp.mjs
+```
+
+Exemplo para clientes que usam `mcpServers`:
 
 ```json
 {
@@ -122,86 +96,52 @@ para clientes que usam `mcpServers`:
 }
 ```
 
-Use caminhos absolutos do sistema onde o agente executa o conector. No Windows,
-use caminhos Windows com as barras escapadas no JSON. A configuração específica
-de cada cliente pode variar. `FLOW_AGENT_WORKSPACE` é opcional; o padrão é
-`.flow-batch/pedidos` na pasta pessoal. Abra a conversa de produção nessa pasta,
-fora do código do projeto, para evitar carregar instruções de desenvolvimento.
-Não é necessário instalar as skills globais para operar pelo MCP.
+Use caminhos absolutos do sistema que executa o conector. Se o agente roda no
+WSL, use o Node e o caminho Linux diretamente. Acrescente a entrada ao mapa
+`mcpServers` existente sem criar outra camada dentro dele; depois recarregue o
+cliente MCP. No Windows, escape as barras dos caminhos no JSON.
 
-Ao editar uma configuração existente, acrescente `flow-batch` ao mapa
-`mcpServers` já existente, ao lado dos demais servidores. Evite criar outra
-camada `mcpServers` dentro dele. Se o agente já roda no WSL, use o Node e o
-caminho do conector no Linux diretamente. Após editar, recarregue os servidores
-no cliente MCP.
+`FLOW_AGENT_WORKSPACE` é opcional; o padrão é `~/.flow-batch/pedidos`. Abra a
+conversa de produção nessa pasta, fora do código da aplicação. Não é necessário
+instalar skills globais. `pnpm mcp` também inicia o conector dentro do projeto.
+A análise de PDF e MP4 depende das capacidades do agente; o servidor não chama IA.
+Credenciais e tokens do Google permanecem no navegador.
 
-`flow_list_orders` consulta; `flow_checkout` reserva e retorna contexto completo,
-contrato, arquivo de preparação e materiais verificados; `flow_read_material`
-fornece imagens/textos/binários ao agente; `flow_renew` renova a reserva;
-`flow_publish` recebe a preparação diretamente ou lê o arquivo editado e publica
-sem consumo. `flow_show_order` e `flow_status` mostram prévia e andamento.
-`flow_approve` exige autorização explícita no chat para número, hash e extensão.
-A confirmação no argumento da ferramenta não substitui essa autorização.
-As ferramentas `flow_library_*` permitem consultar e atualizar a biblioteca.
-O MCP usa stdio e o [SDK oficial](https://github.com/modelcontextprotocol/typescript-sdk).
+## Pedidos e execução
 
-A análise de PDF e MP4 depende das capacidades do agente conectado. Um agente que
-não consiga analisar o vídeo deve informar essa limitação; o servidor não chama
-uma IA nem inventa a análise. Instruções e materiais são entregues pela API local;
-credenciais de Flow permanecem no navegador. Não há retry automático de mutações.
+1. Abra <http://127.0.0.1:4319/orders>, reúna produtos e selecione a imagem de
+   referência e os materiais adicionais de qualquer pasta acessível.
+2. Defina formatos e quantidades por produto. O modo de clonagem vincula um único
+   MP4 do produto; outra referência deve ser preparada em outro pedido/lote.
+3. Salve e peça ao agente: “Prepare o pedido 12”. `flow_checkout` retorna a
+   reserva, informações, materiais verificados, contrato e instruções completas.
+4. O agente cria a preparação e publica com `flow_publish`. Confira a prévia:
+   falas, prompts, materiais, modelos e limites de geração.
+5. Autorize explicitamente no chat o número e hash exatos. Só então o agente usa
+   `flow_approve`. Publicar não consome créditos.
+6. Acompanhe as etapas, falhas e downloads no painel ou na extensão. Os projetos
+   são preparados por lote e recuperados pelo vínculo persistido.
 
-Na raiz do projeto, `pnpm mcp` também inicia o conector. Se a API reportar contrato
-incompatível ou não fornecer suas capacidades, atualize a aplicação antes de
-preparar/publicar. Não acrescente campos de imagens para satisfazer um runtime
-antigo. Erros de validação retornam `issues` com caminhos exatos dos campos.
-Para atualizar apenas o orquestrador preservando o volume:
+`flow_list_orders` e `flow_show_order` consultam; `flow_renew` renova a reserva de
+30 minutos. `flow_read_material` fornece o conteúdo real ao agente.
+`flow_library_status`, `flow_library_read` e `flow_library_save` permitem operar
+os arquivos locais. Na preparação, uma leitura adicional deve usar a revisão da
+reserva; alterações não mudam preparações em andamento.
 
-```sh
-docker compose up -d --build --no-deps orchestrator
-```
+Os formatos disponíveis são quatro formatos de fábrica, POV + Vendedora, Full
+POV, Full Vendedora e clonagem. Todas as variações têm gancho, Body e CTA.
+Full POV e Full Vendedora usam uma imagem gerada no gancho e reutilizada nos
+outros takes. Os demais usam duas imagens, com CTA reutilizando o Body.
+Os três MP4s ficam separados na mesma pasta da variação: `01-Gancho.mp4`,
+`02-Body.mp4`, `03-CTA.mp4`. Padrão técnico: Nano Banana Pro e Omni 1.1 Flash
+Frames, 8 s/720p, 9:16. Materiais: MP4 até 64 MB; imagens e documentos até 8 MB.
 
-## Clonar o formato de um vídeo
+O compilador seleciona um template próprio para o gancho de esteira inclinada
+quando o pacote o fornece. A direção de correia, deslocamento e queda pertence
+a esse arquivo externo; os outros formatos não recebem essa mecânica. Templates
+históricos continuam disponíveis para preparações anteriores.
 
-No produto do pedido, selecione a foto em **Imagem de referência para o Flow**.
-Em **Criação dos vídeos**, escolha **Clonar um vídeo**. Depois importe um único
-MP4 baixado do TikTok Shop em **Materiais adicionais**.
-Ele será vinculado automaticamente à clonagem, sem
-uma segunda seleção. Para clonar outra referência, prepare outro pedido/lote.
-**Usar formatos padrão** mostra os sete formatos do catálogo. A quantidade
-de variações pode ser definida junto de outros formatos no mesmo produto. A prévia pode ser
-reproduzida antes de salvar e consultada novamente no pedido salvo. Use
-**Adicionar criação** para combinar os dois caminhos no mesmo produto.
-Alternar entre os modos limpa o formato e os materiais adicionais do produto,
-incluindo o seletor de arquivos, a lista e as prévias.
-Escolha os arquivos novamente no modo ativo. A quantidade de variações e a
-imagem de referência do produto são mantidas. Os materiais adicionais são
-compartilhados pelas criações do produto.
-
-Salve e peça ao agente que prepare o pedido. O checkout baixa o MP4 verificado
-e identifica o vídeo de cada variação. O agente extrai a estrutura narrativa,
-a sintaxe frase por frase, o formato, o template e as regras de fidelidade; adapta
-as falas e cenas para o produto e publica a análise e as direções de gancho,
-Body e CTA para sua conferência. O servidor não chama IA e o vídeo não é
-enviado ao Flow; a foto do produto continua como referência de geração. Mesmo com
-uma única variação, a copy é criada para o produto a partir da estrutura do vídeo.
-Com várias, os argumentos ou ênfases mudam dentro dessa mesma arquitetura;
-copiar a transcrição ou trocar apenas palavras não atende à preparação.
-
-A skill [flow-clone-video](skills/flow-clone-video.md) orienta essa análise
-e aplica as regras comuns de copy, imagem e animação de `agents/`, preservando
-a arquitetura do vídeo escolhido. Ela complementa `flow-orders` em pedidos
-mistos. Exemplo de pedido no chat: **“Use $flow-clone-video para preparar os
-grupos de clonagem do pedido 12.”**
-
-MP4s podem ter até 64 MB; imagens e documentos continuam limitados a 8 MB.
-O modo mantém duas imagens, três vídeos e reutilização exata da imagem de Body
-no CTA. A adaptação segue os limites atuais de takes (padrão de 8 s/720p, 9:16),
-e não inclui montagem do vídeo de origem. Salvar e publicar não consomem
-créditos; a execução depende da autorização da revisão exata no chat.
-
-## Preparação pelo agente
-
-Como alternativa ao MCP, execute a CLI na raiz deste repositório após o build, com a API local em execução:
+Alternativa pela CLI, após o build:
 
 ```sh
 pnpm orders list
@@ -209,142 +149,39 @@ pnpm orders show 12
 pnpm orders checkout 12 15
 pnpm orders renew .cache/orders/12
 pnpm orders publish .cache/orders/12/preparacao.json
-```
-
-O checkout reserva cada pedido por 30 minutos e baixa cópias verificadas dos
-materiais para `.cache/orders/NUMERO/`, junto com `pedido.json`, `contexto.json`, as instruções da revisão reservada e o contrato de
-preparação. Outro agente não pode reservar o mesmo pedido enquanto essa reserva
-estiver válida. Repita checkout para retomar a reserva local; renove durante
-trabalhos longos. `FLOW_AGENT_NAME` identifica o agente na reserva.
-
-Preencha os campos criativos mantendo os IDs, formatos e quantidades indicados.
-O servidor valida o pedido e compila os templates ativos de animação, dividindo
-os lotes automaticamente sem separar o CTA de seu Body. Limites: 30 produtos e
-120 variações por pedido; até 30 materiais por produto, imagens/documentos de até 8 MB e MP4 de até 64 MB;
-JPEG, PNG, WebP, PDF, TXT, Markdown, JSON e MP4. A referência de geração deve ser imagem.
-Os manifestos respeitam os limites existentes de 20 takes e 64 KiB de admissão.
-
-Para revisar antes do despacho:
-
-```sh
-pnpm orders checkout 12 --revise
-pnpm orders publish .cache/orders/12/preparacao.json
-```
-
-A revisão anterior fica registrada; o hash antigo deixa de autorizar a versão
-atual. Depois do despacho, alterações exigem novo pedido e autorização.
-
-Somente após autorização explícita no chat para os materiais e o consumo:
-
-```sh
 pnpm orders approve 12 --approve --hash HASH_DA_PREPARACAO
 ```
 
-Com várias extensões autorizadas, acrescente `--client UUID`. “Todos os pendentes”
-seleciona os números encontrados no início, sem incluir pedidos criados depois.
-A skill pode ser lida por qualquer agente; no Codex, está disponível por referência
-no `AGENTS.md`. Pelo MCP, a criação continua com o agente conectado, sem configurar
-um provedor de IA no servidor.
+A aprovação exige autorização explícita no chat. Com várias extensões, informe
+`--client UUID`. O contrato do servidor é conferido antes da preparação; erros
+retornam os campos envolvidos. Não adapte JSON a um servidor desatualizado.
 
-## Armazenamento e limpeza
+## Desenvolvimento e validação
 
-SQLite guarda pedidos, produtos, configurações, revisões de preparação,
-autorizações, fila, tentativas, eventos e checkpoints. Os arquivos importados
-ficam separados, em `/data/materials` no mesmo volume persistente local do Compose.
-O conteúdo é identificado por SHA-256; importar o mesmo conteúdo reutiliza a cópia.
-O navegador envia os arquivos à API local; o agente consulta por identificador e
-a extensão recebe somente referências de um despacho autorizado com sua assinatura.
-Não há dependência de caminhos Windows, symlinks ou permissões de pasta vinculada.
-Credenciais do Google continuam no navegador.
-
-No painel, **Conferir arquivos para limpeza** mostra os materiais elegíveis e o
-espaço recuperável. Confirme **Remover estas cópias importadas** para limpar.
-Pedidos concluídos ou cancelados permitem remoção; materiais compartilhados com
-pedidos ativos, falhos sem revisão ou incertos ficam protegidos. Arquivos sem
-pedido podem ser limpos após 24 horas. A limpeza mantém histórico, copys, prompts
-e hashes; nova geração pode exigir reimportação. Os originais selecionados e os
-MP4s baixados ficam fora dessa limpeza. O checkout do agente usa cache separado
-em `.cache/orders`; não é a biblioteca persistente da aplicação.
-
-Pare com `docker compose down`. O volume `flow-batch-automator_sqlite_data` guarda
-banco e materiais. Backup deve incluir ambos, com o serviço parado ou uma cópia
-consistente do SQLite. Não use `down -v` como parada normal.
-
-## Desenvolvimento
-
-Node.js 24.22.2 LTS (também compatível com Node 26.12.1), TypeScript estrito,
-pnpm 12.15.0, Fastify, Zod, `node:sqlite`, Manifest V3 e esbuild. Dependências com
-versões exatas. O Compose publica somente em `127.0.0.1:4319`; servidor sem
-privilégios e com raiz somente para leitura, exceto o volume de dados.
+Node.js e TypeScript estrito, pnpm Workspaces e versões exatas no lockfile.
+`packages/protocol` contém contratos e compilação; `packages/orchestrator`, API,
+SQLite e fila; `packages/extension`, contexto do navegador e execução.
+`skills/` contém apenas orientação operacional. O pacote criativo é externo.
 
 ```sh
-pnpm install --frozen-lockfile
 pnpm typecheck
 pnpm lint
 pnpm test
 pnpm build
 pnpm format:check
 pnpm check
-pnpm dev
-pnpm start
-```
-
-- `packages/protocol`: contratos e compilador compartilhado, sem dependência Node de execução.
-- `packages/orchestrator`: API local, painel, importação de materiais, SQLite e fila.
-- `packages/extension`: identidade, contexto autenticado do Flow, execução e downloads.
-- `packages/ui/theme.css`: tema escuro compartilhado pelo painel, conexão e extensão,
-  com botões em verde-menta, foco visível e suporte a movimento reduzido. Os builds
-  copiam esse arquivo para os respectivos artefatos, sem recursos externos.
-- `agents` e `skills`: padrões iniciais da biblioteca criativa e fluxos.
-- `packages/orchestrator/src/library`: arquivos externos, revisões e backup.
-- `packages/orchestrator/src/mcp`: servidor MCP stdio e ferramentas operacionais.
-- `skills/flow-orders.md`: procedimento de consulta, preparação, revisão e despacho.
-- `skills/flow-clone-video.md`: análise e adaptação criativa dos grupos de clonagem.
-- `scripts/orders.mjs`: cliente local usado pelo agente.
-
-`MATERIALS_DIR` escolhe o armazenamento no uso fora do Compose; o padrão é
-`materials` ao lado do SQLite. `DATABASE_PATH`, `HOST`, `PORT`,
-`SQLITE_BUSY_TIMEOUT_MS` e `LOG_LEVEL` configuram o servidor. `.env` é lido pelo
-Compose; a execução direta usa as variáveis do processo.
-
-## Validação
-
-```sh
 docker compose config --quiet
-pnpm test:docker
-pnpm test:browser:orders
-pnpm test:browser:reuse
 pnpm test:browser:formats
 pnpm test:browser:library
-pnpm test:browser:queue
-pnpm test:browser:navigation
 pnpm test:browser:cloning
-pnpm test:browser
 ```
 
-Os testes de navegador usam Chrome for Testing em perfil isolado, referências e
-MP4s sintéticos e endpoints HTTPS locais. Não usam perfil pessoal nem consomem
-créditos do Google. Exigem navegador de teste instalado; os percursos da porta
-padrão precisam de 4319 livre.
-`test:browser:formats` valida POV + Vendedora, Full POV e Full Vendedora na
-porta 4339, com uma cópia da extensão e dados sintéticos em `.cache/`, sem
-interromper a instalação local. `test:browser:cloning` usa servidor e SQLite
-isolados na porta 4329, sem precisar parar a instalação local; `test:browser:navigation` usa somente páginas sintéticas.
-`test:docker` usa projeto e volume sintéticos próprios e preserva as evidências
-em `.cache/`. Esses testes não comprovam qualidade criativa ou uma nova geração
-paga na conta real. A autorização de implementação não autoriza essas gerações.
+Os testes usam contratos sintéticos, SQLite temporário e Chrome isolado com
+fixtures, sem perfil pessoal, Flow real ou consumo. `test:browser:formats` usa
+4339; `test:browser:library`, 4349; clonagem, 4329. A instalação real é preservada.
+Testes e build não comprovam nova geração paga nem qualidade criativa.
 
-O caminho anterior já teve validação real de Omni Frames e MP4s no Chrome Windows.
-O piloto anterior de três takes comprovou o percurso técnico, sem comprovar fala
-exata, lip-sync ou aprovação de qualidade criativa. A reutilização do CTA teve
-cobertura com fixtures; não atribuir a ela teste pago do piloto anterior.
-
-Em 4 de novembro de 2026, o usuário confirmou que o workflow completo funcionou
-no teste pelo Antigravity após a configuração do MCP no WSL. Esse relato confirma
-o percurso de uso; não registra avaliação específica de copy, áudio ou lip-sync.
-
-A integração de RPCs no contexto autenticado da aba é inspirada no
+A integração com a aba do Flow é inspirada no
 [FlowKit](https://github.com/crisng95/flowkit), referência `19cb87d`. O código
-adaptado preserva a [licença MIT e atribuição](packages/extension/public/FlowKit-LICENSE.txt).
-As chamadas diretas não atualizam automaticamente a listagem do Flow. Não
-recarregue a aba durante uma execução.
+adaptado preserva a [licença MIT](packages/extension/public/FlowKit-LICENSE.txt).
+Não recarregue a aba do Flow durante execução para atualizar a listagem.

@@ -4,7 +4,9 @@ import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import {
   libraryBackupSchema,
-  libraryFileSchema,
+  instructionFileSchema,
+  preparationFormatSchema,
+  type PreparationFormat,
   libraryFilesSchema,
   libraryRevisionSchema,
   type LibraryBackup,
@@ -19,12 +21,15 @@ import {
   readText,
   writeDraft,
 } from './files.js';
-import { validateLibrary } from './routing.js';
+import { emptyRouting, validateLibrary } from './routing.js';
 
 const metadataSchema = z.strictObject({
   version: z.literal(1),
   libraryId: z.uuid(),
-  current: z.string().regex(/^[a-f0-9]{64}$/),
+  current: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .nullable(),
 });
 export function filesHash(files: LibraryFiles): string {
   return createHash('sha256')
@@ -48,22 +53,26 @@ function revisionHash(revision: Omit<LibraryRevision, 'revision'>): string {
     .digest('hex');
 }
 export class LibraryStore {
-  constructor(
-    readonly root: string,
-    seed: LibraryFiles,
-  ) {
+  constructor(readonly root: string) {
     directory(root);
     directory(join(root, '.historico'));
-    for (const name of ['instrucoes', 'fluxos', 'swipes'])
-      directory(join(root, name));
+    directory(join(root, 'instrucoes'));
     if (!existsSync(join(root, 'biblioteca.json'))) {
-      const existing = draftFiles(root);
-      const files = { ...seed, ...existing };
-      validateLibrary(files);
-      writeDraft(root, files);
-      this.publishFiles(files, randomUUID(), 'Biblioteca inicial');
+      atomicWrite(
+        join(root, 'biblioteca.json'),
+        JSON.stringify(
+          { version: 1, libraryId: randomUUID(), current: null },
+          null,
+          2,
+        ) + '\n',
+      );
+      if (!existsSync(join(root, 'instrucoes/rotas.json')))
+        writeDraft(root, {
+          'instrucoes/rotas.json':
+            JSON.stringify(emptyRouting(), null, 2) + '\n',
+        });
     }
-    this.current();
+    this.metadata();
   }
   private metadata(): z.infer<typeof metadataSchema> {
     return metadataSchema.parse(
@@ -86,7 +95,13 @@ export class LibraryStore {
     return revision;
   }
   current(): LibraryRevision {
-    return this.revision(this.metadata().current);
+    const id = this.metadata().current;
+    if (!id)
+      throw new HttpError(
+        409,
+        'Pacote ainda não configurado. Importe suas instruções antes de preparar pedidos.',
+      );
+    return this.revision(id);
   }
   draft(): { files: LibraryFiles; hash: string } {
     const files = draftFiles(this.root);
@@ -101,20 +116,55 @@ export class LibraryStore {
       );
     return draft.files;
   }
-  status(): object {
-    const current = this.current(),
+  status(): {
+    libraryId: string;
+    revision: string | null;
+    draftHash: string;
+    changed: boolean;
+    files: string[];
+    configured: boolean;
+    problem: string | null;
+  } {
+    const metadata = this.metadata(),
       draft = this.draft();
+    let problem: string | null = null;
+    try {
+      validateLibrary(draft.files);
+    } catch (error) {
+      problem =
+        error instanceof Error ? error.message : 'Configuração incompleta.';
+    }
     return {
-      libraryId: current.libraryId,
-      revision: current.revision,
+      libraryId: metadata.libraryId,
+      revision: metadata.current,
       draftHash: draft.hash,
-      changed: draft.hash !== filesHash(current.files),
+      changed:
+        !metadata.current || draft.hash !== filesHash(this.current().files),
       files: Object.keys(draft.files).sort(),
-      revisions: this.history().map(({ files: _files, ...revision }) => ({
-        ...revision,
-        fileCount: Object.keys(_files).length,
-      })),
+      configured: problem === null,
+      problem,
     };
+  }
+  capture(
+    formats: PreparationFormat[] = preparationFormatSchema.options,
+  ): LibraryRevision {
+    const draft = this.draft();
+    validateLibrary(draft.files, formats);
+    if (this.draft().hash !== draft.hash)
+      throw new HttpError(
+        409,
+        'Os arquivos de instruções mudaram durante a leitura. Tente reservar novamente.',
+      );
+    if (
+      this.metadata().current &&
+      filesHash(this.current().files) === draft.hash
+    )
+      return this.current();
+    return this.publishFiles(
+      draft.files,
+      this.metadata().libraryId,
+      'Captura automática das instruções',
+    );
   }
   history(): LibraryRevision[] {
     const libraryId = this.metadata().libraryId;
@@ -125,7 +175,7 @@ export class LibraryStore {
       .sort((a, b) => b.createdAt - a.createdAt);
   }
   save(path: string, text: string, expected: string): object {
-    libraryFileSchema.parse(path);
+    instructionFileSchema.parse(path);
     const files = this.checkDraft(expected);
     libraryFilesSchema.parse({ ...files, [path]: text });
     writeDraft(this.root, { [path]: text });
@@ -158,7 +208,7 @@ export class LibraryStore {
   publish(expected: string, message: string): LibraryRevision {
     const files = this.checkDraft(expected);
     validateLibrary(files);
-    return this.publishFiles(files, this.current().libraryId, message);
+    return this.publishFiles(files, this.metadata().libraryId, message);
   }
   private replaceDraft(files: LibraryFiles): void {
     const archive = join(this.root, '.rascunhos', randomUUID());
@@ -169,7 +219,7 @@ export class LibraryStore {
     const archived: string[] = [],
       installed: string[] = [];
     try {
-      for (const folder of ['instrucoes', 'fluxos', 'swipes']) {
+      for (const folder of ['instrucoes']) {
         directory(join(staged, folder));
         if (existsSync(join(this.root, folder))) {
           renameSync(join(this.root, folder), join(archive, folder));
@@ -192,11 +242,11 @@ export class LibraryStore {
     return this.status();
   }
   export(): LibraryBackup {
-    const current = this.current();
+    const metadata = this.metadata();
     return libraryBackupSchema.parse({
       version: 1,
-      libraryId: current.libraryId,
-      current: current.revision,
+      libraryId: metadata.libraryId,
+      current: metadata.current,
       revisions: this.history(),
       draft: this.draft().files,
     });
@@ -217,12 +267,14 @@ export class LibraryStore {
         throw new HttpError(400, 'Histórico de backup inconsistente.');
       ids.add(revision.revision);
     }
-    if (!ids.has(backup.current))
+    if (backup.current !== null && !ids.has(backup.current))
       throw new HttpError(400, 'Backup sem a revisão publicada.');
-    validateLibrary(
-      backup.revisions.find((revision) => revision.revision === backup.current)!
-        .files,
+    backup.draft = Object.fromEntries(
+      Object.entries(backup.draft).filter(
+        ([path]) => instructionFileSchema.safeParse(path).success,
+      ),
     );
+    validateLibrary(backup.draft);
     const current = this.draft().files;
     const changes = [
       ...new Set([...Object.keys(current), ...Object.keys(backup.draft)]),

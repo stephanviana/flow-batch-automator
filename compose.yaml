@@ -42,12 +42,18 @@ services:
       HOST: 0.0.0.0
       PORT: 4319
       DATABASE_PATH: /data/flow-batch.sqlite
+      LIBRARY_DIR: /library
       SQLITE_BUSY_TIMEOUT_MS: 3000
       LOG_LEVEL: ${LOG_LEVEL:-info}
     ports:
       - '127.0.0.1:4319:4319'
     volumes:
       - sqlite_data:/data
+      - type: bind
+        source: ${FLOW_LIBRARY_DIR:?Defina FLOW_LIBRARY_DIR com a pasta local de instruções}
+        target: /library
+        bind:
+          create_host_path: false
     restart: unless-stopped
     stop_grace_period: 10s
     cpus: 0.5

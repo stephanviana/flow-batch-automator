@@ -8,12 +8,13 @@ export const libraryFileSchema = z
     /^(instrucoes|fluxos|swipes)\/(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_.-]+\.(md|txt|json)$/,
   )
   .refine((path) => !path.split('/').some((part) => part.startsWith('.')));
+export const instructionFileSchema = libraryFileSchema.refine(
+  (path) => path.startsWith('instrucoes/'),
+  'Use somente arquivos de instruções.',
+);
 export const libraryFilesSchema = z
   .record(libraryFileSchema, z.string().max(262144))
-  .refine(
-    (files) =>
-      Object.keys(files).length > 0 && Object.keys(files).length <= 128,
-  )
+  .refine((files) => Object.keys(files).length <= 128)
   .refine(
     (files) =>
       Object.values(files).reduce(
@@ -31,8 +32,11 @@ export const libraryRevisionSchema = z.strictObject({
 export const libraryBackupSchema = z.strictObject({
   version: z.literal(1),
   libraryId: z.uuid(),
-  current: z.string().regex(/^[a-f0-9]{64}$/),
-  revisions: z.array(libraryRevisionSchema).min(1).max(500),
+  current: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .nullable(),
+  revisions: z.array(libraryRevisionSchema).max(500),
   draft: libraryFilesSchema,
 });
 export type LibraryFiles = z.infer<typeof libraryFilesSchema>;
