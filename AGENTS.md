@@ -99,6 +99,8 @@ qualquer geração paga continua dependendo de autorização específica no chat
   Node de execução; não antecipar contratos de fases futuras.
 - `packages/orchestrator`: Fastify, configuração Zod, persistência `node:sqlite`
   e rotas HTTP. Separe configuração, persistência, comunicação e segurança.
+  `src/local-cli` configura a instalação WSL, registra os clientes MCP
+  e gerencia Compose fora do checkout; dados ficam fora do prefixo npm.
   O registro Codex usa `smol-toml`, com backup e preservação dos valores.
 - `packages/extension`: Chrome Manifest V3, Chrome 120+, side panel e service worker
   empacotados com esbuild. Identidade em IndexedDB; storage e alarms para estado
@@ -174,6 +176,10 @@ mudanças apenas documentais não exigem criar testes de código.
   Instalação não prepara pedidos, não consome créditos e não encerra clientes.
 - `pnpm mcp:install codex`: registra o conector em `CODEX_HOME/config.toml`
   ou `~/.codex/config.toml`, preservando os demais servidores e valores.
+- `flow-batch setup --library PASTA --extension PASTA`: configura a instalação
+  WSL e registra Antigravity/Codex. `up`, `down`, `status`, `logs` e `doctor`
+  operam o Compose; `down` mantém o volume. Não executar instalação global nem
+  adotar dados existentes durante testes; usar HOME/prefixo/volume sintéticos.
 - `pnpm mcp`: conector MCP stdio; o arquivo independente é servido em
   `/agent/flow-batch-mcp.mjs`, sem editor ou página de biblioteca.
 - `pnpm library init PASTA`, `import PASTA PACOTE.JSON`, `export PASTA BACKUP.JSON`,
