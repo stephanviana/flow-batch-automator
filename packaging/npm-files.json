@@ -6,6 +6,7 @@
   "bin/library.mjs",
   "bin/orders.mjs",
   "dist/main.mjs",
+  "dist/native-server.mjs",
   "dist/public/connect.css",
   "dist/public/connect.html",
   "dist/public/connect.js",

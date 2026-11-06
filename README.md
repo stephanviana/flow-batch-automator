@@ -5,7 +5,7 @@ no Google Flow. O painel organiza produtos, materiais, formatos e quantidades;
 o agente conectado pelo MCP cria copy e prompts a partir das instruções locais;
 a extensão executa os grupos autorizados.
 
-## Distribuição pelo npm — WSL
+## Distribuição pelo npm — Windows e WSL
 
 O pacote de distribuição é `@nahpets01-org/flow-batch-automator`, configurado para
 publicação pública em `https://registry.npmjs.org/`. A publicação disponibiliza
@@ -13,9 +13,38 @@ os arquivos compilados e as dependências incluídas; o repositório de trabalho
 continua separado. O monorepo e seus workspaces permanecem `private: true` para
 impedir publicação acidental do código de desenvolvimento.
 
-Requisitos: WSL/Linux, Node.js 24.22.2 LTS (ou 26.12.1), npm e Docker com Compose
-no WSL. Antigravity e Codex devem executar nesse mesmo ambiente. O suporte ao
-servidor nativo no Windows fica para outra etapa.
+Requisitos: Node.js 24.22.2 LTS (ou 26.12.1), npm e Chrome. No Windows, a
+aplicação executa diretamente no Node, sem Docker nem WSL. Antigravity e Codex
+devem executar no mesmo ambiente do conector MCP.
+
+No PowerShell, após publicar a versão com suporte nativo:
+
+```powershell
+npm.cmd install --global @nahpets01-org/flow-batch-automator
+flow-batch.cmd setup --extension "$env:USERPROFILE\flow-batch-extension"
+flow-batch.cmd library import "C:\CAMINHO\biblioteca.md"
+flow-batch.cmd up
+flow-batch.cmd doctor
+```
+
+Os nomes `.cmd` usam os atalhos npm sem exigir mudanças na política de execução
+do PowerShell. `up` sincroniza a extensão e inicia um processo Node em segundo
+plano, sem serviço Windows, tarefa agendada ou configuração de inicialização
+automática. `down` encerra a aplicação e fecha SQLite pelo controle local
+autenticado, preservando o banco e os materiais. `status` e `logs` consultam
+somente a instalação configurada; nenhum comando encerra processos por PID.
+Depois de reiniciar o computador, execute `up` novamente.
+
+No Windows, os dados ficam em `%USERPROFILE%\.flow-batch\data`, as instruções
+em `%USERPROFILE%\.flow-batch\biblioteca\biblioteca.md` e a configuração em
+`%USERPROFILE%\.flow-batch\installation.json`. `FLOW_BATCH_HOME` escolhe outra
+pasta; `setup --data PASTA` permite outro destino para SQLite e materiais. As
+pastas ficam fora do prefixo npm e sobrevivem à reinstalação do pacote.
+
+No Linux/WSL, instalações novas e configurações antigas continuam usando
+Docker Compose por padrão. Para executar diretamente no Node também nesse
+ambiente, acrescente `--runtime native` ao `setup`. `--runtime docker` seleciona
+Compose no Linux/WSL. A escolha fica salva e não muda automaticamente.
 
 Após a primeira publicação no registro, instale fora do repositório:
 
@@ -43,8 +72,9 @@ Biblioteca, pedidos, materiais, SQLite, credenciais e configurações individuai
 ficam fora do pacote. A configuração local usa `~/.flow-batch` por padrão;
 `FLOW_BATCH_HOME` escolhe outra pasta e `--workspace PASTA` escolhe a pasta
 operacional. A extensão atual usa a porta 4319, publicada só em `127.0.0.1`.
-`up` constrói imagens localmente, sincroniza a extensão e espera o servidor
-saudável. A instalação npm baixa as dependências declaradas. O primeiro build
+No modo Docker, `up` constrói imagens localmente, sincroniza a extensão e espera
+o servidor saudável. No modo nativo, usa as dependências instaladas pelo npm,
+sem construir imagens. A instalação npm baixa as dependências declaradas. O primeiro build
 Docker instala a árvore de produção fixada dentro da imagem Linux com
 `npm ci --omit=dev`, além da
 imagem base Node fixada por digest. Os módulos instalados no host não são copiados
@@ -55,6 +85,7 @@ Carregue ou recarregue a extensão no Chrome e confirme em
 Para atualizar:
 
 ```sh
+flow-batch down
 npm install --global @nahpets01-org/flow-batch-automator@latest
 flow-batch setup
 flow-batch up
@@ -62,13 +93,23 @@ flow-batch status
 flow-batch logs
 ```
 
-`flow-batch down` preserva o volume. O projeto padrão é `flow-batch-local`, com
+No modo nativo, execute `down` antes de atualizar o pacote; depois, `setup` e
+`up`. Encerre também antes de mudar runtime, porta, biblioteca, extensão ou pasta
+de dados. No Windows, os comandos dessa seção também estão disponíveis com `.cmd`.
+Não copie `installation.json` entre Windows e WSL: seus caminhos e conectores
+pertencem ao ambiente original. Transporte a biblioteca pelo Markdown e faça
+backup separado do banco e dos materiais, com a aplicação parada.
+
+No modo Docker, `flow-batch down` preserva o volume. O projeto padrão é `flow-batch-local`, com
 volume `flow-batch-local_sqlite_data`. Para adotar uma instalação existente,
 confira seu projeto e volume reais antes de configurar `--project NOME --volume
 NOME`. O Compose da raiz normalmente usa `flow-batch-automator` e
 `flow-batch-automator_sqlite_data`. Pare o Compose anterior sem remover volumes
 e selecione explicitamente esses nomes no `setup`, junto às mesmas pastas de
 biblioteca e extensão. A CLI não escolhe ou apaga bancos antigos automaticamente.
+Mudar para `--runtime native` não extrai nem migra um volume Docker: pare a
+instalação anterior e preserve seus dados antes de configurar a nova. Uma porta
+ocupada ou um controlador já ativo bloqueia a abertura de outra instância.
 
 `flow-batch mcp` inicia o stdio. `flow-batch mcp install codex` ou `antigravity`
 atualiza só o conector; `--config ARQUIVO` escolhe uma configuração específica.
@@ -94,6 +135,8 @@ pnpm package:npm
 pnpm audit:npm
 pnpm test:package
 pnpm test:package --docker
+pnpm test:package:native
+pnpm test:package:native --windows
 pnpm publish:npm --dry-run
 ```
 

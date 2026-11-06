@@ -112,6 +112,13 @@ qualquer geração paga continua dependendo de autorização específica no chat
   e rotas HTTP. Separe configuração, persistência, comunicação e segurança.
   `src/local-cli` configura a instalação WSL, registra os clientes MCP
   e gerencia Compose fora do checkout; dados ficam fora do prefixo npm.
+  Windows usa `runtime=native` por padrão, sem Docker/WSL. Linux/WSL mantém
+  Docker por padrão e admite `--runtime native`. Configurações antigas preservam
+  Docker. O modo nativo inicia Node detached, sem shell, e usa controle local
+  autenticado (named pipe Windows, socket abstrato Linux) vinculado à pasta de
+  dados, adquirido antes de abrir SQLite. Não parar por PID nem por sinais Windows.
+  Não criar serviços, tarefas agendadas ou autostart. Não migrar volumes Docker
+  nem apagar dados automaticamente ao mudar o runtime.
   O registro Codex usa `smol-toml`, com backup e preservação dos valores.
 - `packages/extension`: Chrome Manifest V3, Chrome 120+, side panel e service worker
   empacotados com esbuild. Identidade em IndexedDB; storage e alarms para estado
@@ -209,6 +216,19 @@ mudanças apenas documentais não exigem criar testes de código.
   WSL e registra Antigravity/Codex. `up`, `down`, `status`, `logs` e `doctor`
   operam o Compose; `down` mantém o volume. Não executar instalação global nem
   adotar dados existentes durante testes; usar HOME/prefixo/volume sintéticos.
+- `setup --runtime native [--data PASTA]`: execução direta no Node; padrão de
+  novas instalações Windows. `up`, `down`, `status`, `logs`, `doctor` usam o
+  runtime salvo. Biblioteca, SQLite e materiais ficam fora do prefixo npm.
+  Encerre antes de atualizar o pacote ou mudar runtime, porta ou pastas. O modo
+  nativo mantém o HTTP em `127.0.0.1`, com a mesma segurança e fila do Compose.
+  Metadados de controle podem conter segredo local; nunca imprimir ou distribuir
+  `native.json`. Status e health não retornam esse segredo.
+- `pnpm test:package:native`: instalação npm e ciclo nativo completo em pastas
+  temporárias, com MCP, SQLite, materiais e reinstalação sem Docker no PATH.
+  `--windows` acrescenta execução real por Node Windows; no WSL usa a
+  interoperabilidade e uma cópia portátil de Node 24.22.2 validada por SHA-256,
+  sem substituir o Node instalado. Configuração, HOME, USERPROFILE e prefixo npm
+  do teste são sintéticos. `FLOW_TEST_WINDOWS_NODE` escolhe o executável inicial.
 - `pnpm test:package` valida instalação npm com dependências do registro em
   prefixo temporário, versões diretas, MCP, stdio e reinstalação offline.
   `pnpm test:package --docker` acrescenta Compose isolado, painel HTTP, árvore de

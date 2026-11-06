@@ -30,13 +30,22 @@ export function directory(path: string): void {
     );
 }
 export function readText(path: string, limit = 16_777_216): string {
+  const before = lstatSync(path);
+  if (!before.isFile() || before.isSymbolicLink())
+    throw new HttpError(
+      409,
+      'A biblioteca exige arquivos regulares sem links simbólicos.',
+    );
   const fd = openSync(
     path,
-    constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+    constants.O_RDONLY |
+      (process.platform === 'win32'
+        ? 0
+        : constants.O_NOFOLLOW | constants.O_NONBLOCK),
   );
   try {
     const file = fstatSync(fd);
-    if (!file.isFile())
+    if (!file.isFile() || file.ino !== before.ino || file.dev !== before.dev)
       throw new HttpError(409, 'A biblioteca exige arquivos regulares.');
     if (file.size > limit)
       throw new HttpError(413, 'Arquivo da biblioteca excede o limite.');

@@ -59,7 +59,7 @@ export function distributionManifest(release) {
       'Ferramenta local para pedidos de TikTok Shop e execução autorizada no Google Flow',
     license: 'UNLICENSED',
     engines: release.engines,
-    os: ['linux'],
+    os: ['linux', 'win32'],
     bin: { 'flow-batch': 'bin/flow-batch.mjs' },
     files: ['bin/', 'dist/', 'runtime/', 'THIRD_PARTY_NOTICES.md'],
     dependencies: release.dependencies,

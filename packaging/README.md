@@ -4,11 +4,35 @@ Ferramenta local para preparar pedidos de TikTok Shop e executar gerações
 autorizadas no Google Flow. O painel organiza produtos e materiais, o agente
 conectado por MCP prepara copy e prompts e a extensão Chrome executa a fila.
 
-## Instalação no WSL
+## Instalação no Windows
 
-Requisitos: WSL/Linux, Node.js 24.22.2 LTS (ou 26.12.1), npm e Docker com Compose.
-Antigravity e Codex devem executar no mesmo ambiente WSL que o conector.
-O suporte nativo ao Windows fica para uma próxima etapa.
+Requisitos: Node.js 24.22.2 LTS (ou 26.12.1), npm e Chrome. No Windows, a
+aplicação usa Node e SQLite diretamente, sem Docker ou WSL. Antigravity e Codex
+devem executar no mesmo ambiente do conector.
+
+No PowerShell:
+
+```powershell
+npm.cmd install --global __PACKAGE_NAME__
+flow-batch.cmd setup --extension "$env:USERPROFILE\flow-batch-extension"
+flow-batch.cmd library import "C:\CAMINHO\biblioteca.md"
+flow-batch.cmd up
+flow-batch.cmd doctor
+```
+
+Os comandos `.cmd` dispensam alterações na política de execução do PowerShell.
+`up` inicia Node em segundo plano e sincroniza a extensão. `down` solicita o
+encerramento limpo pelo controle local autenticado; não mata processos por PID.
+Não há serviço Windows nem início automático após reiniciar o computador.
+O banco e os materiais ficam em `%USERPROFILE%\.flow-batch\data` e a biblioteca
+em `%USERPROFILE%\.flow-batch\biblioteca\biblioteca.md`. `--data PASTA` e
+`FLOW_BATCH_HOME` permitem outros destinos, fora do prefixo npm.
+
+## Instalação no Linux/WSL
+
+Docker Compose é o padrão preservado nesse ambiente. Para usar somente Node,
+acrescente `--runtime native` ao `setup`. A escolha fica salva; uma atualização
+não muda o runtime existente. Windows usa o modo nativo por padrão.
 
 ```sh
 npm install --global __PACKAGE_NAME__
@@ -42,7 +66,7 @@ Backups JSON com histórico continuam disponíveis com `library export DESTINO.J
 Configuração,
 SQLite, materiais e arquivos de trabalho não são distribuídos pelo npm.
 
-`up` constrói as imagens localmente, sincroniza a extensão e espera o servidor.
+No modo Docker, `up` constrói as imagens localmente, sincroniza a extensão e espera o servidor.
 O npm instala as bibliotecas declaradas em `dependencies`, com versões diretas
 exatas. O primeiro build Docker usa `runtime/package-lock.json` com `npm ci` para
 instalar toda a árvore de produção fixada dentro da imagem Linux, além de baixar
@@ -55,6 +79,7 @@ O painel fica em <http://127.0.0.1:4319/orders>.
 ## Atualização e operação
 
 ```sh
+flow-batch down
 npm install --global __PACKAGE_NAME__@latest
 flow-batch setup
 flow-batch up
@@ -64,7 +89,10 @@ flow-batch orders list
 flow-batch down
 ```
 
-`setup` lembra as pastas e clientes selecionados. `down` preserva o volume.
+No Windows, os mesmos comandos estão disponíveis com `.cmd`. Encerre o modo
+nativo antes de atualizar o pacote ou mudar runtime, porta ou pastas. `setup`
+lembra as pastas, runtime e clientes selecionados. `down` preserva os dados;
+no Docker, também preserva o volume.
 Os arquivos locais ficam fora do prefixo npm, em `~/.flow-batch` por padrão.
 `FLOW_BATCH_HOME` escolhe outra pasta. O projeto padrão é `flow-batch-local`,
 com volume `flow-batch-local_sqlite_data`.
@@ -73,6 +101,9 @@ Para adotar uma instalação existente, confira seu projeto e volume reais,
 pare o Compose anterior sem remover volumes e informe `--project NOME --volume NOME`
 no `setup`, junto às pastas da biblioteca e extensão existentes. A aplicação
 não escolhe, migra ou apaga instalações anteriores automaticamente.
+Mudar de Docker para nativo não extrai seu volume. Pare e preserve a instalação
+anterior antes de configurar a nova. Não transporte `installation.json` entre
+Windows e WSL; seus caminhos pertencem ao ambiente em que foi criado.
 
 No diretório de trabalho, peça ao agente “Prepare o pedido 12”: ele prepara e
 despacha na mesma operação, sem hash nem segunda confirmação. Esse pedido no

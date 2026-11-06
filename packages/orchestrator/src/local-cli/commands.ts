@@ -11,6 +11,7 @@ import { composeCommand } from './compose.js';
 import { runProcess } from './process.js';
 import { diagnose } from './doctor.js';
 import { setupLocal } from './setup.js';
+import { startNative, stopNative, nativeStatus, nativeLogs } from './native.js';
 
 const setupArguments = {
   library: { type: 'string' },
@@ -19,6 +20,8 @@ const setupArguments = {
   clients: { type: 'string' },
   project: { type: 'string' },
   volume: { type: 'string' },
+  runtime: { type: 'string' },
+  data: { type: 'string' },
   'codex-config': { type: 'string' },
   'antigravity-config': { type: 'string' },
 } as const;
@@ -116,9 +119,29 @@ async function runService(
     throw new Error(`O comando ${command} não recebe argumentos.`);
   const config = await requireInstallation(root);
   if (command === 'doctor') {
-    const checks = await diagnose(config);
+    const checks = await diagnose(config, root);
     console.log(JSON.stringify(checks, null, 2));
     process.exitCode = checks.every((check) => check.ok) ? 0 : 1;
+    return;
+  }
+  if (config.runtime === 'native') {
+    if (command === 'up')
+      console.log(
+        JSON.stringify(await startNative(root, config, packageRoot), null, 2),
+      );
+    else if (command === 'down')
+      console.log(JSON.stringify(await stopNative(root, config), null, 2));
+    else if (command === 'status')
+      console.log(JSON.stringify(await nativeStatus(root, config), null, 2));
+    else if (command === 'logs') console.log(await nativeLogs(root));
+    else
+      throw new Error(
+        `Comando desconhecido: ${command}. Use flow-batch --help.`,
+      );
+    if (command === 'up')
+      console.log(
+        `Pedidos: http://127.0.0.1:${config.port}/orders\nConexão: http://127.0.0.1:${config.port}/connect\nRecarregue a extensão no Chrome após uma atualização.`,
+      );
     return;
   }
   const actions: Record<string, string[]> = {

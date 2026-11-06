@@ -33,6 +33,7 @@
     "mcp:install": "node packages/orchestrator/dist/public/flow-batch-mcp.mjs --install",
     "package:local": "pnpm package:npm",
     "test:package": "node scripts/validate-local-package.mjs",
+    "test:package:native": "node scripts/validate-native-package.mjs",
     "package:npm": "pnpm build && node scripts/package-local.mjs",
     "audit:npm": "node scripts/audit-npm.mjs",
     "publish:npm": "node scripts/publish-npm.mjs"

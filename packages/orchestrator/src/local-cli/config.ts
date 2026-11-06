@@ -14,6 +14,8 @@ const absolutePath = z
   .refine(isAbsolute, 'Use um caminho absoluto.');
 export const installationSchema = z.strictObject({
   version: z.literal(1),
+  runtime: z.enum(['native', 'docker']).default('docker'),
+  dataDirectory: absolutePath.optional(),
   libraryDirectory: absolutePath,
   extensionDirectory: absolutePath,
   workspace: absolutePath,
@@ -36,6 +38,26 @@ export interface SetupPaths {
   project?: string;
   volume?: string;
   port?: string;
+  runtime?: string;
+  data?: string;
+}
+export function installationRuntime(
+  platform: NodeJS.Platform,
+  previous: Installation | null,
+  requested?: string,
+): 'native' | 'docker' {
+  const runtime = z
+    .enum(['native', 'docker'])
+    .parse(
+      requested ??
+        previous?.runtime ??
+        (platform === 'win32' ? 'native' : 'docker'),
+    );
+  if (platform === 'win32' && runtime === 'docker')
+    throw new Error(
+      'No Windows, use --runtime native. O modo Docker permanece disponível no Linux/WSL.',
+    );
+  return runtime;
 }
 export function stateDirectory(): string {
   return resolve(process.env.FLOW_BATCH_HOME ?? join(homedir(), '.flow-batch'));
@@ -62,6 +84,10 @@ export function setupConfiguration(
   const project = paths.project ?? previous?.project ?? 'flow-batch-local';
   return installationSchema.parse({
     version: 1,
+    runtime: installationRuntime(process.platform, previous, paths.runtime),
+    dataDirectory: resolve(
+      paths.data ?? previous?.dataDirectory ?? join(root, 'data'),
+    ),
     libraryDirectory: resolve(library),
     extensionDirectory: resolve(extension),
     workspace: resolve(

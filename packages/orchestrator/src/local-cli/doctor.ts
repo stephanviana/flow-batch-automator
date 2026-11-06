@@ -2,19 +2,50 @@ import { join } from 'node:path';
 import { localClient, requireContract } from '../agent-client/http.js';
 import { regularFile } from '../mcp/install-files.js';
 import { runProcess } from './process.js';
-import type { Installation } from './config.js';
+import { stateDirectory, type Installation } from './config.js';
+import { nativeStatus } from './native.js';
 
 export interface Diagnostic {
   check: string;
   ok: boolean;
   message: string;
 }
-export async function diagnose(config: Installation): Promise<Diagnostic[]> {
+export async function diagnose(
+  config: Installation,
+  root = stateDirectory(),
+): Promise<Diagnostic[]> {
   const checks: Diagnostic[] = [];
-  for (const args of [
-    ['compose', 'version'],
-    ['info', '--format', '{{.ServerVersion}}'],
-  ]) {
+  if (config.runtime === 'native') {
+    let sqlite = false;
+    try {
+      await import('node:sqlite');
+      sqlite = true;
+    } catch {
+      /* Report the missing built-in. */
+    }
+    checks.push({
+      check: 'sqlite',
+      ok: sqlite,
+      message: sqlite
+        ? `Node ${process.versions.node} com SQLite disponível.`
+        : 'Instale uma versão Node suportada com node:sqlite.',
+    });
+    const status = await nativeStatus(root, config);
+    checks.push({
+      check: 'native',
+      ok: status.state === 'running',
+      message:
+        status.state === 'running'
+          ? 'Servidor nativo em execução.'
+          : 'Execute flow-batch up; confira status e logs.',
+    });
+  }
+  for (const args of config.runtime === 'native'
+    ? []
+    : [
+        ['compose', 'version'],
+        ['info', '--format', '{{.ServerVersion}}'],
+      ]) {
     let ok = false;
     try {
       ok = (await runProcess('docker', args, true)).code === 0;

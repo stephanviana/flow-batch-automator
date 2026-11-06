@@ -12,6 +12,7 @@ export async function runProcess(
 ): Promise<CommandResult> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
+      windowsHide: true,
       env: environment,
       timeout: capture ? 15000 : undefined,
       stdio: [

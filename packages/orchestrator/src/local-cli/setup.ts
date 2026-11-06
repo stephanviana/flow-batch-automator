@@ -10,12 +10,31 @@ import {
   type Installation,
   type SetupPaths,
 } from './config.js';
+import { nativeStatus } from './native.js';
+import { nativeDataDirectory } from './native-state.js';
 
 export interface SetupOptions extends SetupPaths {
   clients?: string;
   codexConfig?: string;
   antigravityConfig?: string;
   codexHome?: string;
+}
+async function preserveRunningNative(
+  root: string,
+  previous: Installation | null,
+  next: Installation,
+): Promise<void> {
+  if (previous?.runtime !== 'native') return;
+  const changed =
+    previous.runtime !== next.runtime ||
+    previous.port !== next.port ||
+    previous.libraryDirectory !== next.libraryDirectory ||
+    previous.extensionDirectory !== next.extensionDirectory ||
+    nativeDataDirectory(root, previous) !== nativeDataDirectory(root, next);
+  if (changed && (await nativeStatus(root, previous)).state !== 'stopped')
+    throw new Error(
+      'Encerre e confirme o servidor com flow-batch down antes de mudar o runtime ou suas pastas. Se o controle estiver indisponível, confira status e logs.',
+    );
 }
 async function extensionDestination(path: string): Promise<void> {
   await ensureDirectory(path);
@@ -71,6 +90,7 @@ function externalState(
     config.libraryDirectory,
     config.extensionDirectory,
     config.workspace,
+    ...(config.dataDirectory ? [config.dataDirectory] : []),
   ]) {
     const path = relative(packageRoot, directory);
     if (path !== '..' && !path.startsWith(`..${sep}`) && !isAbsolute(path))
@@ -118,11 +138,14 @@ export async function setupLocal(
 }> {
   const previous = await readInstallation(root);
   const config = setupConfiguration(root, previous, options);
+  await preserveRunningNative(root, previous, config);
   config.mcp = clientConfiguration(previous, homeDirectory, options);
   externalState(root, config, packageRoot);
   await extensionDestination(config.extensionDirectory);
   await ensureDirectory(config.libraryDirectory);
   await ensureDirectory(config.workspace);
+  if (config.runtime === 'native' && config.dataDirectory)
+    await ensureDirectory(config.dataDirectory);
   new LibraryStore(config.libraryDirectory);
   const backup = await saveInstallation(root, config);
   const clients = await registerClients(

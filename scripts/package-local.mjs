@@ -44,6 +44,13 @@ await build({
   entryPoints: [join(root, 'packages/orchestrator/src/main.ts')],
   outfile: join(staging, 'dist/main.mjs'),
 });
+await build({
+  ...compilation,
+  entryPoints: [
+    join(root, 'packages/orchestrator/src/local-cli/native-server.ts'),
+  ],
+  outfile: join(staging, 'dist/native-server.mjs'),
+});
 await cp(
   join(root, 'packages/orchestrator/dist/public'),
   join(staging, 'dist/public'),
