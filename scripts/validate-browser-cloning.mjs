@@ -257,7 +257,7 @@ async function createOrder() {
   );
   await readyVideo(page.locator('.file-list video'));
   await page
-    .getByRole('button', { name: 'Adicionar criação', exact: true })
+    .getByRole('button', { name: 'Adicionar formato', exact: true })
     .click();
   const standard = page.locator('.group').last();
   await standard
@@ -273,6 +273,9 @@ async function createOrder() {
   );
 }
 async function verifySavedVideo() {
+  const details = page.locator('#orders .order-details').first();
+  if (!(await details.evaluate((node) => node.open)))
+    await details.locator(':scope > summary').click();
   const summary = page.getByText(/vídeo de referência: blue.mp4/, {
     exact: false,
   });
@@ -399,6 +402,7 @@ async function verifyReviewAndCleanup(api, videoId) {
     0,
   );
   database.close();
+  await page.locator('#orders .order-details > summary').click();
   await page
     .getByRole('button', { name: 'Cancelar pedido', exact: true })
     .click();

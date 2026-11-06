@@ -1,4 +1,5 @@
-import { element, field } from './orders-elements.js';
+import { element } from './orders-elements.js';
+import { icon } from './ui-icons.js';
 import { MATERIAL_LIMIT, VIDEO_MATERIAL_LIMIT } from './orders-config.js';
 
 function selectionFor(file, image = false) {
@@ -25,9 +26,12 @@ function selectionRow(list, selection, onRemove) {
   const remove = element(row, 'button', 'Remover', 'secondary');
   remove.type = 'button';
   if (selection.image)
-    remove.setAttribute('aria-label', 'Remover imagem de referência');
+    remove.setAttribute(
+      'aria-label',
+      `Remover imagem de referência: ${selection.file.name}`,
+    );
   remove.addEventListener('click', onRemove);
-  if (!selection.preview) return;
+  if (!selection.preview) return row;
   const preview = element(
     row,
     selection.image ? 'img' : 'video',
@@ -42,19 +46,43 @@ function selectionRow(list, selection, onRemove) {
     preview.playsInline = true;
     preview.setAttribute('aria-label', `Prévia de ${selection.file.name}`);
   }
+  return row;
+}
+
+function uploadField(
+  parent,
+  title,
+  label,
+  action,
+  description,
+  glyph,
+  attributes,
+) {
+  const wrapper = element(parent, 'label', title, 'upload-field');
+  const tile = element(wrapper, 'span', '', 'upload-tile');
+  icon(tile, glyph);
+  const text = element(tile, 'span');
+  element(text, 'strong', action);
+  element(text, 'small', description);
+  const input = element(tile, 'input');
+  Object.assign(input, { type: 'file', ...attributes });
+  input.setAttribute('aria-label', label);
+  return input;
 }
 
 export function materialsEditor(parent) {
-  const reference = field(parent, 'Imagem de referência para o Flow', 'input', {
-    type: 'file',
-    accept: '.png,.jpg,.jpeg,.webp',
-    required: true,
-  });
-  element(
+  const reference = uploadField(
     parent,
-    'p',
-    `Escolha a foto do produto usada na geração. PNG, JPEG ou WebP de até ${MATERIAL_LIMIT / 1024 / 1024} MB.`,
-    'hint',
+    'Imagem de referência',
+    'Imagem de referência para o Flow',
+    'Adicionar imagem',
+    `PNG, JPEG ou WebP · até ${MATERIAL_LIMIT / 1024 / 1024} MB`,
+    'image',
+    {
+      type: 'file',
+      accept: '.png,.jpg,.jpeg,.webp',
+      required: true,
+    },
   );
   const referenceList = element(
     parent,
@@ -62,33 +90,25 @@ export function materialsEditor(parent) {
     '',
     'file-list reference-selection',
   );
+  let referenceSelection = null;
   const additional = element(parent, 'div', '', 'additional-materials');
-  const picker = field(
+  const picker = uploadField(
     additional,
+    'Materiais adicionais',
     'Materiais adicionais (fotos, prints, documentos ou vídeos)',
-    'input',
+    'Adicionar arquivos',
+    'Fotos, documentos ou vídeo de referência',
+    'paperclip',
     {
       type: 'file',
       multiple: true,
       accept: '.png,.jpg,.jpeg,.webp,.pdf,.txt,.md,.json,.mp4',
     },
   );
-  element(
-    additional,
-    'p',
-    `Imagens e documentos: até ${MATERIAL_LIMIT / 1024 / 1024} MB. Para clonar: um único vídeo MP4 de até ${VIDEO_MATERIAL_LIMIT / 1024 / 1024} MB.`,
-    'hint',
-  );
-  element(
-    additional,
-    'p',
-    'Trocar o modo de criação limpa estes materiais adicionais do produto. A imagem de referência é mantida.',
-    'hint',
-  );
+  picker.title = `Imagens e documentos: até ${MATERIAL_LIMIT / 1024 / 1024} MB. Para clonar: um único MP4 de até ${VIDEO_MATERIAL_LIMIT / 1024 / 1024} MB. Trocar o modo de criação limpa os materiais adicionais; a imagem de referência é mantida.`;
   const list = element(additional, 'ul', '', 'file-list');
   const videoError = element(additional, 'p', '', 'error');
   videoError.setAttribute('role', 'status');
-  let referenceSelection = null;
   let videoRequired = false;
   const selections = [];
   const listeners = new Set();

@@ -244,6 +244,9 @@ mudanças apenas documentais não exigem criar testes de código.
   instalação configurada ou `~/.flow-batch/biblioteca`.
 - `pnpm test:browser:library`: inicialização vazia, importação local, painel de
   pedidos sem editor e download do conector em Chrome isolado.
+- `pnpm test:browser:orders-design`: layout do editor e acompanhamento, larguras
+  de 320 a 1920 px, anexos, prévia, detalhes, cancelamento e armazenamento em
+  Chrome isolado, sem despachar pedidos. Usa a porta 4359 e dados temporários.
 - `pnpm orders list` / `show NUMERO`: consulta do agente pela API local.
 - `pnpm orders checkout 12 15`: reserva e materiais para preparação; `--revise`
   permite revisar uma preparação ainda não despachada.

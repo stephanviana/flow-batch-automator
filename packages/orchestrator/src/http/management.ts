@@ -20,6 +20,8 @@ export function registerManagement(
     ['/orders', ['orders.html', 'text/html; charset=utf-8']],
     ['/orders.js', ['orders.js', 'text/javascript; charset=utf-8']],
     ['/orders.css', ['orders.css', 'text/css; charset=utf-8']],
+    ['/orders-editor.css', ['orders-editor.css', 'text/css; charset=utf-8']],
+    ['/orders-cards.css', ['orders-cards.css', 'text/css; charset=utf-8']],
     [
       '/management-api.js',
       ['management-api.js', 'text/javascript; charset=utf-8'],
@@ -35,6 +37,8 @@ export function registerManagement(
     'orders-format-editor.js',
     'orders-config.js',
     'orders-video-preview.js',
+    'ui-icons.js',
+    'orders-cards.js',
   ])
     files.set(`/${filename}`, [filename, 'text/javascript; charset=utf-8']);
   for (const [route, [filename, contentType]] of files) {

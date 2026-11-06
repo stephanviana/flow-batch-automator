@@ -1,7 +1,10 @@
 import { api } from './management-api.js';
 export { api };
-import { referenceVideoPreview } from './orders-video-preview.js';
-import { element, productEditor, formats } from './orders-editor.js';
+import { element, productEditor } from './orders-editor.js';
+import { renderOrder } from './orders-cards.js';
+import { icon } from './ui-icons.js';
+for (const node of document.querySelectorAll('[data-icon]'))
+  icon(node, node.dataset.icon);
 const status = document.querySelector('#status'),
   form = document.querySelector('#order-form');
 const products = [],
@@ -16,7 +19,14 @@ function addProduct() {
     products.splice(products.indexOf(editor), 1);
     editor.dispose();
     editor.container.remove();
+    updateProductCount();
   });
+  updateProductCount();
+}
+function updateProductCount() {
+  products.forEach((product, index) => product.renumber(index + 1));
+  document.querySelector('#product-count').textContent =
+    `${products.length} ${products.length === 1 ? 'produto' : 'produtos'}`;
 }
 function report(error) {
   status.textContent = error.message;
@@ -63,158 +73,27 @@ form.addEventListener('submit', (event) => {
     await refresh();
   });
 });
-const states = {
-  'awaiting-preparation': 'Aguardando preparação',
-  preparing: 'Em preparação',
-  prepared: 'Prévia pronta · aguarda autorização no chat',
-  dispatched: 'Em execução',
-  completed: 'Concluído',
-  failed: 'Encerrado com falha',
-  uncertain: 'Resultado incerto · requer revisão',
-  blocked: 'Despacho bloqueado · requer revisão',
-  cancelled: 'Cancelado',
-};
-function details(parent, title, value) {
-  const node = element(parent, 'details');
-  element(node, 'summary', title);
-  element(node, 'pre', value);
-}
-function cloneReview(parent, variation) {
-  const review = element(parent, 'details');
-  element(
-    review,
-    'summary',
-    `${variation.name} · análise e adaptação do vídeo`,
-  );
-  element(review, 'p', variation.cloneVideo.analysis);
-  for (const [stage, label] of [
-    ['hook', 'Gancho'],
-    ['body', 'Body'],
-    ['cta', 'CTA'],
-  ]) {
-    element(review, 'h4', label);
-    element(review, 'pre', variation.cloneVideo.directions[stage]);
-  }
-}
 async function refresh() {
   const { orders } = await api('/manage/orders'),
     list = document.querySelector('#orders');
   previewDisposers.splice(0).forEach((dispose) => dispose());
   list.replaceChildren();
   for (const order of orders) {
-    const card = element(list, 'article');
-    card.dataset.orderNumber = String(order.number);
-    card.dataset.state = order.state;
-    element(card, 'h3', `Pedido ${order.number} · ${order.name}`);
-    element(card, 'span', states[order.state], 'badge');
-    if (order.lease)
-      element(
-        card,
-        'p',
-        `Preparando: ${order.lease.worker} · reserva até ${new Date(order.lease.expiresAt).toLocaleTimeString()}`,
-      );
-    const table = element(card, 'ul');
-    for (const product of order.products)
-      element(
-        table,
-        'li',
-        `${product.name}: ${product.groups.map((group) => `${group.count} × ${formats.find(([key]) => key === group.format)?.[1]}`).join('; ')}`,
-      );
-    for (const product of order.products)
-      for (const videoId of new Set(
-        product.groups.map((group) => group.videoReferenceId).filter(Boolean),
-      )) {
-        const video = order.materials.find(
-          (material) => material.id === videoId,
-        );
-        if (video)
-          previewDisposers.push(
-            referenceVideoPreview(card, product.name, video, api),
-          );
-      }
-    for (const dispatch of order.dispatches)
-      if (dispatch.message) element(card, 'p', dispatch.message);
-    if (Object.keys(order.counts).length)
-      element(
-        card,
-        'p',
-        Object.entries(order.counts)
-          .map(([key, count]) => `${count} ${key}`)
-          .join(' · '),
-      );
-    if (order.preparationHash) {
-      const count = order.generationCounts;
-      element(
-        card,
-        'p',
-        `Limite de geração: ${count.images} ${count.images === 1 ? 'imagem' : 'imagens'} e ${count.videos} vídeos.`,
-      );
-      const preview = element(card, 'button', 'Ver prévia', 'secondary');
-      preview.addEventListener('click', async () => {
-        preview.disabled = true;
-        try {
-          const { order: current } = await api(
-            `/manage/orders/${order.number}`,
-          );
-          const area = element(card, 'div');
-          for (const prepared of current.preparation.products) {
-            const product = current.products.find(
-              (product) => product.id === prepared.id,
-            );
-            for (const variation of prepared.variations) {
-              if (variation.cloneVideo) cloneReview(area, variation);
-              details(
-                area,
-                `${product.name} · ${variation.name} · falas`,
-                JSON.stringify(variation.copy, null, 2),
-              );
-              details(
-                area,
-                `${variation.name} · imagens`,
-                JSON.stringify(
-                  variation.presenterImage
-                    ? {
-                        gancho: variation.hookImage,
-                        vendedora: variation.presenterImage,
-                      }
-                    : { 'gancho, Body e CTA': variation.hookImage },
-                  null,
-                  2,
-                ),
-              );
-            }
-          }
-          details(
-            area,
-            'Manifestos e parâmetros de vídeo',
-            JSON.stringify(current.preparation.manifests, null, 2),
-          );
-          preview.remove();
-        } catch (error) {
-          preview.disabled = false;
-          report(error);
-        }
-      });
-    }
-    if (order.materials.some((material) => !material.available))
-      element(
-        card,
-        'p',
-        'As cópias dos materiais deste pedido foram removidas. O histórico foi mantido.',
-      );
-    if (['awaiting-preparation', 'prepared'].includes(order.state)) {
-      const cancel = element(card, 'button', 'Cancelar pedido', 'secondary');
-      cancel.addEventListener(
-        'click',
-        () =>
-          void action(async () => {
-            await api(`/manage/orders/${order.id}/cancel`, {});
-            status.textContent = `Pedido ${order.number} cancelado.`;
-            await refresh();
-          }),
-      );
-    }
+    previewDisposers.push(
+      renderOrder(list, order, {
+        api,
+        report,
+        action,
+        refresh,
+        onCancel() {
+          status.textContent = `Pedido ${order.number} cancelado.`;
+        },
+      }),
+    );
   }
+  const first = orders[0];
+  document.querySelector('#chat-instruction').textContent =
+    `No chat: “Prepare o pedido ${first?.number ?? 1}”.`;
   if (!orders.length) element(list, 'p', 'Nenhum pedido salvo.');
 }
 document
@@ -224,6 +103,12 @@ document.querySelector('#preview-cleanup').addEventListener(
   'click',
   () =>
     void action(async () => {
+      const toggle = document.querySelector('#preview-cleanup');
+      const panel = document.querySelector('#storage-details');
+      const expanded = toggle.getAttribute('aria-expanded') !== 'true';
+      toggle.setAttribute('aria-expanded', String(expanded));
+      panel.hidden = !expanded;
+      if (!expanded) return;
       const result = await api('/manage/cleanup'),
         area = document.querySelector('#cleanup');
       area.replaceChildren();

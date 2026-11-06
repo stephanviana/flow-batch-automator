@@ -1,19 +1,22 @@
 import { element, field } from './orders-elements.js';
 import { formats, ORDER_GROUP_LIMIT } from './orders-config.js';
+import { icon, iconButton } from './ui-icons.js';
 export { formats } from './orders-config.js';
 
 function modePicker(parent) {
   const picker = element(parent, 'fieldset', '', 'creation-mode');
   element(picker, 'legend', 'Como criar estes vídeos?');
   const name = `creation-mode-${crypto.randomUUID()}`;
-  for (const [value, title, description] of [
+  for (const [value, displayTitle, title, description] of [
     [
       'standard',
+      'Formatos padrão',
       'Usar formatos padrão',
       'Escolha entre os formatos de fábrica, POV e vendedora.',
     ],
     [
       'clone',
+      'Clonar vídeo',
       'Clonar um vídeo',
       'Adapte a estrutura de um vídeo de referência ao produto.',
     ],
@@ -28,16 +31,25 @@ function modePicker(parent) {
     });
     radio.setAttribute('aria-label', title);
     const text = element(label, 'span');
-    element(text, 'strong', title);
-    element(text, 'span', description, 'hint');
+    element(text, 'strong', displayTitle);
+    text.title = description;
   }
   return picker;
 }
 function formatGroup(parent, materials) {
   const row = element(parent, 'div', '', 'group creation-group');
-  const mode = modePicker(row);
+  const modeRow = element(row, 'div', '', 'creation-options');
+  const mode = modePicker(modeRow);
+  element(
+    modeRow,
+    'p',
+    'Escolha os formatos e a quantidade de variações.',
+    'mode-guidance',
+  );
   const controls = element(row, 'div', '', 'group-fields');
   const format = field(controls, 'Formato', 'select');
+  format.parentElement.className = 'select-field';
+  icon(format.parentElement, 'down');
   for (const [value, title] of formats)
     if (value !== 'clone') element(format, 'option', title).value = value;
   const reference = element(controls, 'div', '', 'clone-reference');
@@ -50,8 +62,7 @@ function formatGroup(parent, materials) {
     value: '3',
     required: true,
   });
-  const remove = element(controls, 'button', 'Remover', 'secondary');
-  remove.type = 'button';
+  const remove = iconButton(controls, 'Remover formato', 'trash');
   const hint = element(
     row,
     'p',
@@ -93,8 +104,20 @@ function formatGroup(parent, materials) {
 export function formatsEditor(parent, materials) {
   element(parent, 'h4', 'Criação dos vídeos', 'creation-heading');
   const groups = element(parent, 'div');
-  const add = element(parent, 'button', 'Adicionar criação', 'secondary');
+  const add = element(
+    parent,
+    'button',
+    'Adicionar formato',
+    'text-button add-format',
+  );
   add.type = 'button';
+  icon(add, 'plus');
+  element(
+    parent,
+    'p',
+    'Cada variação contém gancho, body e CTA.',
+    'hint variation-hint',
+  );
   const choices = [];
   function refresh() {
     choices.forEach((choice) => choice.refresh());

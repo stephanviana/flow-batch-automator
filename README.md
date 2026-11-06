@@ -355,6 +355,12 @@ Credenciais e tokens do Google permanecem no navegador.
 
 ## Pedidos e execução
 
+O editor mostra as informações do produto ao lado dos anexos, com formatos e
+variações abaixo. Os produtos podem ser recolhidos pelo cabeçalho. Na coluna
+**Seus pedidos**, **Ver prévia** abre a preparação e **Detalhes** mostra formatos,
+vídeos de referência, andamento e cancelamento. **Gerenciar**, em armazenamento
+local, consulta os arquivos elegíveis antes de oferecer a remoção.
+
 1. Abra <http://127.0.0.1:4319/orders>, reúna produtos e selecione a imagem de
    referência e os materiais adicionais de qualquer pasta acessível.
 2. Defina formatos e quantidades por produto. O modo de clonagem vincula um único
@@ -449,11 +455,14 @@ docker compose config --quiet
 pnpm test:browser:formats
 pnpm test:browser:library
 pnpm test:browser:cloning
+pnpm test:browser:orders-design
 ```
 
 Os testes usam contratos sintéticos, SQLite temporário e Chrome isolado com
 fixtures, sem perfil pessoal, Flow real ou consumo. `test:browser:formats` usa
-4339; `test:browser:library`, 4349; clonagem, 4329. A instalação real é preservada.
+4339; `test:browser:library`, 4349; clonagem, 4329; design de pedidos, 4359.
+A validação de design cobre criação, anexos, prévia, detalhes e cancelamento,
+com capturas entre 320 e 1920 px. A instalação real é preservada.
 Testes e build não comprovam nova geração paga nem qualidade criativa.
 
 Em 4 de novembro de 2026, o usuário relatou boa qualidade nos vídeos, mas o
