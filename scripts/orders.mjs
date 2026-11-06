@@ -2,10 +2,15 @@ import {
   localClient,
   requireContract,
 } from '../packages/orchestrator/dist/agent-client/http.js';
-import { checkout } from '../packages/orchestrator/dist/agent-client/workspace.js';
+import {
+  checkout,
+  publishWorkspace,
+} from '../packages/orchestrator/dist/agent-client/workspace.js';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseArgs } from 'node:util';
+import { orderExecution } from '../packages/orchestrator/dist/agent-client/execution.js';
 export { localClient, checkout };
 async function run() {
   const [command, ...args] = process.argv.slice(2),
@@ -54,25 +59,36 @@ async function run() {
   }
   if (command === 'publish' || command === 'renew') {
     if (command === 'publish') await requireContract(api);
-    const filename = resolve(args[0] ?? '');
+    const { values, positionals } = parseArgs({
+      args,
+      allowPositionals: true,
+      options:
+        command === 'publish'
+          ? { execute: { type: 'boolean' }, client: { type: 'string' } }
+          : {},
+    });
+    if (positionals.length !== 1 || (values.client && !values.execute))
+      throw new Error(
+        'Informe o arquivo ou pasta; --client exige --execute na publicação.',
+      );
+    const execution = values.execute
+      ? await orderExecution(api, values.client)
+      : undefined;
+    const filename = resolve(positionals[0]);
     const folder = command === 'publish' ? resolve(filename, '..') : filename;
     const { order, leaseId } = JSON.parse(
       await readFile(resolve(folder, 'pedido.json'), 'utf8'),
     );
-    const body =
+    const result =
       command === 'publish'
-        ? JSON.parse(await readFile(filename, 'utf8'))
-        : { leaseId };
-    const result = await api(
-      `/manage/orders/${order.id}/${command === 'publish' ? 'prepare' : 'heartbeat'}`,
-      body,
-    );
+        ? await publishWorkspace(api, folder, execution, filename)
+        : await api(`/manage/orders/${order.id}/heartbeat`, { leaseId });
     console.log(
       JSON.stringify(
         {
           number: result.number,
           state: result.state,
-          preparationHash: result.preparationHash,
+          dispatches: result.dispatches,
         },
         null,
         2,
@@ -86,25 +102,19 @@ async function run() {
       console.log(JSON.stringify(order, null, 2));
       return;
     }
-    if (args[1] !== '--approve' || args[2] !== '--hash' || !args[3])
+    const { values, positionals } = parseArgs({
+      args,
+      allowPositionals: true,
+      options: { approve: { type: 'boolean' }, client: { type: 'string' } },
+    });
+    if (!values.approve || positionals.length !== 1)
       throw new Error(
-        'Após autorização explícita no chat: pnpm orders approve NUMERO --approve --hash HASH [--client UUID]',
+        'Após um pedido de execução no chat: pnpm orders approve NUMERO --approve [--client UUID]',
       );
-    const { clients } = await api('/manage/status');
-    const available = clients.filter((client) => !client.revokedAt);
-    const clientId =
-      args[4] === '--client'
-        ? args[5]
-        : available.length === 1
-          ? available[0].id
-          : null;
-    if (!clientId)
-      throw new Error(
-        'Conecte uma extensão autorizada ou informe --client UUID.',
-      );
+    await requireContract(api);
+    const { clientId } = await orderExecution(api, values.client);
     const result = await api(`/manage/orders/${order.id}/approve`, {
       approve: true,
-      preparationHash: args[3],
       clientId,
     });
     console.log(
@@ -121,7 +131,7 @@ async function run() {
     return;
   }
   throw new Error(
-    'Uso: pnpm orders list | show NUMERO | checkout NUMEROS | renew PASTA | publish PREPARACAO.JSON | approve NUMERO --approve --hash HASH',
+    'Uso: pnpm orders list | show NUMERO | checkout NUMEROS | renew PASTA | publish PREPARACAO.JSON [--execute] [--client UUID] | approve NUMERO --approve [--client UUID]',
   );
 }
 if (

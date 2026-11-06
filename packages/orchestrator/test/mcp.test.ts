@@ -8,7 +8,7 @@ import { Readable } from 'node:stream';
 import { mkdtempSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fixture, management } from './support.js';
+import { fixture, management, pair, approve } from './support.js';
 import { draft, image, publication } from './orders-support.js';
 import { MaterialFiles } from '../src/orders/material-files.js';
 import { OrderRepository } from '../src/orders/repository.js';
@@ -25,7 +25,7 @@ test('agent fails before creating a draft against an old runtime contract', asyn
   await assert.rejects(requireContract(incompatible), /Contrato incompatível/);
 });
 
-test('official MCP client completes stdio checkout, material reading and publication outside the repository without dispatch', async (t) => {
+test('official MCP client supports review, hashless execution and combined publication outside the repository', async (t) => {
   const f = await fixture(t),
     repository = new OrderRepository(f.database);
   const files = new MaterialFiles(
@@ -168,11 +168,60 @@ test('official MCP client completes stdio checkout, material reading and publica
     arguments: {
       number: order.number,
       clientId: '00000000-0000-4000-8000-000000000001',
-      preparationHash: repository.get(order.id).preparationHash,
       userAuthorized: false,
     },
   });
   assert.equal(rejected.isError, true);
+  const receipt = await pair(f);
+  await approve(f, receipt);
+  const execution = await client.callTool({
+    name: 'flow_approve',
+    arguments: { number: order.number, userAuthorized: true },
+  });
+  assert.ok(!execution.isError, JSON.stringify(execution));
+  assert.equal(repository.get(order.id).state, 'dispatched');
+  const nextInput = draft(material.id);
+  nextInput.products = [nextInput.products[1]!];
+  const next = repository.create(nextInput);
+  const checkoutResult = await client.callTool({
+    name: 'flow_checkout',
+    arguments: { number: next.number },
+  });
+  assert.ok(!checkoutResult.isError, JSON.stringify(checkoutResult));
+  const nextText = checkoutResult.content?.[0];
+  assert.ok(nextText?.type === 'text');
+  const nextLease = JSON.parse(nextText.text as string);
+  const nextPreparation = await publication(next, nextLease.leaseId);
+  writeFileSync(
+    nextLease.preparationFile,
+    JSON.stringify({
+      ...nextPreparation,
+      execution: { clientId: receipt.clientId, userAuthorized: true },
+    }),
+  );
+  const injectedConsent = await client.callTool({
+    name: 'flow_publish',
+    arguments: { number: next.number },
+  });
+  assert.equal(injectedConsent.isError, true);
+  assert.equal(repository.get(next.id).state, 'preparing');
+  writeFileSync(nextLease.preparationFile, JSON.stringify(nextPreparation));
+  const missingConsent = await client.callTool({
+    name: 'flow_publish',
+    arguments: { number: next.number, execute: true },
+  });
+  assert.equal(missingConsent.isError, true);
+  assert.equal(repository.get(next.id).state, 'preparing');
+  const combined = await client.callTool({
+    name: 'flow_publish',
+    arguments: { number: next.number, execute: true, userAuthorized: true },
+  });
+  assert.ok(!combined.isError, JSON.stringify(combined));
+  assert.equal(repository.get(next.id).state, 'dispatched');
+  const tool = tools.tools.find((tool) => tool.name === 'flow_approve')!;
+  assert.ok(
+    !Object.hasOwn(tool.inputSchema.properties ?? {}, 'preparationHash'),
+  );
   writeFileSync(
     join(f.config.materialsDirectory, material.sha256),
     Buffer.from('alterado'),

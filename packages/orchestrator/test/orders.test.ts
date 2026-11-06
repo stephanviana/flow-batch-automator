@@ -162,7 +162,7 @@ test('panel imports, deduplicates and persists products; preparation reserves ex
   reopened.close();
 });
 
-test('only approved owner can fetch exact managed references; stale review and changed bytes are refused', async (t) => {
+test('only approved owner can fetch exact managed references; missing consent and changed bytes are refused', async (t) => {
   const f = await fixture(t),
     receipt = await pair(f),
     headers = await approve(f, receipt);
@@ -181,7 +181,7 @@ test('only approved owner can fetch exact managed references; stale review and c
     headers,
     payload: input,
   });
-  const hash = String(prepared.json().preparationHash);
+  assert.equal(prepared.statusCode, 200, prepared.body);
   assert.equal(
     (
       await f.app.inject({
@@ -189,13 +189,12 @@ test('only approved owner can fetch exact managed references; stale review and c
         url: `/manage/orders/${order.id}/approve`,
         headers,
         payload: {
-          approve: true,
+          approve: false,
           clientId: receipt.clientId,
-          preparationHash: '0'.repeat(64),
         },
       })
     ).statusCode,
-    409,
+    400,
   );
   const approved = await f.app.inject({
     method: 'POST',
@@ -204,7 +203,6 @@ test('only approved owner can fetch exact managed references; stale review and c
     payload: {
       approve: true,
       clientId: receipt.clientId,
-      preparationHash: hash,
     },
   });
   assert.equal(approved.statusCode, 200, approved.body);
@@ -272,7 +270,6 @@ test('only approved owner can fetch exact managed references; stale review and c
     payload: {
       approve: true,
       clientId: receipt.clientId,
-      preparationHash: hash,
     },
   });
   assert.equal(

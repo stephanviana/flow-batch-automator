@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const PREPARATION_CONTRACT = 'flow-orders/2';
+export const PREPARATION_CONTRACT = 'flow-orders/3';
 export const libraryFileSchema = z
   .string()
   .max(180)

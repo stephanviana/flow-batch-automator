@@ -5,7 +5,9 @@ import {
   materialFilename,
   usesSingleImage,
   libraryFileSchema,
+  orderPublicationSchema,
   type OrderPublication,
+  type OrderExecution,
 } from '@flow-batch/protocol';
 import type { ProductionOrder } from '../orders/repository.js';
 import type { variationPlan as plan } from '../orders/preparation.js';
@@ -182,12 +184,17 @@ export async function checkout(
 export async function publishWorkspace(
   api: AgentApi,
   directory: string,
+  execution?: OrderExecution,
+  preparationFile = resolve(directory, 'preparacao.json'),
 ): Promise<ProductionOrder> {
   await requireContract(api);
   const lease = (await optionalJson(resolve(directory, 'pedido.json'))) as
     Lease | undefined;
   if (!lease) throw new Error('Faça a reserva do pedido antes de publicar.');
-  const preparation = await optionalJson(resolve(directory, 'preparacao.json'));
+  const preparation = await optionalJson(preparationFile);
   if (!preparation) throw new Error('Preparação não encontrada.');
-  return api(`/manage/orders/${lease.order.id}/prepare`, preparation);
+  return api(`/manage/orders/${lease.order.id}/prepare`, {
+    ...orderPublicationSchema.parse(preparation),
+    ...(execution ? { execution } : {}),
+  });
 }

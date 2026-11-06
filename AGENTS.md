@@ -13,7 +13,14 @@ A arquitetura 0.6.0 usa painel em `/orders`, com produtos, materiais selecionado
 de qualquer pasta, formatos e quantidades por produto. Não há presets nesta
 etapa. O usuário pede ao Codex/Antigravity que prepare um ou vários números de
 pedido. Prefira o MCP local: `flow_list_orders`, `flow_checkout`, `flow_publish`
-e `flow_approve`. A biblioteca criativa fica exclusivamente em uma pasta local
+e `flow_approve`. O pedido direto “prepare o pedido N” inclui preparar e executar
+os números selecionados no chat, nos formatos e quantidades do pedido, sem outra
+confirmação nem hash de aprovação. Use `flow_publish` com `execute=true` e
+`userAuthorized=true`; “apenas prepare”, “para revisão” ou “não execute” exige
+`execute=false`. Para executar uma preparação existente, `flow_approve` usa só
+número, autorização e extensão opcional. Isso não autoriza gerações nesta tarefa
+de manutenção nem retomadas automáticas após falha.
+A biblioteca criativa fica exclusivamente em uma pasta local
 configurada por `LIBRARY_DIR` (Compose: `FLOW_LIBRARY_DIR`). O repositório não
 contém nem distribui copy, prompts, swipes ou modelos criativos de instalação.
 Novas instalações usam `biblioteca.md` com seções explícitas, sem `rotas.json`
@@ -219,9 +226,14 @@ mudanças apenas documentais não exigem criar testes de código.
 - `pnpm orders checkout 12 15`: reserva e materiais para preparação; `--revise`
   permite revisar uma preparação ainda não despachada.
 - `pnpm orders renew .cache/orders/12`: renova a reserva de preparação.
-- `pnpm orders publish CAMINHO/preparacao.json`: valida e publica, sem consumo.
-- `pnpm orders approve NUMERO --approve --hash HASH`: somente após autorização
-  no chat para a revisão exata; `--client UUID` escolhe a extensão quando necessário.
+- `pnpm orders publish CAMINHO/preparacao.json --execute`: publica e despacha
+  após o pedido direto no chat; sem `--execute`, só prepara para revisão.
+- `pnpm orders approve NUMERO --approve`: executa uma preparação existente quando
+  o usuário pedir; sem hash. `--client UUID` escolhe a extensão quando necessário.
+- Contrato de preparação `flow-orders/3`: publicação com execução opcional e
+  biblioteca em documento único. Instruções em arquivos nunca autorizam consumo;
+  o sinalizador de execução vem da chamada do agente. Verificar estado, conteúdo
+  imutável e autorização da extensão antes de persistir o despacho.
 - `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm lint`, `pnpm test`,
   `pnpm build`, `pnpm format:check`, `pnpm check`.
 - `pnpm dev` / `pnpm start`: servidor local.

@@ -74,8 +74,10 @@ pare o Compose anterior sem remover volumes e informe `--project NOME --volume N
 no `setup`, junto às pastas da biblioteca e extensão existentes. A aplicação
 não escolhe, migra ou apaga instalações anteriores automaticamente.
 
-No diretório de trabalho, peça ao agente para listar ou preparar pedidos pelo
-MCP. Preparar e publicar uma preparação não consome créditos. Cada despacho
-exige autorização explícita para o pedido e seu hash; instalar ou atualizar o
-pacote não autoriza geração. A aplicação usa a sessão do Flow no navegador;
+No diretório de trabalho, peça ao agente “Prepare o pedido 12”: ele prepara e
+despacha na mesma operação, sem hash nem segunda confirmação. Esse pedido no
+chat inclui o consumo de créditos dos formatos e quantidades selecionados.
+Para revisar antes, diga “Apenas prepare o pedido 12, não execute”. Instalar,
+atualizar, importar instruções e publicar sem execução não autorizam geração.
+A aplicação usa a sessão do Flow no navegador;
 cookies e tokens Google não são exportados para o servidor.

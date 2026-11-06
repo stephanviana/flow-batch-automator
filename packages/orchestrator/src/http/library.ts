@@ -3,13 +3,14 @@ import { z } from 'zod';
 import {
   PREPARATION_CONTRACT,
   instructionFileSchema,
-  orderPublicationSchema,
+  orderSubmissionSchema,
   preparationFormatLabels,
   preparationFormatSchema,
   usesSingleImage,
 } from '@flow-batch/protocol';
 import type { LocalSessions } from '../security/local-session.js';
 import type { LibraryStore } from '../library/store.js';
+import { ORDER_EXECUTION_POLICY } from '../agent-client/workflow.js';
 import { LIBRARY_DOCUMENT, resolvedFiles } from '../library/document.js';
 
 export function registerLibrary(
@@ -28,9 +29,10 @@ export function registerLibrary(
         images: usesSingleImage(format) ? 1 : 2,
         videos: 3,
       })),
-      publicationSchema: z.toJSONSchema(orderPublicationSchema),
+      publicationSchema: z.toJSONSchema(orderSubmissionSchema),
       workflow:
-        'Reserve o pedido, leia o contexto e os materiais reais, crie e publique a preparação. As instruções vêm exclusivamente da pasta local configurada. Cada reserva captura seus arquivos automaticamente. Consumo exige autorização no chat para o hash exato. Não analise o código da aplicação.',
+        'Reserve o pedido, leia o contexto e os materiais reais, crie e publique a preparação. As instruções vêm exclusivamente da pasta local configurada. Cada reserva captura seus arquivos automaticamente. Não analise o código da aplicação. ' +
+        ORDER_EXECUTION_POLICY,
     };
   });
   app.get('/manage/library', async (request) => {

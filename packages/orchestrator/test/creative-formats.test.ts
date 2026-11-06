@@ -49,7 +49,6 @@ test('mixed and full formats publish and authorize their exact image counts with
     payload: {
       approve: true,
       clientId: receipt.clientId,
-      preparationHash: before.preparationHash,
     },
   });
   assert.equal(response.statusCode, 200, response.body);

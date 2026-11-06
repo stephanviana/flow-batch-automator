@@ -72,7 +72,8 @@ biblioteca e extensão. A CLI não escolhe ou apaga bancos antigos automaticamen
 
 `flow-batch mcp` inicia o stdio. `flow-batch mcp install codex` ou `antigravity`
 atualiza só o conector; `--config ARQUIVO` escolhe uma configuração específica.
-Instalar, atualizar ou preparar pedidos não autoriza créditos de geração.
+Instalar ou atualizar não autoriza créditos. O pedido direto no chat para
+preparar um pedido inclui sua execução; use “apenas prepare” para revisar antes.
 
 A distribuição `0.6.1` entrega o servidor compilado em `dist/main.mjs` e os assets
 em `dist/public/`, com dependências npm normais e versões exatas. O pacote não
@@ -317,12 +318,19 @@ Credenciais e tokens do Google permanecem no navegador.
    MP4 do produto; outra referência deve ser preparada em outro pedido/lote.
 3. Salve e peça ao agente: “Prepare o pedido 12”. `flow_checkout` retorna a
    reserva, informações, materiais verificados, contrato e instruções completas.
-4. O agente cria a preparação e publica com `flow_publish`. Confira a prévia:
-   falas, prompts, materiais, modelos e limites de geração.
-5. Autorize explicitamente no chat o número e hash exatos. Só então o agente usa
-   `flow_approve`. Publicar não consome créditos.
-6. Acompanhe as etapas, falhas e downloads no painel ou na extensão. Os projetos
+4. O agente confere os materiais, formatos, quantidades e conteúdo e usa
+   `flow_publish` com `execute=true` e `userAuthorized=true`. O mesmo pedido no
+   chat autoriza preparar e despachar, incluindo os créditos previstos, sem hash
+   de aprovação e sem outra confirmação. A extensão autorizada é escolhida
+   automaticamente quando há somente uma; vários destinos exigem sua escolha.
+5. Acompanhe as etapas, falhas e downloads no painel ou na extensão. Os projetos
    são preparados por lote e recuperados pelo vínculo persistido.
+
+Para revisar antes de gerar, diga “Apenas prepare o pedido 12, não execute”. O
+agente publica com `execute=false`; nenhuma geração é enviada. Depois, “Execute
+o pedido 12” permite `flow_approve` pelo número, sem hash. Arquivos e materiais
+não autorizam consumo. Novos pedidos não entram implicitamente na seleção.
+Falhas, resultados incertos e retomadas continuam exigindo consulta e revisão.
 
 `flow_list_orders` e `flow_show_order` consultam; `flow_renew` renova a reserva de
 30 minutos. `flow_read_material` fornece o conteúdo real ao agente.
@@ -350,11 +358,14 @@ pnpm orders list
 pnpm orders show 12
 pnpm orders checkout 12 15
 pnpm orders renew .cache/orders/12
-pnpm orders publish .cache/orders/12/preparacao.json
-pnpm orders approve 12 --approve --hash HASH_DA_PREPARACAO
+pnpm orders publish .cache/orders/12/preparacao.json --execute
+# Somente preparação para revisão:
+pnpm orders publish .cache/orders/15/preparacao.json
+# Quando o usuário pedir executar a preparação existente:
+pnpm orders approve 15 --approve
 ```
 
-A aprovação exige autorização explícita no chat. Com várias extensões, informe
+A execução deve corresponder ao pedido direto no chat. Com várias extensões, informe
 `--client UUID`. O contrato do servidor é conferido antes da preparação; erros
 retornam os campos envolvidos. Não adapte JSON a um servidor desatualizado.
 

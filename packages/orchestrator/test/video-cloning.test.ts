@@ -122,7 +122,6 @@ test('video imports deduplicate, bind to the product, survive SQLite reopening a
     payload: {
       approve: true,
       clientId: receipt.clientId,
-      preparationHash: result.preparationHash,
     },
   });
   assert.equal(dispatched.statusCode, 200, dispatched.body);

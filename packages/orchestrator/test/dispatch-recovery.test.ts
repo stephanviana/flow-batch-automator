@@ -42,12 +42,7 @@ async function blockedFixture(t: Parameters<typeof fixture>[0]): Promise<{
     payload: await publication(order, lease.leaseId),
   });
   assert.equal(response.statusCode, 200, response.body);
-  await dispatchOrder(
-    repository,
-    order.id,
-    repository.get(order.id).preparationHash!,
-    receipt.clientId,
-  );
+  await dispatchOrder(repository, order.id, receipt.clientId);
   const row = f.database
     .prepare(
       'SELECT dispatch_id,batch_id FROM order_dispatches WHERE order_id=?',

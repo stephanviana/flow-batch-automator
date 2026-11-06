@@ -94,6 +94,14 @@ export const orderPublicationSchema = z.strictObject({
     .max(30),
 });
 export type OrderPublication = z.infer<typeof orderPublicationSchema>;
+export const orderExecutionSchema = z.strictObject({
+  clientId: z.uuid(),
+  userAuthorized: z.literal(true),
+});
+export type OrderExecution = z.infer<typeof orderExecutionSchema>;
+export const orderSubmissionSchema = orderPublicationSchema.extend({
+  execution: orderExecutionSchema.optional(),
+});
 export type OrderState =
   | 'awaiting-preparation'
   | 'preparing'

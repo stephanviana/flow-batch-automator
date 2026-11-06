@@ -274,7 +274,6 @@ export async function validateFlowTake({
     await api(`/manage/orders/${order.id}/approve`, {
       approve: true,
       clientId,
-      preparationHash: prepared.preparationHash,
     });
     await eventually(
       async () => (await api('/manage/orders/1')).order.state === 'completed',

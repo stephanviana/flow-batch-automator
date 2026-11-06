@@ -17,7 +17,9 @@ Preencha `cloneVideo.analysis` e as direções de `hook`, `body` e `cta` conform
 contrato retornado, mantendo o `materialId` do grupo. A foto continua sendo a
 referência visual usada pelo Flow. Renove a reserva com `flow_renew` quando necessário.
 
-Publique com `flow_publish`, apresente a prévia e aguarde autorização explícita
-no chat para o número e hash exatos antes de `flow_approve`. Preparar e publicar
-não consomem créditos. Consulte `flow_show_order` para acompanhar; não repita
+O pedido direto no chat para preparar inclui executar os formatos e quantidades
+selecionados. Confira o conteúdo e use `flow_publish` com `execute=true` e
+`userAuthorized=true`, sem hash nem segunda confirmação. Se o usuário disser
+“apenas prepare”, “para revisão” ou “não execute”, use `execute=false` e
+apresente a prévia sem consumir créditos. Consulte `flow_show_order` para acompanhar; não repita
 resultados incertos nem contorne bloqueios com novos IDs.

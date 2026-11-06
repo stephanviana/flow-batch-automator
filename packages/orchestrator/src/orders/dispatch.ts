@@ -13,24 +13,20 @@ import { HttpError } from '../security/errors.js';
 export async function dispatchOrder(
   repository: OrderRepository,
   id: string,
-  hash: string,
   clientId: string,
+  authorize: () => void = () => {},
 ): Promise<ReturnType<OrderRepository['get']>> {
   const order = repository.get(id);
   if (order.state === 'dispatched' || order.state === 'completed') {
-    if (order.preparationHash !== hash)
-      throw new HttpError(409, 'A preparação mudou.');
+    authorize();
     return order;
   }
-  if (
-    order.state !== 'prepared' ||
-    !order.preparation ||
-    order.preparationHash !== hash
-  )
+  if (order.state !== 'prepared' || !order.preparation)
     throw new HttpError(409, 'Confira a preparação atual antes de autorizar.');
   if (order.materials.some((material) => !material.available))
     throw new HttpError(409, 'Material indisponível.');
   const approvedAt = Date.now();
+  const preparation = JSON.stringify(order.preparation);
   const commands: { command: DispatchCommand; batchId: string }[] = [];
   for (const manifest of order.preparation.manifests) {
     const paths = new Set(manifest.tasks.map((take) => take.reference));
@@ -65,8 +61,15 @@ export async function dispatchOrder(
     });
   }
   return repository.transaction(() => {
-    if (repository.get(id).state !== 'prepared')
+    const current = repository.get(id);
+    if (
+      current.state !== 'prepared' ||
+      JSON.stringify(current.preparation) !== preparation
+    )
       throw new HttpError(409, 'Pedido já alterado. Consulte seu estado.');
+    if (current.materials.some((material) => !material.available))
+      throw new HttpError(409, 'Material indisponível.');
+    authorize();
     const store = new DispatchStore(repository.database);
     for (const { command, batchId } of commands) {
       store.register(clientId, command);

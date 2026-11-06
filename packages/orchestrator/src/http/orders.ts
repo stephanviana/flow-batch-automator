@@ -2,7 +2,7 @@ import { Readable } from 'node:stream';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import {
-  orderPublicationSchema,
+  orderSubmissionSchema,
   VIDEO_MATERIAL_LIMIT,
 } from '@flow-batch/protocol';
 import type { LocalSessions } from '../security/local-session.js';
@@ -79,10 +79,18 @@ export function registerOrders(
     { bodyLimit: 8_388_608 },
     async (request) => {
       sessions.require(request);
-      const input = orderPublicationSchema.parse(request.body),
+      const { execution, ...input } = orderSubmissionSchema.parse(request.body),
         key = id(request.params);
+      const authorize = (): void => {
+        if (execution) {
+          const client = clients.get(execution.clientId);
+          if (!client) throw new HttpError(404, 'Extensão não encontrada.');
+          clients.authorized(client.id, client.extensionId);
+        }
+      };
+      authorize();
       const order = repository.get(key);
-      if (order.state !== 'prepared')
+      if (order.state !== 'prepared' && !order.dispatches.length)
         repository.requireLease(key, input.leaseId);
       const revision = bindings.bind(key, input.leaseId);
       if (input.libraryRevision && input.libraryRevision !== revision.revision)
@@ -99,7 +107,10 @@ export function registerOrders(
         libraryId: revision.libraryId,
         revision: revision.revision,
       };
-      return repository.publish(key, input.leaseId, prepared);
+      const published = repository.publish(key, input.leaseId, prepared);
+      return execution
+        ? dispatchOrder(repository, key, execution.clientId, authorize)
+        : published;
     },
   );
   app.post('/manage/orders/:id/approve', async (request) => {
@@ -107,19 +118,15 @@ export function registerOrders(
     const input = z
       .strictObject({
         approve: z.literal(true),
-        preparationHash: z.string().regex(/^[a-f0-9]{64}$/),
         clientId: z.uuid(),
       })
       .parse(request.body);
     const client = clients.get(input.clientId);
     if (!client) throw new HttpError(404, 'Extensão não encontrada.');
     clients.authorized(client.id, client.extensionId);
-    return dispatchOrder(
-      repository,
-      id(request.params),
-      input.preparationHash,
-      client.id,
-    );
+    return dispatchOrder(repository, id(request.params), client.id, () => {
+      clients.authorized(client.id, client.extensionId);
+    });
   });
   app.post('/manage/orders/:id/cancel', async (request) => {
     sessions.require(request);
