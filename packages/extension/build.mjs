@@ -19,7 +19,7 @@ await cp(new URL('./public/', import.meta.url), outputDirectory, {
   recursive: true,
 });
 await cp(
-  new URL('../ui/theme.css', import.meta.url),
+  new URL('../../shared/styles/theme.css', import.meta.url),
   new URL('theme.css', outputDirectory),
 );
 const digest = createHash('sha256');

@@ -8,6 +8,7 @@ COPY packages/extension/package.json packages/extension/package.json
 RUN pnpm install --frozen-lockfile
 COPY tsconfig.base.json ./
 COPY packages ./packages
+COPY shared ./shared
 RUN pnpm build
 RUN pnpm --filter @flow-batch/orchestrator deploy --prod /release
 

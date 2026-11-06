@@ -430,6 +430,8 @@ nem reconstrução de pedidos para contornar uma confirmação perdida.
 Node.js e TypeScript estrito, pnpm Workspaces e versões exatas no lockfile.
 `packages/protocol` contém contratos e compilação; `packages/orchestrator`, API,
 SQLite e fila; `packages/extension`, contexto do navegador e execução.
+`shared/styles/theme.css` reúne os estilos básicos usados pelo painel, conexão
+e extensão; os builds copiam o tema para seus respectivos arquivos distribuídos.
 `skills/` contém apenas orientação operacional. O pacote criativo é externo.
 
 ```sh

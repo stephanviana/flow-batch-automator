@@ -127,6 +127,8 @@ qualquer geração paga continua dependendo de autorização específica no chat
   aproveitando sua sessão; credenciais e tokens permanecem no navegador.
 - Docker Compose: orquestrador e serviço temporário `sync-extension`. Sem Redis,
   PostgreSQL, dashboard completo ou serviços externos adicionais.
+- `shared/styles/theme.css`: base visual compartilhada pelo orquestrador e pela
+  extensão, copiada nos dois builds. Estilos específicos ficam em cada camada.
 - Antes de implementar, confira o estado real do repositório e os contratos
   existentes. Preserve alterações do usuário e decisões já validadas.
 - Ao definir a stack, registre aqui linguagens, versões, gerenciador de pacotes,

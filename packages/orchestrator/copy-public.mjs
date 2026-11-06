@@ -13,7 +13,7 @@ await cp(new URL('./public/', import.meta.url), destination, {
   recursive: true,
 });
 await cp(
-  new URL('../ui/theme.css', import.meta.url),
+  new URL('../../shared/styles/theme.css', import.meta.url),
   resolve(destination, 'theme.css'),
 );
 await writeFile(
