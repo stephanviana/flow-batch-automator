@@ -361,6 +361,12 @@ variações abaixo. Os produtos podem ser recolhidos pelo cabeçalho. Na coluna
 vídeos de referência, andamento e cancelamento. **Gerenciar**, em armazenamento
 local, consulta os arquivos elegíveis antes de oferecer a remoção.
 
+A sessão do painel é independente da conexão da extensão. Enquanto o painel é
+usado, ela é renovada antes de expirar; ao voltar após inatividade ou reinício do
+servidor, a recuperação preserva campos e arquivos selecionados. Se a renovação
+falhar, o painel apresenta uma mensagem em português. Falhas de rede ou de
+servidor não provocam reenvio automático de operações.
+
 Em **Imagens de referência**, selecione várias imagens de uma vez ou adicione
 mais em novas seleções. Marque **Principal no Flow** na imagem usada na geração;
 a primeira começa marcada e pode ser trocada. Todas as imagens ficam no pedido
@@ -464,6 +470,7 @@ pnpm test:browser:library
 pnpm test:browser:cloning
 pnpm test:browser:orders-design
 pnpm test:browser:connect
+pnpm test:browser:session
 ```
 
 Os testes usam contratos sintéticos, SQLite temporário e Chrome isolado com
@@ -472,6 +479,9 @@ fixtures, sem perfil pessoal, Flow real ou consumo. `test:browser:formats` usa
 conexão, 4369. `test:browser:connect` cobre a página com identidades sintéticas e
 WebSocket autenticado: confirmação, cancelamento, expiração, estados de conexão,
 revogação e nova autorização, com capturas de 320 a 1920 px.
+`test:browser:session` usa a porta 4379 e verifica renovação da sessão, preservação
+do rascunho e recuperação limitada, incluindo ausência de reenvio de escritas
+após resposta perdida ou erro do servidor.
 A validação de design cobre criação, anexos, prévia, detalhes e cancelamento,
 com capturas entre 320 e 1920 px. A instalação real é preservada.
 Testes e build não comprovam nova geração paga nem qualidade criativa.

@@ -29,6 +29,7 @@
     "test:browser:orders": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser.mjs --orders-only",
     "test:browser:orders-design": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser-orders-design.mjs",
     "test:browser:connect": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser-connect.mjs",
+    "test:browser:session": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser-session.mjs",
     "mcp": "node packages/orchestrator/dist/mcp/main.js",
     "library": "node scripts/library.mjs",
     "test:browser:library": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser-library.mjs",

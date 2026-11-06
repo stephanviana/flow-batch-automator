@@ -33,6 +33,7 @@ export function registerJsonHandling(app: FastifyInstance): void {
           ? 400
           : knownStatus;
     await reply.code(status).send({
+      ...(error instanceof HttpError && error.code ? { code: error.code } : {}),
       ...(error instanceof ZodError
         ? {
             issues: error.issues.map((issue) => ({

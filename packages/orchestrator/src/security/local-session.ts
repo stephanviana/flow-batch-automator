@@ -6,6 +6,7 @@ interface Session {
   authority: string;
   expiresAt: number;
 }
+const SESSION_DURATION_MS = 1_800_000;
 export class LocalSessions {
   private readonly sessions = new Map<string, Session>();
 
@@ -17,29 +18,61 @@ export class LocalSessions {
     const token = randomBytes(32).toString('base64url');
     this.sessions.set(this.digest(token), {
       authority: request.headers.host ?? '',
-      expiresAt: Date.now() + 1800000,
+      expiresAt: Date.now() + SESSION_DURATION_MS,
     });
+    this.cookie(reply, token);
+  }
+
+  renew(request: FastifyRequest, reply: FastifyReply): void {
+    this.validateRequest(request);
+    const token = this.token(request);
+    const session = token ? this.sessions.get(this.digest(token)) : undefined;
+    if (
+      token &&
+      session &&
+      session.expiresAt > Date.now() &&
+      session.authority === request.headers.host
+    ) {
+      session.expiresAt = Date.now() + SESSION_DURATION_MS;
+      this.cookie(reply, token);
+    } else this.open(request, reply);
+  }
+
+  private cookie(reply: FastifyReply, token: string): void {
     reply.header(
       'Set-Cookie',
-      `flow_session=${token}; Path=/manage; HttpOnly; SameSite=Strict; Max-Age=1800`,
+      `flow_session=${token}; Path=/manage; HttpOnly; SameSite=Strict; Max-Age=${SESSION_DURATION_MS / 1000}`,
     );
   }
 
   require(request: FastifyRequest): void {
-    const token = request.headers.cookie
+    this.validateRequest(request);
+    const token = this.token(request);
+    const session = token ? this.sessions.get(this.digest(token)) : undefined;
+    if (
+      !session ||
+      session.expiresAt <= Date.now() ||
+      session.authority !== request.headers.host
+    )
+      throw new HttpError(
+        403,
+        'A sessão do painel expirou. Tente novamente para continuar.',
+        'MANAGEMENT_SESSION_REQUIRED',
+      );
+  }
+
+  private token(request: FastifyRequest): string | undefined {
+    return request.headers.cookie
       ?.split(';')
       .map((part) => part.trim())
       .find((part) => part.startsWith('flow_session='))
       ?.slice(13);
-    const session = token ? this.sessions.get(this.digest(token)) : undefined;
+  }
+
+  private validateRequest(request: FastifyRequest): void {
     const authority = request.headers.host ?? '';
-    if (
-      !session ||
-      session.expiresAt <= Date.now() ||
-      session.authority !== authority ||
-      request.headers['x-flow-management'] !== '1'
-    )
-      throw new HttpError(403, 'Management session required');
+    if (request.headers['x-flow-management'] !== '1')
+      throw new HttpError(403, 'Management header required');
     if (
       request.headers.origin &&
       request.headers.origin !== `http://${authority}`

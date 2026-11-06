@@ -1,3 +1,4 @@
+import { api as management } from './management-api.js';
 import { icon } from './ui-icons.js';
 
 const status = document.querySelector('#status');
@@ -10,23 +11,6 @@ let loadFailed = false;
 for (const node of document.querySelectorAll('[data-icon]'))
   icon(node, node.dataset.icon);
 
-async function management(path, body) {
-  const response = await fetch(path, {
-    method: body ? 'POST' : 'GET',
-    headers: {
-      'X-Flow-Management': '1',
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-    credentials: 'same-origin',
-    redirect: 'error',
-  });
-  if (!response.ok)
-    throw new Error(
-      'Operação recusada. Recarregue a página se a sessão expirou.',
-    );
-  return response.json();
-}
 function text(parent, tag, content = '', className = '') {
   const element = document.createElement(tag);
   element.textContent = content;

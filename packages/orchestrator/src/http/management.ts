@@ -54,6 +54,10 @@ export function registerManagement(
       return contents;
     });
   }
+  app.post('/manage/session', async (request, reply) => {
+    sessions.renew(request, reply);
+    return { ok: true };
+  });
   app.get('/manage/status', async (request) => {
     sessions.require(request);
     const status = clients.managementStatus();

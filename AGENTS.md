@@ -254,6 +254,8 @@ mudanças apenas documentais não exigem criar testes de código.
 - `pnpm test:browser:connect`: página de conexão em Chrome isolado, identidades
   sintéticas e WebSocket autenticado. Cobre códigos, confirmação, cancelamento,
   expiração, conexão/desconexão, revogação e nova autorização na porta 4369.
+- `pnpm test:browser:session`: renovação local, concorrência, reinício, rascunho
+  e arquivos preservados, erros e limite de recuperação na porta 4379.
 - `pnpm orders list` / `show NUMERO`: consulta do agente pela API local.
 - `pnpm orders checkout 12 15`: reserva e materiais para preparação; `--revise`
   permite revisar uma preparação ainda não despachada.
@@ -295,6 +297,11 @@ mudanças apenas documentais não exigem criar testes de código.
 - Healthchecks não expõem caminhos, arquivos ou credenciais. Valide Host e
   Origin; não habilite CORS indiscriminadamente. Gestão local exige sessão
   HttpOnly/SameSite, cabeçalho próprio e confirmação explícita em `/connect`.
+  A renovação em `POST /manage/session` exige Origin exata e o cabeçalho próprio,
+  preservando HttpOnly/SameSite e o vínculo com a autoridade. A sessão do painel
+  não autoriza a extensão. O cliente só repete uma requisição após o código
+  `MANAGEMENT_SESSION_REQUIRED`, emitido antes de qualquer efeito; nunca repetir
+  automaticamente após erro de rede, resultado incerto ou falha do servidor.
 - ECDSA P-256 não exportável na extensão, autorização SQLite, pedidos de 2 minutos
   e desafios de 60 segundos, consumidos antes da verificação assíncrona. Assine
   método, autoridade, caminho e digest dos bytes exatos do corpo. Sem bearer.

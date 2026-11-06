@@ -28,9 +28,10 @@ function updateProductCount() {
   document.querySelector('#product-count').textContent =
     `${products.length} ${products.length === 1 ? 'produto' : 'produtos'}`;
 }
-function report(error) {
+function report(error, source = 'action') {
   status.textContent = error.message;
   status.className = 'error';
+  status.dataset.errorSource = source;
 }
 async function action(operation) {
   if (busy) return;
@@ -40,6 +41,7 @@ async function action(operation) {
   ].map((control) => ({ control, disabled: control.disabled }));
   controls.forEach(({ control }) => (control.disabled = true));
   status.className = '';
+  delete status.dataset.errorSource;
   try {
     await operation();
   } catch (error) {
@@ -95,10 +97,16 @@ async function refresh() {
   document.querySelector('#chat-instruction').textContent =
     `No chat: “Prepare o pedido ${first?.number ?? 1}”.`;
   if (!orders.length) element(list, 'p', 'Nenhum pedido salvo.');
+  if (status.dataset.errorSource === 'refresh') {
+    status.textContent = '';
+    status.className = '';
+    delete status.dataset.errorSource;
+  }
 }
-document
-  .querySelector('#refresh')
-  .addEventListener('click', () => void refresh().catch(report));
+function refreshOrders() {
+  void refresh().catch((error) => report(error, 'refresh'));
+}
+document.querySelector('#refresh').addEventListener('click', refreshOrders);
 document.querySelector('#preview-cleanup').addEventListener(
   'click',
   () =>
@@ -143,12 +151,12 @@ document.querySelector('#preview-cleanup').addEventListener(
       }
     }),
 );
-void refresh().catch(report);
+refreshOrders();
 setInterval(() => {
   if (
     !document.hidden &&
     !busy &&
     !document.querySelector('#orders details[open]')
   )
-    void refresh().catch(report);
+    refreshOrders();
 }, 10000);
