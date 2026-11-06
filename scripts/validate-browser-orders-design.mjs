@@ -45,7 +45,7 @@ async function saveOrderFromEditor() {
       .getByLabel('Nome do produto', { exact: true })
       .fill(names[index]);
     await product
-      .getByLabel('Imagem de referência para o Flow')
+      .getByLabel('Imagens de referência para o Flow')
       .setInputFiles('scripts/fixtures/reference.png');
     await product
       .getByLabel('Formato', { exact: true })

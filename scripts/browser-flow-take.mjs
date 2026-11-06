@@ -166,7 +166,7 @@ export async function validateFlowTake({
     await orders
       .getByLabel('Informações do produto e orientações')
       .fill('Material de teste sintético.');
-    await orders.getByLabel('Imagem de referência para o Flow').setInputFiles({
+    await orders.getByLabel('Imagens de referência para o Flow').setInputFiles({
       name: 'reference.png',
       mimeType: 'image/png',
       buffer: referenceBytes,

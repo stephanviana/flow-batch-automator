@@ -361,6 +361,13 @@ variações abaixo. Os produtos podem ser recolhidos pelo cabeçalho. Na coluna
 vídeos de referência, andamento e cancelamento. **Gerenciar**, em armazenamento
 local, consulta os arquivos elegíveis antes de oferecer a remoção.
 
+Em **Imagens de referência**, selecione várias imagens de uma vez ou adicione
+mais em novas seleções. Marque **Principal no Flow** na imagem usada na geração;
+a primeira começa marcada e pode ser trocada. Todas as imagens ficam no pedido
+e são entregues ao agente. É possível remover cada uma separadamente; ao remover
+a principal, a primeira imagem restante passa a ser a principal. O limite é de
+8 MB por imagem e 30 materiais por produto, incluindo os materiais adicionais.
+
 1. Abra <http://127.0.0.1:4319/orders>, reúna produtos e selecione a imagem de
    referência e os materiais adicionais de qualquer pasta acessível.
 2. Defina formatos e quantidades por produto. O modo de clonagem vincula um único

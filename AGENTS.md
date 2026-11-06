@@ -30,6 +30,10 @@ editável. `setup` escolhe a pasta padrão quando `--library` é omitido.
 `library convert [PASTA]` reúne a biblioteca antiga e preserva os originais em
 `.rascunhos/`. A leitura do formato separado e de capturas históricas é mantida.
 O painel `/orders` mantém pedidos e andamento, sem editor de instruções.
+O seletor de referências aceita várias imagens por produto, acumuladas entre
+seleções e removidas individualmente. Todas entram nos materiais do pedido;
+`referenceId` aponta a única imagem marcada como principal para a geração no
+Flow. Não alterar esse vínculo nem os materiais de pedidos já registrados.
 
 Uma reserva valida o pacote local e captura automaticamente os arquivos usados,
 sem publicação manual da biblioteca. Reservas existentes e preparações publicadas

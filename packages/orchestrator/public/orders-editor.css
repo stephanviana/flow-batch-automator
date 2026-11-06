@@ -337,6 +337,31 @@ input[type='number']::-webkit-inner-spin-button {
   border-radius: 8px;
   object-fit: contain;
 }
+.reference-selection > li {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.reference-choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+.reference-choice input[type='radio'] {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+}
+.reference-choice:has(input:checked) {
+  color: var(--accent);
+}
 .reference-video {
   display: block;
   width: 100%;

@@ -1,3 +1,9 @@
+import {
+  selectedFiles,
+  verifyReferencePicker,
+  verifyMultipleReferences,
+  verifyReferenceLimits,
+} from './test-support/reference-images-browser.mjs';
 import { preparationFormatLabels } from '../packages/protocol/dist/index.js';
 import { installInstructions } from './test-support/instruction-package.mjs';
 import assert from 'node:assert/strict';
@@ -62,41 +68,6 @@ async function capture(name) {
     });
   }
 }
-async function selectedFiles(picker) {
-  return picker.evaluate((input) => [...input.files].map((file) => file.name));
-}
-async function verifyReferencePicker() {
-  const reference = page.getByLabel('Imagem de referência para o Flow');
-  assert.equal(await reference.getAttribute('type'), 'file');
-  assert.equal(await reference.evaluate((input) => input.required), true);
-  assert.equal(await reference.evaluate((input) => input.multiple), false);
-  assert.equal(
-    await reference.evaluate((input) => input.checkValidity()),
-    false,
-  );
-  await reference.setInputFiles({
-    name: 'replacement.png',
-    mimeType: 'image/png',
-    buffer: await readFile('scripts/fixtures/reference.png'),
-  });
-  assert.deepEqual(await selectedFiles(reference), ['replacement.png']);
-  await reference.setInputFiles('scripts/fixtures/reference.png');
-  assert.deepEqual(await selectedFiles(reference), ['reference.png']);
-  const preview = page.getByRole('img', { name: 'Referência: reference.png' });
-  await preview.evaluate((image) => image.decode());
-  assert.ok(await preview.evaluate((image) => image.naturalWidth > 0));
-  assert.equal(await page.locator('.reference-selection li').count(), 1);
-  await page
-    .getByRole('button', { name: 'Remover imagem de referência' })
-    .click();
-  assert.deepEqual(await selectedFiles(reference), []);
-  assert.equal(
-    await reference.evaluate((input) => input.checkValidity()),
-    false,
-  );
-  assert.equal(await page.locator('.reference-selection img').count(), 0);
-  await reference.setInputFiles('scripts/fixtures/reference.png');
-}
 async function verifyAdditionalCleared() {
   const product = page.locator('.product').first();
   const additional = product.locator('.additional-materials');
@@ -106,11 +77,22 @@ async function verifyAdditionalCleared() {
   assert.equal(await additional.locator('.file-list li').count(), 0);
   assert.equal(await additional.locator('video').count(), 0);
   assert.deepEqual(
-    await selectedFiles(product.getByLabel('Imagem de referência para o Flow')),
-    ['reference.png'],
+    await selectedFiles(
+      product.getByLabel('Imagens de referência para o Flow'),
+    ),
+    ['reference.png', 'another-view.png'],
   );
   assert.equal(
-    await product.locator('.reference-selection img').isVisible(),
+    await product.locator('.reference-selection img').first().isVisible(),
+    true,
+  );
+  assert.equal(
+    await product
+      .getByRole('radio', {
+        name: 'Usar another-view.png no Flow',
+        exact: true,
+      })
+      .isChecked(),
     true,
   );
 }
@@ -200,7 +182,9 @@ async function createOrder() {
     'Materiais adicionais (fotos, prints, documentos ou vídeos)',
   );
   await picker.setInputFiles('scripts/fixtures/blue.mp4');
-  await verifyReferencePicker();
+  await verifyReferencePicker(page);
+  const secondaryImage = await verifyMultipleReferences(page);
+  await verifyReferenceLimits(page);
   assert.deepEqual(await selectedFiles(picker), ['blue.mp4']);
   const group = page.locator('.group').first();
   const reference = await verifyModeSwitching(group, picker);
@@ -252,8 +236,8 @@ async function createOrder() {
   assert.equal(await picker.evaluate((input) => input.checkValidity()), true);
   assert.ok((await reference.innerText()).includes('blue.mp4'));
   assert.deepEqual(
-    await selectedFiles(page.getByLabel('Imagem de referência para o Flow')),
-    ['reference.png'],
+    await selectedFiles(page.getByLabel('Imagens de referência para o Flow')),
+    ['reference.png', 'another-view.png'],
   );
   await readyVideo(page.locator('.file-list video'));
   await page
@@ -271,6 +255,7 @@ async function createOrder() {
   await page.waitForFunction(() =>
     document.querySelector('#status').textContent.includes('Pedido 1 salvo'),
   );
+  return secondaryImage;
 }
 async function verifySavedVideo() {
   const details = page.locator('#orders .order-details').first();
@@ -288,7 +273,7 @@ async function verifyImageOnlyOrder(api) {
   await page
     .getByLabel('Nome do produto', { exact: true })
     .fill('Produto padrão');
-  const reference = page.getByLabel('Imagem de referência para o Flow');
+  const reference = page.getByLabel('Imagens de referência para o Flow');
   await reference.setInputFiles('scripts/fixtures/reference.png');
   await page
     .getByRole('button', { name: 'Salvar pedido', exact: true })
@@ -332,7 +317,7 @@ function completePreparation(preparation) {
     }
   return preparation;
 }
-async function verifyCheckoutAndPublish(api, order) {
+async function verifyCheckoutAndPublish(api, order, secondaryImage) {
   const folder = resolve(directory, 'checkout');
   await checkout(api, order.number, 'agent-fixture', folder);
   const preparation = JSON.parse(
@@ -341,6 +326,24 @@ async function verifyCheckoutAndPublish(api, order) {
   const cloned = preparation.products[0].variations.find(
     (variation) => variation.format === 'clone',
   );
+  const referenceId = order.products[0].referenceId;
+  const primary = order.materials.find(
+    (material) => material.id === referenceId,
+  );
+  assert.equal(primary.name, 'another-view.png');
+  assert.equal(order.products[0].materials.length, 3);
+  for (const material of order.materials.filter((material) =>
+    material.mime.startsWith('image/'),
+  )) {
+    const expected =
+      material.id === referenceId
+        ? secondaryImage
+        : await readFile('scripts/fixtures/reference.png');
+    assert.deepEqual(
+      await readFile(resolve(folder, `${material.id}.png`)),
+      expected,
+    );
+  }
   const videoId = order.products[0].groups[0].videoReferenceId;
   assert.equal(cloned.cloneVideo.materialId, videoId);
   assert.equal(cloned.cloneVideo.analysis, '');
@@ -377,7 +380,11 @@ async function verifyCheckoutAndPublish(api, order) {
   assert.ok(
     takes[0].original.videoPrompt.includes(cloned.cloneVideo.directions.hook),
   );
-  assert.ok(takes.every((take) => take.reference.endsWith('.png')));
+  assert.ok(
+    result.preparation.manifests
+      .flatMap((manifest) => manifest.tasks)
+      .every((take) => take.reference === `${referenceId}.png`),
+  );
   return videoId;
 }
 async function verifyReviewAndCleanup(api, videoId) {
@@ -422,7 +429,7 @@ try {
   page = await browser.newPage();
   page.setDefaultTimeout(15000);
   page.on('pageerror', (error) => errors.push(error.message));
-  await createOrder();
+  const secondaryImage = await createOrder();
   await verifySavedVideo();
   let api = await localClient(base);
   const saved = (await api('/manage/orders/1')).order;
@@ -437,12 +444,12 @@ try {
   await verifySavedVideo();
   const order = (await api('/manage/orders/1')).order;
   assert.deepEqual(order.products, saved.products);
-  const videoId = await verifyCheckoutAndPublish(api, order);
+  const videoId = await verifyCheckoutAndPublish(api, order, secondaryImage);
   await verifyReviewAndCleanup(api, videoId);
   await verifyImageOnlyOrder(api);
   assert.deepEqual(errors, []);
   console.log(
-    'Chrome with local fixtures: separate image picker, file selection/removal state, image-only standard order, image/MP4 previews, automatic single-video binding, multiple-video rejection, persistence after restart, verified agent checkout, bound publication, review and protected cleanup passed. No generation or dispatch.',
+    'Chrome with local fixtures: multiple reference images, accumulated batches, primary image choice, individual removal, file limits, image-only standard order, image/MP4 previews, automatic single-video binding, multiple-video rejection, persistence after restart, exact agent files and primary manifest reference, review and protected cleanup passed. No generation or dispatch.',
   );
   console.log(`Isolated evidence: ${directory}`);
 } catch (error) {

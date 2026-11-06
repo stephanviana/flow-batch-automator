@@ -70,27 +70,75 @@ function uploadField(
   return input;
 }
 
-export function materialsEditor(parent) {
-  const reference = uploadField(
+function referenceImages(parent) {
+  const picker = uploadField(
     parent,
-    'Imagem de referência',
-    'Imagem de referência para o Flow',
-    'Adicionar imagem',
-    `PNG, JPEG ou WebP · até ${MATERIAL_LIMIT / 1024 / 1024} MB`,
+    'Imagens de referência',
+    'Imagens de referência para o Flow',
+    'Adicionar imagens',
+    `PNG, JPEG ou WebP · até ${MATERIAL_LIMIT / 1024 / 1024} MB por imagem`,
     'image',
     {
       type: 'file',
       accept: '.png,.jpg,.jpeg,.webp',
       required: true,
+      multiple: true,
     },
   );
-  const referenceList = element(
+  const guidance = element(
     parent,
-    'ul',
-    '',
-    'file-list reference-selection',
+    'p',
+    'Escolha a imagem principal para o Flow. Todas ficam disponíveis para o agente.',
+    'hint',
   );
-  let referenceSelection = null;
+  const list = element(parent, 'ul', '', 'file-list reference-selection');
+  list.setAttribute('aria-label', 'Imagens de referência selecionadas');
+  const images = [];
+  const groupName = `reference-${crypto.randomUUID()}`;
+  let primaryKey = null;
+  function render() {
+    list.replaceChildren();
+    guidance.hidden = images.length < 2;
+    const files = new globalThis.DataTransfer();
+    for (const selection of images) {
+      files.items.add(selection.file);
+      const row = selectionRow(list, selection, () => {
+        images.splice(images.indexOf(selection), 1);
+        release(selection);
+        if (primaryKey === selection.key) primaryKey = images[0]?.key ?? null;
+        render();
+      });
+      const label = element(row, 'label', '', 'reference-choice');
+      const radio = element(label, 'input');
+      Object.assign(radio, {
+        type: 'radio',
+        name: groupName,
+        value: selection.key,
+        checked: selection.key === primaryKey,
+      });
+      radio.setAttribute('aria-label', `Usar ${selection.file.name} no Flow`);
+      element(label, 'span', 'Principal no Flow');
+      radio.addEventListener('change', () => {
+        if (radio.checked) primaryKey = selection.key;
+      });
+      row.prepend(label);
+    }
+    picker.files = files.files;
+  }
+  picker.addEventListener('change', () => {
+    for (const file of picker.files) images.push(selectionFor(file, true));
+    primaryKey ??= images[0]?.key ?? null;
+    render();
+  });
+  render();
+  return {
+    read: () => ({ images: [...images], primaryKey }),
+    dispose: () => images.forEach(release),
+  };
+}
+
+export function materialsEditor(parent) {
+  const references = referenceImages(parent);
   const additional = element(parent, 'div', '', 'additional-materials');
   const picker = uploadField(
     additional,
@@ -105,7 +153,7 @@ export function materialsEditor(parent) {
       accept: '.png,.jpg,.jpeg,.webp,.pdf,.txt,.md,.json,.mp4',
     },
   );
-  picker.title = `Imagens e documentos: até ${MATERIAL_LIMIT / 1024 / 1024} MB. Para clonar: um único MP4 de até ${VIDEO_MATERIAL_LIMIT / 1024 / 1024} MB. Trocar o modo de criação limpa os materiais adicionais; a imagem de referência é mantida.`;
+  picker.title = `Imagens e documentos: até ${MATERIAL_LIMIT / 1024 / 1024} MB. Para clonar: um único MP4 de até ${VIDEO_MATERIAL_LIMIT / 1024 / 1024} MB. Trocar o modo de criação limpa os materiais adicionais; as imagens de referência são mantidas.`;
   const list = element(additional, 'ul', '', 'file-list');
   const videoError = element(additional, 'p', '', 'error');
   videoError.setAttribute('role', 'status');
@@ -141,19 +189,6 @@ export function materialsEditor(parent) {
     validateVideo();
     for (const listener of listeners) listener();
   }
-  reference.addEventListener('change', () => {
-    release(referenceSelection);
-    const file = reference.files[0];
-    referenceSelection = file ? selectionFor(file, true) : null;
-    referenceList.replaceChildren();
-    if (referenceSelection)
-      selectionRow(referenceList, referenceSelection, () => {
-        release(referenceSelection);
-        referenceSelection = null;
-        reference.value = '';
-        referenceList.replaceChildren();
-      });
-  });
   picker.addEventListener('change', () => {
     for (const file of picker.files) selections.push(selectionFor(file));
     render();
@@ -177,16 +212,17 @@ export function materialsEditor(parent) {
       })),
     onChange: (listener) => listeners.add(listener),
     dispose() {
-      release(referenceSelection);
+      references.dispose();
       for (const selection of selections) release(selection);
       listeners.clear();
     },
     async read(api) {
-      if (!referenceSelection)
+      const { images, primaryKey } = references.read();
+      if (!primaryKey)
         throw new Error('Escolha uma imagem do produto para o Flow.');
       const videoMessage = validateVideo();
       if (videoMessage) throw new Error(videoMessage);
-      const materials = [referenceSelection, ...selections];
+      const materials = [...images, ...selections];
       if (materials.length > 30)
         throw new Error('Use até 30 materiais por produto.');
       for (const { file, preview, image } of materials) {
@@ -205,7 +241,7 @@ export function materialsEditor(parent) {
       return {
         imported,
         materials: [...new Set(imported.values())],
-        referenceId: imported.get(referenceSelection.key),
+        referenceId: imported.get(primaryKey),
       };
     },
   };
