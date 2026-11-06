@@ -251,6 +251,9 @@ mudanças apenas documentais não exigem criar testes de código.
 - `pnpm test:browser:orders-design`: layout do editor e acompanhamento, larguras
   de 320 a 1920 px, anexos, prévia, detalhes, cancelamento e armazenamento em
   Chrome isolado, sem despachar pedidos. Usa a porta 4359 e dados temporários.
+- `pnpm test:browser:connect`: página de conexão em Chrome isolado, identidades
+  sintéticas e WebSocket autenticado. Cobre códigos, confirmação, cancelamento,
+  expiração, conexão/desconexão, revogação e nova autorização na porta 4369.
 - `pnpm orders list` / `show NUMERO`: consulta do agente pela API local.
 - `pnpm orders checkout 12 15`: reserva e materiais para preparação; `--revise`
   permite revisar uma preparação ainda não despachada.

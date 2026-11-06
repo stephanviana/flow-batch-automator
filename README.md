@@ -463,11 +463,15 @@ pnpm test:browser:formats
 pnpm test:browser:library
 pnpm test:browser:cloning
 pnpm test:browser:orders-design
+pnpm test:browser:connect
 ```
 
 Os testes usam contratos sintéticos, SQLite temporário e Chrome isolado com
 fixtures, sem perfil pessoal, Flow real ou consumo. `test:browser:formats` usa
-4339; `test:browser:library`, 4349; clonagem, 4329; design de pedidos, 4359.
+4339; `test:browser:library`, 4349; clonagem, 4329; design de pedidos, 4359;
+conexão, 4369. `test:browser:connect` cobre a página com identidades sintéticas e
+WebSocket autenticado: confirmação, cancelamento, expiração, estados de conexão,
+revogação e nova autorização, com capturas de 320 a 1920 px.
 A validação de design cobre criação, anexos, prévia, detalhes e cancelamento,
 com capturas entre 320 e 1920 px. A instalação real é preservada.
 Testes e build não comprovam nova geração paga nem qualidade criativa.

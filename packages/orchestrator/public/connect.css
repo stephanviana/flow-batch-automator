@@ -1,91 +1,500 @@
+:root {
+  --surface: #121e26;
+  --surface-raised: #22323e;
+  --border: #324a59;
+  --text: #f4f7fa;
+  --muted: #bdcedb;
+  --accent: #67e8d1;
+  --danger: #ffa9a3;
+  background: #0b141b;
+  line-height: 1.4;
+}
+body {
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 46% 30%, #13242c33, transparent 75%);
+}
+.app-bar {
+  min-height: 73px;
+  padding: 14px 42px;
+  gap: 16px;
+}
+.brand {
+  gap: 15px;
+  font-size: 18px;
+  letter-spacing: -0.025em;
+}
+.brand-mark {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #07614f, #003f35);
+  color: var(--accent);
+  font-size: 25px;
+}
+.app-bar nav {
+  gap: 16px;
+}
+.app-bar nav a {
+  padding: 9px 14px;
+  font-size: 16px;
+  border-radius: 10px;
+}
+.app-bar nav a[aria-current='page'] {
+  font-weight: 650;
+}
 main {
-  max-width: 1040px;
+  max-width: 1290px;
   margin: auto;
   padding: 0 32px 64px;
 }
-.connection-guide {
+.page-intro {
   display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 20px 24px;
-  margin-bottom: 28px;
-  border: 1px solid #345d54;
-  border-radius: 12px;
-  background: #142822;
-}
-.connection-guide .brand-mark {
-  width: 28px;
-  height: 28px;
-  font-size: 16px;
-}
-.connection-guide p {
-  margin: 0;
-  color: #c1d8ce;
-  font-size: 0.9rem;
-}
-.connection-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  justify-content: space-between;
   gap: 24px;
-  align-items: start;
+  padding: 38px 0 28px;
 }
-.connection-card {
-  min-width: 0;
-  padding: 24px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: var(--surface);
+h1 {
+  margin: 0 0 5px;
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
 }
-.connection-card > .hint {
-  margin: 0 0 24px;
+.page-intro p {
+  margin: 0;
+  font-size: 20px;
 }
-article {
-  padding: 18px;
-  margin-top: 14px;
-  border: 1px solid var(--border);
+.connection-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  max-width: 100%;
+  padding: 7px 12px;
+  border: 1px solid #3b505c;
   border-radius: 10px;
-  background: var(--surface-inset);
+  background: #19272f;
+  color: var(--muted);
+  font-size: 16px !important;
+  font-weight: 650;
 }
-article > p {
-  font-size: 0.85rem;
+.connection-state::before,
+.client-state::before {
+  flex: 0 0 12px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: currentColor;
+  content: '';
 }
-article > .code {
-  margin: 0 0 18px;
-  font-size: 2rem;
+.connection-state[data-state='connected'] {
+  border-color: #205e55;
+  background: linear-gradient(110deg, #14332e, #122724);
+  color: var(--accent);
+}
+.connection-state[data-state='offline'] {
+  border-color: #655638;
+  color: var(--warning);
+}
+.connection-state[data-state='error'] {
+  border-color: #71444e;
+  color: var(--danger);
+}
+.connection-panel {
+  padding: 27px 31px 30px;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: linear-gradient(110deg, #14212a, #111c24);
+}
+.section-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+h2 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 33px;
+  letter-spacing: -0.025em;
+}
+.count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  min-height: 32px;
+  padding: 2px 10px;
+  border-radius: 8px;
+  background: linear-gradient(#293c49, #22313d);
+  color: var(--text);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.section-intro {
+  margin: 7px 0 22px;
+  font-size: 18px;
+}
+.connection-note {
+  display: flex;
+  align-items: start;
+  gap: 12px;
+  margin: 20px 0 0;
+  font-size: 16px;
+  line-height: 24px;
+  color: #c9d6df;
+}
+.icon {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  vertical-align: middle;
+}
+[data-icon] {
+  display: inline-flex;
+  padding-top: 1px;
+}
+.connections-section + .connections-section {
+  margin-top: 30px;
+  padding-top: 25px;
+  border-top: 1px solid var(--border);
+}
+.connection-row {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  min-width: 0;
+  min-height: 89px;
+  padding: 13px 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: linear-gradient(110deg, #111d25, #131f28);
+}
+.connection-row + .connection-row {
+  margin-top: 14px;
+}
+.row-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 60px;
+  width: 60px;
+  height: 60px;
+  border-radius: 13px;
+  background: linear-gradient(110deg, #23343f, #20303b);
+  color: #e1eaf0;
+}
+.row-icon .icon {
+  width: 30px;
+  height: 30px;
+}
+h3 {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+.row-content {
+  min-width: 0;
+  flex: 1;
+}
+.row-content p {
+  margin: 4px 0 0;
+  font-size: 17px;
+}
+#clients {
+  margin-top: 24px;
+}
+.client-card {
+  display: grid;
+  grid-template-columns: 60px minmax(0, 1fr) auto auto;
+}
+.client-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 178px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 17px;
+  font-weight: 650;
+}
+.client-state[data-state='connected'] {
+  color: var(--accent);
+}
+.client-state[data-state='revoked'] {
+  color: var(--danger);
+}
+.client-identity {
+  display: inline-block;
+  max-width: 100%;
+  margin-left: 8px;
+  vertical-align: top;
+}
+.client-identity summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text);
+  font-size: 17px;
+  list-style: none;
+}
+.client-identity summary::-webkit-details-marker {
+  display: none;
+}
+.client-identity summary .icon {
+  width: 17px;
+  height: 17px;
+}
+.client-identity[open] summary .icon {
+  transform: rotate(90deg);
+}
+.client-identity code {
+  display: block;
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.identity-line {
+  display: flex;
+  align-items: start;
+  flex-wrap: wrap;
+}
+.identity-line > span {
+  margin-top: 4px;
+  font-size: 17px;
+  color: var(--muted);
+}
+.identity-line > .client-identity {
+  margin-top: 4px;
 }
 button {
-  margin: 8px 8px 0 0;
+  margin: 0;
+  font-size: 16px;
 }
-#pending > p,
-#clients > p {
-  padding: 26px 18px;
-  margin-bottom: 0;
-  border: 1px dashed var(--border);
-  border-radius: 10px;
-  text-align: center;
-  font-size: 0.88rem;
+.revoke-button {
+  min-width: 200px;
+  min-height: 51px;
+  padding: 11px 18px;
+  gap: 12px;
+  border-color: #6f7781;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--danger);
+  font-size: 17px;
+  box-shadow: inset 0 0 8px #ffffff05;
+}
+.revoke-button .icon {
+  width: 22px;
+  height: 22px;
+}
+.pairing-request {
+  align-items: start;
+}
+.pairing-request .row-icon {
+  margin-top: 2px;
+}
+.pairing-request .code {
+  width: fit-content;
+  min-width: 200px;
+  max-width: 100%;
+  margin: 14px 0 10px;
+  padding: 10px 18px;
+}
+.request-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+.pairing-request .request-expiry {
+  font-size: 14px;
+}
+#revoked-history {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+#revoked-history > summary {
+  color: var(--muted);
+  font-size: 15px;
+}
+#revoked-history .count {
+  min-height: 24px;
+  min-width: 26px;
+  margin-left: 6px;
+  font-size: 13px;
+}
+#revoked-clients {
+  margin-top: 16px;
+}
+#revoked-clients .client-card {
+  grid-template-columns: 60px minmax(0, 1fr) auto;
 }
 #status:not(:empty) {
-  padding: 14px 18px;
+  margin: 0 0 20px;
+  padding: 12px 18px;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface-raised);
 }
-.connection-note {
-  max-width: 70ch;
-  margin: 24px 0 0;
+@media (max-width: 1100px) {
+  .client-card {
+    grid-template-columns: 60px minmax(0, 1fr) auto;
+    gap: 20px;
+  }
+  .client-state {
+    min-width: 0;
+    font-size: 15px;
+  }
+  .revoke-button {
+    grid-column: 2 / -1;
+    justify-self: start;
+    min-height: 44px;
+  }
+  .page-intro {
+    align-items: start;
+  }
+  .page-intro p {
+    font-size: 18px;
+  }
+  .page-intro h1 {
+    font-size: 32px;
+  }
 }
 @media (max-width: 760px) {
-  .connection-grid {
-    grid-template-columns: minmax(0, 1fr);
+  .app-bar {
+    padding: 14px 24px;
+  }
+  main {
+    padding: 0 24px 40px;
+  }
+  .page-intro {
+    flex-direction: column;
+    gap: 18px;
+    padding-block: 28px;
+  }
+  .connection-panel {
+    padding: 24px;
+  }
+  h2 {
+    font-size: 23px;
+  }
+  .connection-row {
+    gap: 18px;
+    padding: 14px;
+  }
+  .client-card,
+  #revoked-clients .client-card {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+  .row-icon {
+    flex-basis: 48px;
+    width: 48px;
+    height: 48px;
+  }
+  .client-state {
+    grid-column: 2;
+  }
+  .revoke-button {
+    grid-column: 2;
+  }
+  .row-content p,
+  .identity-line > span,
+  .client-identity summary {
+    font-size: 15px;
+  }
+  h3 {
+    font-size: 18px;
+  }
+  .section-intro {
+    font-size: 16px;
+  }
+  .connection-note {
+    font-size: 14px;
   }
 }
-@media (max-width: 450px) {
-  main {
-    padding: 0 16px 32px;
+@media (max-width: 480px) {
+  .app-bar {
+    padding: 14px 16px;
+    gap: 12px;
   }
-  .connection-card,
-  .connection-guide {
-    padding: 20px 16px;
+  .app-bar nav {
+    gap: 2px;
+  }
+  .app-bar nav a {
+    padding: 8px;
+    font-size: 13px;
+  }
+  main {
+    padding-inline: 16px;
+  }
+  .page-intro h1 {
+    font-size: 28px;
+  }
+  .connection-panel {
+    padding: 18px 14px;
+  }
+  .section-title {
+    gap: 10px;
+  }
+  h2 {
+    font-size: 21px;
+    line-height: 28px;
+  }
+  .count {
+    min-height: 28px;
+    min-width: 30px;
+    font-size: 16px;
+  }
+  .connection-row {
+    gap: 12px;
+    padding: 12px;
+  }
+  .empty-state,
+  .pairing-request {
+    align-items: start;
+  }
+  .empty-state .row-icon,
+  .pairing-request .row-icon {
+    flex-basis: 36px;
+    width: 36px;
+    height: 36px;
+  }
+  .empty-state .row-icon .icon,
+  .pairing-request .row-icon .icon {
+    width: 24px;
+    height: 24px;
+  }
+  .revoke-button {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    min-width: 0;
+    font-size: 15px;
+  }
+  .client-state {
+    font-size: 14px;
+  }
+  .client-identity {
+    margin-left: 0;
+  }
+  .identity-line {
+    flex-direction: column;
+  }
+  .pairing-request .code {
+    min-width: 0;
+    width: 100%;
+    font-size: 1.5rem;
+  }
+  .request-actions button {
+    width: 100%;
   }
 }

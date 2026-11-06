@@ -1,57 +1,82 @@
 <!doctype html>
 <html lang="pt-BR">
   <head>
-    <meta charset="UTF-8" />
+    <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Conectar ao Flow Batch</title>
+    <title>Conexão da extensão · Flow Batch</title>
     <link rel="stylesheet" href="/theme.css" />
     <link rel="stylesheet" href="/connect.css" />
   </head>
   <body>
+    <header class="app-bar">
+      <a class="brand" href="/orders"
+        ><span class="brand-mark" aria-hidden="true">F</span>Flow Batch</a
+      >
+      <nav aria-label="Navegação principal">
+        <a href="/orders">Pedidos</a>
+        <a href="/connect" aria-current="page">Conexão da extensão</a>
+      </nav>
+    </header>
     <main>
-      <header class="app-bar">
-        <a class="brand" href="/orders"
-          ><span class="brand-mark" aria-hidden="true">F</span>Flow Batch</a
-        >
-        <nav aria-label="Navegação principal">
-          <a href="/orders">Pedidos</a>
-          <a href="/connect" aria-current="page">Conexão da extensão</a>
-        </nav>
-      </header>
       <div class="page-intro">
-        <p class="eyebrow">Conexão local</p>
-        <h1>Conectar ao Flow Batch</h1>
-        <p>
-          Conecte a extensão para acompanhar seus pedidos e executar a produção
-          no Google Flow.
-        </p>
-      </div>
-      <div class="connection-guide">
-        <span class="brand-mark" aria-hidden="true">↔</span>
-        <p>
-          Compare o código abaixo com o código no painel da extensão. Confirme
-          somente a solicitação que você iniciou.
+        <div>
+          <h1>Conexão da extensão</h1>
+          <p>Autorize e gerencie o acesso da extensão ao Flow Batch.</p>
+        </div>
+        <p
+          id="connection-state"
+          class="connection-state"
+          data-state="loading"
+          role="status"
+          aria-live="polite"
+        >
+          Verificando conexão…
         </p>
       </div>
       <p id="status" role="status" aria-live="polite"></p>
-      <div class="connection-grid">
-        <section class="connection-card" aria-labelledby="pending-title">
-          <p class="eyebrow">01 / Confirmar</p>
-          <h2 id="pending-title">Solicitações pendentes</h2>
-          <p class="hint">Confira o código para autorizar a conexão.</p>
+      <div class="connection-panel" aria-busy="true">
+        <section class="connections-section" aria-labelledby="pending-title">
+          <div class="section-title">
+            <h2 id="pending-title">Solicitações pendentes</h2>
+            <span
+              id="pending-count"
+              class="count"
+              aria-label="Quantidade de solicitações pendentes"
+              >0</span
+            >
+          </div>
+          <p class="section-intro">
+            Novas solicitações iniciadas na extensão aparecem aqui.
+          </p>
           <div id="pending"></div>
+          <p class="connection-note">
+            <span data-icon="info"></span>Ao receber uma solicitação, compare os
+            códigos e confirme apenas a conexão que você iniciou.
+          </p>
         </section>
-        <section class="connection-card" aria-labelledby="clients-title">
-          <p class="eyebrow">02 / Gerenciar</p>
-          <h2 id="clients-title">Conexões autorizadas</h2>
-          <p class="hint">Gerencie as extensões com acesso ao Flow Batch.</p>
+        <section class="connections-section" aria-labelledby="clients-title">
+          <div class="section-title">
+            <h2 id="clients-title">Conexões autorizadas</h2>
+            <span
+              id="clients-count"
+              class="count"
+              aria-label="Quantidade de conexões autorizadas"
+              >0</span
+            >
+          </div>
           <div id="clients"></div>
+          <p class="connection-note">
+            <span data-icon="info"></span>Revogar encerra a conexão. Um novo
+            acesso exige sua confirmação.
+          </p>
+          <details id="revoked-history" hidden>
+            <summary>
+              Acessos revogados <span id="revoked-count" class="count"></span>
+            </summary>
+            <div id="revoked-clients"></div>
+          </details>
         </section>
       </div>
-      <p class="connection-note hint">
-        A revogação bloqueia o acesso e encerra a conexão. Uma nova autorização
-        exige sua confirmação.
-      </p>
     </main>
     <script src="/connect.js" type="module"></script>
   </body>
