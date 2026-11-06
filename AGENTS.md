@@ -282,6 +282,9 @@ mudanças apenas documentais não exigem criar testes de código.
 
 ## Segurança e persistência
 
+- Criar qualquer backup exige permissão explícita do usuário, inclusive cópias
+  preventivas e backups automáticos disparados por scripts ou ferramentas.
+  Autorizar uma atualização, instalação ou correção não autoriza criar backups.
 - Não alterar configurações globais de Windows, WSL, Docker ou Chrome.
 - Identifique instalações anteriores antes de agir; não apague seus dados.
   O usuário informou que removeu a instalação anterior e fixou o destino da
