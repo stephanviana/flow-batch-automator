@@ -315,3 +315,29 @@
     flex-wrap: wrap;
   }
 }
+
+.order-review {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-inset);
+}
+.order-review-content {
+  overflow-wrap: anywhere;
+}
+.order-review-content h4 {
+  margin: 18px 0 8px;
+}
+.diagnostic-section {
+  padding-block: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.diagnostic-task {
+  margin: 12px 0;
+}
+.diagnostic-task ol {
+  padding-left: 20px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}

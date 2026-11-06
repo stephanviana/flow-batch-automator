@@ -40,7 +40,7 @@ function appendTaskDetails(row: HTMLElement, task: TaskSummary): void {
   if (task.lastError) {
     const error = document.createElement('p');
     error.className = 'task-error';
-    error.textContent = task.lastError.message;
+    error.textContent = `${task.lastError.message} (${task.lastError.code})`;
     row.append(error);
   }
   if (task.result && !task.result.simulated) {
@@ -80,6 +80,14 @@ function button(
     control.disabled = true;
     try {
       await send(message);
+      if (message.type === 'queue-inspect') {
+        const history =
+          document.querySelector<HTMLDetailsElement>('#task-history');
+        if (history) {
+          history.open = true;
+          history.scrollIntoView({ block: 'nearest' });
+        }
+      }
     } catch {
       const feedback = document.querySelector('#queue-feedback');
       if (feedback)
@@ -122,6 +130,16 @@ function appendTaskActions(
   button(actions, 'Ver histórico', { type: 'queue-inspect', ...common }, send);
   if (task.state === 'queued')
     button(actions, 'Cancelar', { type: 'queue-cancel', ...common }, send);
+  if (
+    task.executor === 'google-flow' &&
+    ['uncertain', 'failed'].includes(task.state)
+  )
+    button(
+      actions,
+      'Conferir projeto no Flow',
+      { type: 'queue-open-project', taskId: task.id },
+      send,
+    );
   if (task.state === 'uncertain') appendTaskReview(row, actions, task, send);
   if (
     task.state === 'failed' &&
@@ -151,16 +169,24 @@ function appendTaskReview(
       send,
     );
   if (task.state === 'uncertain' && task.executor === 'google-flow') {
+    const review = document.createElement('details');
+    review.className = 'task-review';
+    const summary = document.createElement('summary');
+    summary.textContent = 'Revisar take';
+    const explanation = document.createElement('p');
+    explanation.textContent =
+      'Confira o projeto e os downloads. Registre o resultado observado para encerrar esta tentativa; a revisão não reenvia a geração.';
+    review.append(summary, explanation);
     const note = document.createElement('textarea');
     note.placeholder =
       'Confira o projeto no Flow e registre o resultado observado.';
 
     note.maxLength = 500;
     note.setAttribute('aria-label', 'Nota de revisão');
-    note.className = 'task-review';
-    row.insertBefore(note, actions);
+    review.append(note);
+    row.insertBefore(review, actions);
     button(
-      actions,
+      review,
       'Encerrar tentativa com falha',
       { type: 'queue-resolve', ...common, reviewOutcome: 'failed' },
       async (message) => {

@@ -12,6 +12,7 @@ import {
   sendPanelRequest,
   validatePanelDesign,
 } from './browser-panel-design.mjs';
+import { validateOrderReview } from './browser-order-review.mjs';
 import { validateQueue } from './browser-queue.mjs';
 import { validateFlow } from './browser-flow.mjs';
 import { validateFlowTake } from './browser-flow-take.mjs';
@@ -331,6 +332,13 @@ try {
     directory,
     reuseOnly,
     format: requestedFormat,
+    base,
+  });
+  await validateOrderReview({
+    browser,
+    panel: popup,
+    eventually,
+    directory,
     base,
   });
   await management.goto(`${base}/connect`);

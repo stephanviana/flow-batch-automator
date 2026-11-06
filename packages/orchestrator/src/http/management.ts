@@ -39,6 +39,7 @@ export function registerManagement(
     'orders-video-preview.js',
     'ui-icons.js',
     'orders-cards.js',
+    'orders-review.js',
   ])
     files.set(`/${filename}`, [filename, 'text/javascript; charset=utf-8']);
   for (const [route, [filename, contentType]] of files) {

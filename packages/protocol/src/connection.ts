@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { dispatchIssueSchema } from './dispatch.js';
 import {
   flowInspectionSchema,
   flowExecuteSchema,
@@ -143,9 +144,11 @@ export const popupRequestSchema = z.strictObject({
     'queue-cancel',
     'queue-inspect',
     'queue-show-download',
+    'queue-open-project',
   ]),
   note: z.string().trim().min(1).max(500).optional(),
   reviewOutcome: z.enum(['not_submitted', 'failed']).optional(),
+  dispatchId: z.uuid().optional(),
   taskId: z.uuid().optional(),
   expectedRevision: z.number().int().min(0).optional(),
 });
@@ -167,6 +170,7 @@ export const extensionStateSchema = z.strictObject({
 export const popupReplySchema = z.strictObject({
   state: extensionStateSchema,
   simulations: z.array(simulationSchema),
+  dispatchIssues: z.array(dispatchIssueSchema).default([]),
   queue: queueSnapshotSchema.nullable(),
   inspection: taskDetailSchema.nullable(),
   operationError: z.string().nullable(),

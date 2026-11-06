@@ -1,87 +1,12 @@
 import assert from 'node:assert/strict';
+import { blockedFixture } from './dispatch-recovery-support.js';
 import { test } from 'node:test';
-import { Readable } from 'node:stream';
-import { fixture, pair, approve } from './support.js';
-import { draft, image, publication } from './orders-support.js';
-import { OrderRepository } from '../src/orders/repository.js';
-import { MaterialFiles } from '../src/orders/material-files.js';
-import { dispatchOrder } from '../src/orders/dispatch.js';
-import { DispatchStore } from '../src/persistence/dispatch.js';
-import { BatchStore } from '../src/persistence/batches.js';
-import { ClientStore } from '../src/persistence/clients.js';
-import { DispatchRecovery } from '../src/orders/dispatch-recovery.js';
+import { randomUUID } from 'node:crypto';
+import { QueueDatabase } from '../src/queue/database.js';
+import { QueueRepository } from '../src/queue/repository.js';
+import { QueueMutations } from '../src/queue/mutations.js';
+import { taskInput } from './queue-support.js';
 import { dispatchCommandSchema } from '@flow-batch/protocol';
-
-async function blockedFixture(t: Parameters<typeof fixture>[0]): Promise<{
-  f: Awaited<ReturnType<typeof fixture>>;
-  repository: OrderRepository;
-  recovery: DispatchRecovery;
-  order: ReturnType<OrderRepository['get']>;
-  commandId: string;
-  batchId: string;
-  headers: Record<string, string>;
-}> {
-  const f = await fixture(t),
-    receipt = await pair(f),
-    headers = await approve(f, receipt);
-  const repository = new OrderRepository(f.database),
-    files = new MaterialFiles(
-      f.config.materialsDirectory,
-      repository.materials,
-    );
-  const material = await files.import(Readable.from(image), 'produto.png'),
-    input = draft(material.id);
-  input.products = [input.products[1]!];
-  input.products[0]!.groups[0]!.count = 1;
-  const order = repository.create(input),
-    lease = repository.claim(order.id, 'fixture');
-  const response = await f.app.inject({
-    method: 'POST',
-    url: `/manage/orders/${order.id}/prepare`,
-    headers,
-    payload: await publication(order, lease.leaseId),
-  });
-  assert.equal(response.statusCode, 200, response.body);
-  await dispatchOrder(repository, order.id, receipt.clientId);
-  const row = f.database
-    .prepare(
-      'SELECT dispatch_id,batch_id FROM order_dispatches WHERE order_id=?',
-    )
-    .get(order.id)!;
-  const commandId = String(row.dispatch_id),
-    batchId = String(row.batch_id),
-    batches = new BatchStore(f.database);
-  batches.action(receipt.clientId, {
-    action: 'prepare',
-    draft: { id: batchId, name: 'Fixture', mode: 'new-project' },
-  });
-  const claimed = batches.action(receipt.clientId, {
-    action: 'claim',
-    id: batchId,
-    expectedRevision: 0,
-  });
-  batches.action(receipt.clientId, {
-    action: 'settle',
-    id: batchId,
-    attemptId: claimed.attemptId!,
-    outcome: 'not-created',
-  });
-  new DispatchStore(f.database).update(
-    receipt.clientId,
-    commandId,
-    'blocked',
-    'O projeto não foi criado. Confira o acesso ao Flow e solicite revisão do pedido pelo chat.',
-  );
-  return {
-    f,
-    repository,
-    recovery: new DispatchRecovery(repository, new ClientStore(f.database)),
-    order,
-    commandId,
-    batchId,
-    headers,
-  };
-}
 
 test('review never dispatches; explicit resume preserves immutable media inputs, records authorization and is idempotent', async (t) => {
   const { f, repository, recovery, order, commandId, headers } =
@@ -199,5 +124,93 @@ test('uncertain creation, revoked identity and any previously registered take pr
         refused.preparationHash!,
       ),
     /takes registrados/,
+  );
+});
+
+test('order diagnostics require a management session and explain the blocked stage without mutating dispatches or tasks', async (t) => {
+  const { f, repository, order, commandId, headers } = await blockedFixture(t);
+  const before = repository.get(order.number);
+  const body = f.database
+    .prepare('SELECT body FROM dispatch_commands WHERE id=?')
+    .get(commandId)!.body;
+  const url = `/manage/orders/${order.number}/diagnostics`;
+  const denied = await f.app.inject({ url, headers: { host: headers.host! } });
+  assert.equal(denied.statusCode, 403);
+  const result = await f.app.inject({ url, headers });
+  assert.equal(result.statusCode, 200, result.body);
+  const diagnostic = result.json();
+  assert.equal(diagnostic.preparation.published, true);
+  assert.equal(diagnostic.dispatches[0].review.canResume, true);
+  assert.deepEqual(diagnostic.dispatches[0].review.failure, {
+    stage: 'project-creation',
+    code: 'project_wait_ready_failed',
+    sent: false,
+  });
+  assert.match(diagnostic.dispatches[0].message, /projeto não foi criado/);
+  assert.deepEqual(diagnostic.tasks, []);
+  assert.deepEqual(repository.get(order.number), before);
+  assert.equal(
+    f.database
+      .prepare('SELECT body FROM dispatch_commands WHERE id=?')
+      .get(commandId)!.body,
+    body,
+  );
+  assert.equal(
+    f.database
+      .prepare('SELECT COUNT(*) AS count FROM dispatch_recoveries')
+      .get()!.count,
+    0,
+  );
+  assert.equal(
+    f.database.prepare('SELECT COUNT(*) AS count FROM queue_tasks').get()!
+      .count,
+    0,
+  );
+  assert.equal(
+    (await f.app.inject({ url: '/manage/orders/99999/diagnostics', headers }))
+      .statusCode,
+    404,
+  );
+});
+
+test('order diagnostics identify interrupted takes with error and stage history while preserving unrelated work', async (t) => {
+  const { f, recovery, order, commandId, batchId, headers } =
+    await blockedFixture(t);
+  const clientId = recovery.review(order.number, commandId).clientId;
+  const database = new QueueDatabase(f.database);
+  const queue = new QueueRepository(database);
+  const [take, unrelated] = queue.enqueue(clientId, randomUUID(), [
+    taskInput(),
+    taskInput(),
+  ]);
+  f.database
+    .prepare('UPDATE queue_tasks SET batch_id=? WHERE id=?')
+    .run(batchId, take!.id);
+  queue.control(clientId, true);
+  const claimed = queue.claim(take!.id, randomUUID())!;
+  new QueueMutations(database).interrupt(
+    claimed.connectionId!,
+    'server-restart',
+  );
+  const before = database.detail(take!.id, clientId);
+  const response = await f.app.inject({
+    url: `/manage/orders/${order.number}/diagnostics`,
+    headers,
+  });
+  assert.equal(response.statusCode, 200, response.body);
+  const diagnostic = response.json();
+  assert.equal(diagnostic.tasks.length, 1);
+  assert.equal(diagnostic.tasks[0].task.id, take!.id);
+  assert.equal(diagnostic.tasks[0].task.state, 'uncertain');
+  assert.ok(diagnostic.tasks[0].task.lastError.code);
+  assert.deepEqual(diagnostic.tasks[0].events, before.events);
+  assert.equal('input' in diagnostic.tasks[0], false);
+  assert.deepEqual(database.detail(take!.id, clientId), before);
+  assert.equal(database.task(unrelated!.id).summary.state, 'queued');
+  assert.equal(
+    f.database
+      .prepare('SELECT COUNT(*) AS count FROM dispatch_recoveries')
+      .get()!.count,
+    0,
   );
 });

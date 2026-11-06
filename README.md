@@ -394,6 +394,14 @@ local), sem controles de testes simulados. **Limpar fila** retira apenas os take
 concluídos da visualização atual, sem salvar a limpeza. Pendentes, execuções,
 falhas e resultados incertos permanecem visíveis; histórico e arquivos são
 preservados. Ao reabrir a extensão, a lista volta a mostrar os registros.
+**Revisar pedido** abre o diagnóstico do grupo bloqueado, com a situação da
+preparação, as mensagens de envio e o histórico de geração. No painel local,
+**Ver diagnóstico** também consulta pedidos que ainda não foram preparados ou
+enviados. Registros antigos sem causa detalhada são identificados como tal.
+**Revisar take** permite consultar o histórico e registrar o resultado observado;
+**Conferir projeto no Flow** abre o projeto vinculado. A consulta não reenvia
+gerações; retomadas de grupos bloqueados continuam exigindo nova autorização
+explícita no chat.
 
 Para revisar antes de gerar, diga “Apenas prepare o pedido 12, não execute”. O
 agente publica com `execute=false`; nenhuma geração é enviada. Depois, “Execute

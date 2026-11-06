@@ -1,12 +1,14 @@
 import { closeSidePanel, ordersPageUrl } from './orders-panel-visibility.js';
 
-export async function openOrdersPanel(): Promise<void> {
+export async function openOrdersPanel(dispatchId?: string): Promise<void> {
+  const destination = new URL(ordersPageUrl);
+  if (dispatchId) destination.searchParams.set('dispatch', dispatchId);
   const [activeTab] = await chrome.tabs.query({
     active: true,
     currentWindow: true,
   });
   const ordersTab = await chrome.tabs.create({
-    url: ordersPageUrl,
+    url: destination.href,
     active: false,
     ...(activeTab
       ? { windowId: activeTab.windowId, index: activeTab.index + 1 }

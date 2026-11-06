@@ -72,3 +72,10 @@ export const dispatchUpdateSchema = z.strictObject({
   message: z.string().max(300),
 });
 export type DispatchRecord = z.infer<typeof dispatchRecordSchema>;
+
+export const dispatchIssueSchema = z.strictObject({
+  id: z.uuid(),
+  name: z.string().max(120),
+  message: z.string().max(300),
+});
+export type DispatchIssue = z.infer<typeof dispatchIssueSchema>;

@@ -235,6 +235,36 @@ async function verifyReviewState() {
   ];
   const route = '**/manage/orders';
   await page.route(route, (request) => request.fulfill({ json: fixture }));
+  const diagnosisRoute = `**/manage/orders/${fixture.orders[0].number}/diagnostics`;
+  await page.route(diagnosisRoute, (request) => {
+    assert.equal(request.request().method(), 'GET');
+    return request.fulfill({
+      json: {
+        number: fixture.orders[0].number,
+        preparation: {
+          published: true,
+          message: 'Preparação publicada e preservada.',
+        },
+        unavailableMaterials: [],
+        dispatches: [
+          {
+            ...fixture.orders[0].dispatches[0],
+            review: {
+              canResume: true,
+              reason:
+                'Falha anterior ao envio da criação e nenhum take registrado.',
+              failure: {
+                stage: 'project-creation',
+                code: 'project_wait_ready_failed',
+                sent: false,
+              },
+            },
+          },
+        ],
+        tasks: [],
+      },
+    });
+  });
   try {
     await page.setViewportSize({ width: 1536, height: 1024 });
     await page.getByRole('button', { name: 'Atualizar', exact: true }).click();
@@ -243,6 +273,37 @@ async function verifyReviewState() {
       await page.locator('.order-notice').textContent(),
       'Projeto não criado no Flow.',
     );
+    await page
+      .getByRole('button', { name: 'Revisar pedido', exact: true })
+      .click();
+    await page.locator('.order-review[open]').waitFor();
+    assert.match(
+      await page.locator('.order-review-content').innerText(),
+      /project_wait_ready_failed/,
+    );
+    assert.match(
+      await page.locator('.order-review-content').innerText(),
+      /antes do envio/,
+    );
+    assert.match(
+      await page.locator('.order-review-content').innerText(),
+      /Nenhum take foi registrado/,
+    );
+    assert.equal(
+      await page
+        .getByRole('button', { name: 'Copiar pedido de análise' })
+        .count(),
+      1,
+    );
+    for (const width of [320, 390, 1536]) {
+      await page.setViewportSize({ width, height: 1024 });
+      assert.equal(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= globalThis.innerWidth,
+        ),
+        true,
+      );
+    }
     await page.screenshot({
       path: resolve(directory, 'orders-review-fixture-1536.png'),
       fullPage: true,
@@ -259,6 +320,7 @@ async function verifyReviewState() {
     );
   } finally {
     await page.unroute(route);
+    await page.unroute(diagnosisRoute);
     await page.getByRole('button', { name: 'Atualizar', exact: true }).click();
     await page.getByText('Prévia pronta', { exact: true }).waitFor();
   }

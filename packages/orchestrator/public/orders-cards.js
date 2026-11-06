@@ -1,3 +1,4 @@
+import { orderReview } from './orders-review.js';
 import { element } from './orders-elements.js';
 import { formats } from './orders-format-editor.js';
 import { icon } from './ui-icons.js';
@@ -217,6 +218,15 @@ export function renderOrder(parent, order, context) {
     );
   const actions = element(card, 'div', '', 'order-actions');
   if (order.preparationHash) preparationPreview(actions, order, context);
+  const reviewOrder = orderReview(actions, order, context);
+  if (
+    order.dispatches.some(
+      (dispatch) =>
+        dispatch.id ===
+        new globalThis.URLSearchParams(location.search).get('dispatch'),
+    )
+  )
+    void reviewOrder();
   const disposers = [];
   orderDetails(card, order, context, disposers);
   return () => disposers.forEach((dispose) => dispose());

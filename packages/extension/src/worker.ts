@@ -1,5 +1,7 @@
 import {
   popupRequestSchema,
+  dispatchListSchema,
+  type DispatchIssue,
   simulationSchema,
   type Simulation,
   queueSnapshotSchema,
@@ -32,6 +34,7 @@ let flow: FlowInspection | null = null;
 async function snapshot(): Promise<{
   state: Awaited<ReturnType<typeof readState>>;
   simulations: Simulation[];
+  dispatchIssues: DispatchIssue[];
   queue: QueueSnapshot | null;
   inspection: TaskDetail | null;
   operationError: string | null;
@@ -49,6 +52,7 @@ async function snapshot(): Promise<{
     flow = dispatchFlow.data;
   let simulations: Simulation[] = [];
   let queue: QueueSnapshot | null = null;
+  let dispatchIssues: DispatchIssue[] = [];
   let inspection: TaskDetail | null = null;
   if (config.clientId && !config.revoked && state.phase === 'connected') {
     try {
@@ -67,6 +71,20 @@ async function snapshot(): Promise<{
     } catch {
       /* Keep the connection status independent from queue availability. */
     }
+    try {
+      const dispatches = dispatchListSchema.parse(
+        await signedRequest(config.clientId, 'GET', '/api/dispatch'),
+      );
+      dispatchIssues = dispatches.commands
+        .filter((record) => record.state === 'blocked')
+        .map(({ command, message }) => ({
+          id: command.id,
+          name: command.name,
+          message,
+        }));
+    } catch {
+      /* Never invent a review from cached status when the server is unavailable. */
+    }
     if (inspectedTaskId) {
       try {
         inspection = taskDetailSchema.parse(
@@ -82,6 +100,7 @@ async function snapshot(): Promise<{
   return {
     state,
     simulations,
+    dispatchIssues,
     queue,
     inspection,
     operationError,
@@ -93,7 +112,8 @@ async function command(
   message: z.infer<typeof popupRequestSchema>,
 ): Promise<Awaited<ReturnType<typeof snapshot>>> {
   if (message.type === 'flow-open') await openFlow();
-  else if (message.type === 'orders-open') await openOrdersPanel();
+  else if (message.type === 'orders-open')
+    await openOrdersPanel(message.dispatchId);
   else if (message.type === 'flow-inspect') flow = await inspectFlow();
   else if (message.type === 'connect') await connection.connect();
   else if (message.type === 'disconnect') await connection.disconnect();

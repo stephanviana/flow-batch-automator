@@ -54,6 +54,10 @@ export function renderQueue(
   if (!summary || !feedback || !tasks || !history) return;
   renderLatestView = (): void => renderQueue(queue, inspection, error, send);
   view.update(queue);
+  const reviewOrders = document.querySelector<HTMLElement>(
+    '#queue-review-orders',
+  );
+  if (reviewOrders) reviewOrders.hidden = !queue?.blockedByReview;
   const visibleTasks = queue?.tasks.filter((task) => view.visible(task)) ?? [];
   const visibleInspection =
     inspection && view.visible(inspection.task) ? inspection : null;
@@ -94,7 +98,7 @@ function renderHistory(inspection: TaskDetail | null, history: Element): void {
     if (details) details.open = true;
     for (const event of inspection.events) {
       const line = document.createElement('li');
-      line.textContent = `${new Date(event.at).toLocaleTimeString()} · ${taskStateLabels[event.state]}${event.error ? ` · ${event.error.message}` : ''}`;
+      line.textContent = `${new Date(event.at).toLocaleTimeString()} · ${taskStateLabels[event.state]}${event.error ? ` · ${event.error.message} (${event.error.code})` : ''} · ${event.reason}`;
       history.append(line);
     }
     for (const { checkpoint } of inspection.checkpoints) {

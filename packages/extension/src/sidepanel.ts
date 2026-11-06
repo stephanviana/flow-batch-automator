@@ -1,6 +1,7 @@
 import { popupReplySchema } from '@flow-batch/protocol';
 import type { PopupRequest } from '@flow-batch/protocol';
 import { renderQueue, initializeQueueView } from './queue-ui.js';
+import { renderDispatchIssues } from './dispatch-issues-ui.js';
 import { initializePanelTabs } from './panel-tabs.js';
 import { renderConnectionBadge, renderDashboard } from './dashboard-ui.js';
 import {
@@ -70,6 +71,7 @@ async function refresh(
         : '';
     }
     renderQueue(data.queue, data.inspection, data.operationError, refresh);
+    renderDispatchIssues(data.dispatchIssues, refresh);
     return data;
   } catch (error) {
     controlError =

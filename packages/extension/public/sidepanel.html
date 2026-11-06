@@ -159,6 +159,10 @@
           <p id="queue-activity-time" class="hint" aria-live="off" hidden></p>
         </section>
         <section class="queue-section" aria-labelledby="queue-title">
+          <div id="dispatch-issues" hidden>
+            <h2>Pedidos aguardando revisão</h2>
+            <ul id="dispatch-issues-list"></ul>
+          </div>
           <h2 id="queue-title">Todos os takes</h2>
           <p id="queue-status" role="status"></p>
           <div class="actions">
@@ -170,6 +174,15 @@
             </button>
           </div>
           <p id="queue-feedback" role="status"></p>
+          <button
+            id="queue-review-orders"
+            data-action="orders-open"
+            type="button"
+            class="secondary"
+            hidden
+          >
+            Consultar pedidos com revisão
+          </button>
           <p id="dispatch-status" class="hint" role="status" aria-live="polite">
             Aguardando pedido autorizado.
           </p>

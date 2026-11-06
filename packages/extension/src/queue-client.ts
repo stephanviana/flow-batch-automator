@@ -5,6 +5,7 @@ import {
   taskDetailSchema,
 } from '@flow-batch/protocol';
 import { signedRequest } from './api.js';
+import { openProject } from './flow-projects.js';
 
 function demoTasks(type: PopupRequest['type']): TaskInput[] {
   const scenario =
@@ -49,6 +50,17 @@ export async function queueCommand(
     await signedRequest(clientId, 'POST', '/api/queue/control', {
       action: message.type === 'queue-start' ? 'start' : 'pause',
     });
+    return;
+  }
+  if (message.type === 'queue-open-project') {
+    const detail = taskDetailSchema.parse(
+      await signedRequest(clientId, 'POST', '/api/queue/task', {
+        taskId: message.taskId,
+      }),
+    );
+    if (detail.input.executor !== 'google-flow')
+      throw new Error('Este take não possui projeto no Flow.');
+    await openProject(detail.input.flow.projectId);
     return;
   }
   if (message.type === 'queue-show-download') {
