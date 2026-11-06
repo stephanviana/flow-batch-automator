@@ -101,7 +101,8 @@ materiais, autorização ou falha originais. Grupos com takes pendentes, ativos 
 incertos e criação de projeto em andamento não podem ser encerrados. Grupos
 encerrados deixam o despacho da extensão e não podem receber novas gerações;
 os resultados confirmados permanecem registrados. Pedidos encerrados com parte
-dos vídeos pronta exibem “Encerrado parcialmente”.
+dos vídeos pronta exibem “Encerrado parcialmente”. A limpeza do painel é apenas
+visual e temporária, para pedidos sem envio ou já encerrados.
 Mostrar etapas reais, pausa, falha e incerteza; não inventar percentual.
 
 As Fases 1–4 e o piloto anterior tiveram validações reais no Chrome Windows,

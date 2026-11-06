@@ -79,6 +79,23 @@
                 <span data-icon="refresh"></span>
               </button>
             </div>
+            <div class="orders-cleanup-toolbar">
+              <button
+                id="clear-unsent-orders"
+                type="button"
+                class="secondary"
+                title="Remove da visualização atual os pedidos sem despacho ou encerrados, preservando histórico e materiais."
+                disabled
+              >
+                Limpar lista
+              </button>
+              <p
+                id="orders-cleanup-feedback"
+                class="hint"
+                role="status"
+                aria-live="polite"
+              ></p>
+            </div>
             <div id="orders"></div>
           </section>
           <section class="storage" aria-labelledby="storage-title">

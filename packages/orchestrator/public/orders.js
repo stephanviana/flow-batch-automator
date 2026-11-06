@@ -1,6 +1,7 @@
 import { api } from './management-api.js';
 export { api };
 import { element, productEditor } from './orders-editor.js';
+import { OrderListCleanup, canClearOrder } from './orders-cleanup.js';
 import { renderOrder } from './orders-cards.js';
 import { icon } from './ui-icons.js';
 for (const node of document.querySelectorAll('[data-icon]'))
@@ -10,6 +11,8 @@ const status = document.querySelector('#status'),
 const products = [],
   container = document.querySelector('#products');
 const previewDisposers = [];
+const cleanup = new OrderListCleanup();
+let savedOrders = [];
 let draftId = crypto.randomUUID(),
   busy = false;
 function addProduct() {
@@ -75,9 +78,11 @@ form.addEventListener('submit', (event) => {
     await refresh();
   });
 });
-async function refresh() {
-  const { orders } = await api('/manage/orders'),
-    list = document.querySelector('#orders');
+function renderSavedOrders() {
+  const orders = savedOrders.filter((order) => cleanup.visible(order));
+  const list = document.querySelector('#orders');
+  document.querySelector('#clear-unsent-orders').disabled =
+    !orders.some(canClearOrder);
   previewDisposers.splice(0).forEach((dispose) => dispose());
   list.replaceChildren();
   for (const order of orders) {
@@ -87,6 +92,9 @@ async function refresh() {
         report,
         action,
         refresh,
+        onClear() {
+          clearOrders([order]);
+        },
         onCancel() {
           status.textContent = `Pedido ${order.number} cancelado.`;
         },
@@ -96,7 +104,28 @@ async function refresh() {
   const first = orders[0];
   document.querySelector('#chat-instruction').textContent =
     `No chat: “Prepare o pedido ${first?.number ?? 1}”.`;
-  if (!orders.length) element(list, 'p', 'Nenhum pedido salvo.');
+  if (!orders.length)
+    element(
+      list,
+      'p',
+      savedOrders.length
+        ? 'Nenhum pedido nesta lista. Os registros foram preservados.'
+        : 'Nenhum pedido salvo.',
+    );
+}
+function clearOrders(orders) {
+  const count = cleanup.clear(orders);
+  renderSavedOrders();
+  document.querySelector('#orders-cleanup-feedback').textContent =
+    `${count} ${count === 1 ? 'pedido removido' : 'pedidos removidos'} da lista. Histórico preservado.`;
+}
+document
+  .querySelector('#clear-unsent-orders')
+  .addEventListener('click', () => clearOrders(savedOrders));
+async function refresh() {
+  const { orders } = await api('/manage/orders');
+  savedOrders = orders;
+  renderSavedOrders();
   if (status.dataset.errorSource === 'refresh') {
     status.textContent = '';
     status.className = '';

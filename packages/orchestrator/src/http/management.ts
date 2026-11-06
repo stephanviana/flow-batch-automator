@@ -39,6 +39,7 @@ export function registerManagement(
     'orders-video-preview.js',
     'ui-icons.js',
     'orders-cards.js',
+    'orders-cleanup.js',
     'orders-review.js',
     'orders-review-actions.js',
   ])

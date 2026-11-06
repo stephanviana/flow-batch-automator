@@ -409,6 +409,12 @@ incerto precisam ser resolvidos antes. Os vídeos prontos e o diagnóstico ficam
 preservados. Um pedido com vídeos concluídos e grupos abandonados aparece como
 **Encerrado parcialmente**, em vez de continuar exigindo revisão.
 
+No painel, **Limpar lista** retira da visualização atual os pedidos sem envio ou
+já encerrados. **Limpar da lista** faz o mesmo para um pedido específico. A
+limpeza não é salva; pedidos em preparação, execução ou revisão permanecem
+visíveis. Os registros e materiais são preservados, e uma mudança no estado ou
+na preparação faz o pedido reaparecer.
+
 Para revisar antes de gerar, diga “Apenas prepare o pedido 12, não execute”. O
 agente publica com `execute=false`; nenhuma geração é enviada. Depois, “Execute
 o pedido 12” permite `flow_approve` pelo número, sem hash. Arquivos e materiais

@@ -1,3 +1,4 @@
+import { canClearOrder } from './orders-cleanup.js';
 import { orderReview } from './orders-review.js';
 import { element } from './orders-elements.js';
 import { formats } from './orders-format-editor.js';
@@ -237,6 +238,13 @@ export function renderOrder(parent, order, context) {
   const actions = element(card, 'div', '', 'order-actions');
   if (order.preparationHash) preparationPreview(actions, order, context);
   const reviewOrder = orderReview(actions, order, context);
+  if (canClearOrder(order)) {
+    const clear = element(actions, 'button', 'Limpar da lista', 'secondary');
+    clear.type = 'button';
+    clear.title =
+      'Remove este pedido da visualização atual. Histórico e materiais são preservados.';
+    clear.addEventListener('click', context.onClear);
+  }
   if (
     order.dispatches.some(
       (dispatch) =>

@@ -8,6 +8,7 @@ import { usesSingleImage } from '../packages/protocol/dist/index.js';
 import { createApp } from '../packages/orchestrator/dist/app.js';
 import { loadConfig } from '../packages/orchestrator/dist/config.js';
 import { localClient } from './orders.mjs';
+import { validateOrdersCleanup } from './browser-orders-cleanup.mjs';
 import { installInstructions } from './test-support/instruction-package.mjs';
 
 const directory = resolve('.cache', `orders-design-${randomUUID()}`);
@@ -346,6 +347,7 @@ try {
   await page.goto(`${base}/orders`);
   await saveOrderFromEditor();
   await prepareFixture();
+  await validateOrdersCleanup(page, base);
   await captureResponsive();
   await verifyReviewState();
   await verifyControls();

@@ -154,10 +154,11 @@
 }
 .order-actions {
   display: flex;
+  flex-wrap: wrap;
   min-height: 38px;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: flex-start;
+  gap: 8px;
   margin-top: 20px;
 }
 .order-actions .secondary {
@@ -184,8 +185,7 @@
   margin-top: 14px;
 }
 .order-details:not([open]) {
-  float: right;
-  margin-top: -30px;
+  margin-top: 14px;
 }
 .order-details[open] > summary {
   display: flex;
@@ -340,6 +340,17 @@
   padding-left: 20px;
   color: var(--muted);
   font-size: 0.85rem;
+}
+
+.orders-cleanup-toolbar {
+  margin-bottom: 16px;
+}
+.orders-cleanup-toolbar > button {
+  width: 100%;
+  font-size: 13px;
+}
+#orders-cleanup-feedback {
+  margin-bottom: 0;
 }
 
 .dispatch-close-form {
