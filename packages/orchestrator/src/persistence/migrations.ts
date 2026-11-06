@@ -100,6 +100,14 @@ export const migrations: readonly Migration[] = [
       previous_failure TEXT, authorized_at INTEGER NOT NULL, UNIQUE(dispatch_id,review_hash)
     ) STRICT;`,
   },
+  {
+    version: 10,
+    sql: `CREATE TABLE dispatch_closures (
+      dispatch_id TEXT PRIMARY KEY REFERENCES dispatch_commands(id),
+      review_hash TEXT NOT NULL, preparation_hash TEXT NOT NULL,
+      note TEXT NOT NULL, closed_at INTEGER NOT NULL
+    ) STRICT;`,
+  },
 ];
 
 export function migrate(

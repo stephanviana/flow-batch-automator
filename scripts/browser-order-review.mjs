@@ -133,6 +133,7 @@ export async function validateOrderReview({
     state.queue.tasks.find((task) => task.id === fixture.taskId).state,
     'uncertain',
   );
+  await verifyGroupClosure(browser, panel, row, fixture, base);
   console.log(
     'Order review: extension opens the matching diagnosis; preparation, dispatch failure and take errors are visible; project lookup reuses the Flow tab; clearing preserves unresolved work. No generation or resume request.',
   );
@@ -177,5 +178,62 @@ async function verifyProjectLookup(browser, panel, row, taskId) {
   } finally {
     await flow.close();
     await browser.unroute(route);
+  }
+}
+
+async function verifyGroupClosure(browser, panel, row, fixture, base) {
+  await row
+    .getByRole('textbox', { name: 'Nota de revisão' })
+    .fill(
+      'Conferi o resultado sintético. Encerrar esta tentativa sem nova geração.',
+    );
+  await row
+    .getByRole('button', { name: 'Encerrar tentativa com falha' })
+    .click();
+  await panel
+    .locator(`[data-task-id="${fixture.taskId}"][data-state="failed"]`)
+    .waitFor();
+  const before = await sendPanelRequest(panel, 'status');
+  const orders = await browser.newPage();
+  try {
+    await orders.goto(`${base}/orders?dispatch=${fixture.dispatchId}`);
+    await orders.locator('.order-review[open]').waitFor();
+    await orders.locator('.dispatch-close-form > summary').click();
+    await orders
+      .getByLabel('Motivo do encerramento')
+      .fill('Manter os vídeos prontos e encerrar o grupo nesta validação.');
+    await orders
+      .getByRole('button', { name: 'Confirmar encerramento' })
+      .click();
+    assert.equal(
+      await orders.locator('#orders article[data-state="blocked"]').count(),
+      1,
+    );
+    await orders
+      .getByLabel('Conferi a revisão e quero encerrar este grupo.')
+      .check();
+    await orders
+      .getByRole('button', { name: 'Confirmar encerramento' })
+      .click();
+    await orders.getByText('Encerrado parcialmente', { exact: true }).waitFor();
+    assert.equal(
+      await orders
+        .getByRole('button', { name: 'Revisar pedido', exact: true })
+        .count(),
+      0,
+    );
+    assert.deepEqual(
+      (await sendPanelRequest(panel, 'status')).queue,
+      before.queue,
+    );
+    assert.equal(
+      (await sendPanelRequest(panel, 'status')).dispatchIssues.length,
+      0,
+    );
+    console.log(
+      'Review outcome: explicit group closure preserves completed videos and task history, removes the review block and keeps the reviewed result. No generation was resumed.',
+    );
+  } finally {
+    await orders.close();
   }
 }

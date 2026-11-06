@@ -1,3 +1,4 @@
+import { dispatchReviewActions } from './orders-review-actions.js';
 import { element } from './orders-elements.js';
 
 const states = {
@@ -47,7 +48,7 @@ const reasons = {
   'dispatch-outcome-unknown': 'O envio não foi confirmado',
 };
 
-function dispatchReview(parent, dispatch, orderNumber) {
+function dispatchReview(parent, dispatch, orderNumber, context) {
   const section = element(parent, 'section', '', 'diagnostic-section');
   element(
     section,
@@ -90,23 +91,19 @@ function dispatchReview(parent, dispatch, orderNumber) {
         'A retomada deste grupo exige nova autorização explícita no chat.',
       );
   }
-  const copy = element(
-    section,
-    'button',
-    'Copiar pedido de análise',
-    'secondary',
-  );
-  copy.type = 'button';
-  copy.addEventListener('click', async () => {
-    try {
-      await globalThis.navigator.clipboard.writeText(
-        `Revise o despacho ${dispatch.id} do pedido ${orderNumber}, explique o motivo do bloqueio e o próximo passo. Não execute nem retome gerações.`,
-      );
-      copy.textContent = 'Pedido de análise copiado';
-    } catch {
-      copy.textContent = 'Não foi possível copiar. Consulte o grupo abaixo.';
-    }
-  });
+  if (dispatch.closure) {
+    element(
+      section,
+      'p',
+      `Encerrado em ${new Date(dispatch.closure.at).toLocaleString('pt-BR')}: ${dispatch.closure.note}`,
+    );
+    element(
+      section,
+      'p',
+      `Diagnóstico anterior: ${dispatch.closure.originalMessage}`,
+    );
+  }
+  dispatchReviewActions(section, dispatch, orderNumber, context);
   element(section, 'p', `Grupo: ${dispatch.id}`, 'hint');
 }
 
@@ -159,7 +156,7 @@ function taskReview(parent, diagnostic) {
     );
 }
 
-function renderDiagnostic(parent, diagnostic) {
+function renderDiagnostic(parent, diagnostic, context) {
   parent.replaceChildren();
   element(parent, 'h4', 'Preparação');
   element(parent, 'p', diagnostic.preparation.message);
@@ -181,7 +178,7 @@ function renderDiagnostic(parent, diagnostic) {
           : 'Sem preparação publicada, nenhum envio de geração foi registrado.',
     );
   for (const dispatch of diagnostic.dispatches)
-    dispatchReview(parent, dispatch, diagnostic.number);
+    dispatchReview(parent, dispatch, diagnostic.number, context);
   element(parent, 'h4', 'Gerações');
   if (!diagnostic.tasks.length)
     element(
@@ -229,6 +226,7 @@ export function orderReview(parent, order, context) {
       renderDiagnostic(
         review.querySelector('.order-review-content'),
         diagnostic,
+        context,
       );
       review.scrollIntoView({ block: 'nearest' });
     } catch (error) {

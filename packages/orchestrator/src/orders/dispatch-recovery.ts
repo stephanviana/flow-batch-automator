@@ -32,6 +32,7 @@ interface RecoveryContext {
   record: z.infer<typeof recordSchema>;
   batch: z.infer<typeof batchSchema> | undefined;
   queuedTasks: number;
+  taskStates: { id: string; state: string; revision: number }[];
 }
 export interface DispatchReview {
   orderNumber: number;
@@ -43,6 +44,8 @@ export interface DispatchReview {
   preparationHash: string | null;
   reviewHash: string;
   canResume: boolean;
+  canClose: boolean;
+  closeReason: string;
   reason: string;
   batchStatus: string | null;
   failure: z.infer<typeof dispatchFailureSchema> | null;
@@ -56,7 +59,7 @@ export class DispatchRecovery {
     const order = this.repository.get(number);
     const raw = this.repository.database
       .prepare(
-        'SELECT c.body,c.body_hash,c.state,c.message,c.failure,d.batch_id FROM dispatch_commands c JOIN order_dispatches d ON d.dispatch_id=c.id WHERE d.order_id=? AND c.id=?',
+        "SELECT c.body,c.body_hash,CASE WHEN x.dispatch_id IS NULL THEN c.state ELSE 'cancelled' END AS state,c.message,c.failure,d.batch_id FROM dispatch_commands c JOIN order_dispatches d ON d.dispatch_id=c.id LEFT JOIN dispatch_closures x ON x.dispatch_id=c.id WHERE d.order_id=? AND c.id=?",
       )
       .get(order.id, id);
     if (!raw) throw new HttpError(404, 'Despacho não pertence a este pedido.');
@@ -71,13 +74,39 @@ export class DispatchRecovery {
           )
           .get(String(raw.batch_id), command.clientId),
       );
-    const queuedTasks = Number(
-      this.repository.database
-        .prepare('SELECT COUNT(*) AS count FROM queue_tasks WHERE batch_id=?')
-        .get(String(raw.batch_id))?.count ?? 0,
-    );
-    return { order, command, record, batch, queuedTasks };
+    const taskStates = this.repository.database
+      .prepare(
+        'SELECT id,state,revision FROM queue_tasks WHERE batch_id=? ORDER BY sequence',
+      )
+      .all(String(raw.batch_id))
+      .map((task) => ({
+        id: String(task.id),
+        state: String(task.state),
+        revision: Number(task.revision),
+      }));
+    return {
+      order,
+      command,
+      record,
+      batch,
+      queuedTasks: taskStates.length,
+      taskStates,
+    };
   }
+  private closeReason(context: RecoveryContext): string {
+    if (context.record.state !== 'blocked')
+      return 'Este grupo não está bloqueado ou já foi encerrado.';
+    if (context.batch?.status === 'creating')
+      return 'A criação do projeto ainda está em andamento. Confira o resultado antes de encerrar.';
+    if (
+      context.taskStates.some(
+        (task) => !['completed', 'failed', 'cancelled'].includes(task.state),
+      )
+    )
+      return 'Há takes pendentes, em execução ou com resultado incerto. Revise-os antes de encerrar o grupo.';
+    return '';
+  }
+
   private reason(context: RecoveryContext): string {
     const { record, batch, command, order, queuedTasks } = context;
     if (record.state !== 'blocked') return 'Este despacho não está bloqueado.';
@@ -118,6 +147,7 @@ export class DispatchRecovery {
     const context = this.inspect(number, id),
       { order, command, record, batch, queuedTasks } = context;
     const reason = this.reason(context);
+    const closeReason = this.closeReason(context);
     return {
       orderNumber: number,
       dispatchId: id,
@@ -134,8 +164,11 @@ export class DispatchRecovery {
         failure: record.failure,
         batch,
         queuedTasks,
+        taskStates: context.taskStates,
       }),
       canResume: reason === '',
+      canClose: closeReason === '',
+      closeReason,
       reason:
         reason ||
         'Falha anterior ao envio da criação e nenhum take registrado. Uma retomada explícita pode preparar somente este grupo.',

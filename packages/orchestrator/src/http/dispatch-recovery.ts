@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import type { LocalSessions } from '../security/local-session.js';
 import type { OrderRepository } from '../orders/repository.js';
 import type { ClientStore } from '../persistence/clients.js';
+import { DispatchClosure } from '../orders/dispatch-closure.js';
 import { DispatchRecovery } from '../orders/dispatch-recovery.js';
 
 export function registerDispatchRecovery(
@@ -22,6 +23,26 @@ export function registerDispatchRecovery(
       sessions.require(request);
       const { number, dispatchId } = target.parse(request.params);
       return recovery.review(number, dispatchId);
+    },
+  );
+  app.post(
+    '/manage/orders/:number/dispatches/:dispatchId/close',
+    async (request) => {
+      sessions.require(request);
+      const { number, dispatchId } = target.parse(request.params);
+      const input = z
+        .strictObject({
+          reviewed: z.literal(true),
+          reviewHash: z.string().regex(/^[a-f0-9]{64}$/),
+          preparationHash: z.string().regex(/^[a-f0-9]{64}$/),
+          note: z.string().trim().min(1).max(500),
+        })
+        .parse(request.body);
+      return new DispatchClosure(repository, clients).close(
+        number,
+        dispatchId,
+        input,
+      );
     },
   );
   app.post(

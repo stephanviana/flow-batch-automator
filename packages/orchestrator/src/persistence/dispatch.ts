@@ -67,7 +67,7 @@ export class DispatchStore {
   list(clientId: string): DispatchRecord[] {
     return this.database
       .prepare(
-        "SELECT body,state,message FROM dispatch_commands WHERE client_id=? ORDER BY CASE state WHEN 'pending' THEN 0 WHEN 'blocked' THEN 1 ELSE 2 END,created_at,rowid LIMIT 100",
+        "SELECT c.body,c.state,c.message FROM dispatch_commands c WHERE c.client_id=? AND NOT EXISTS (SELECT 1 FROM dispatch_closures x WHERE x.dispatch_id=c.id) ORDER BY CASE c.state WHEN 'pending' THEN 0 WHEN 'blocked' THEN 1 ELSE 2 END,c.created_at,c.rowid LIMIT 100",
       )
       .all(clientId)
       .map((row) =>

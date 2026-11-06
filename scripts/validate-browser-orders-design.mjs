@@ -251,6 +251,12 @@ async function verifyReviewState() {
             ...fixture.orders[0].dispatches[0],
             review: {
               canResume: true,
+              canClose: true,
+              closeReason: '',
+              reviewHash: 'a'.repeat(64),
+              preparationHash: fixture.orders[0].preparationHash,
+              images: 2,
+              videos: 3,
               reason:
                 'Falha anterior ao envio da criação e nenhum take registrado.',
               failure: {
@@ -291,7 +297,7 @@ async function verifyReviewState() {
     );
     assert.equal(
       await page
-        .getByRole('button', { name: 'Copiar pedido de análise' })
+        .getByRole('button', { name: 'Solicitar nova tentativa no chat' })
         .count(),
       1,
     );

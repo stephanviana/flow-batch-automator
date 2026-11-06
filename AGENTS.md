@@ -94,8 +94,15 @@ nova autorização explícita no chat para o grupo, preparação e hash da revis
 Só admite falha comprovadamente anterior ao envio da criação do projeto, sem
 qualquer take registrado no lote; mantém materiais e preparações imutáveis,
 registra a autorização e preserva o corpo anterior. Resultados incertos, grupos
-já enfileirados e identidades revogadas nunca são retomados por essa operação. Mostrar etapas reais,
-pausa, falha e incerteza; não inventar percentual.
+já enfileirados e identidades revogadas nunca são retomados por essa operação.
+O painel oferece encerramento explícito de grupos bloqueados, com motivo e
+confirmação de revisão. `dispatch_closures` registra a decisão sem alterar corpo,
+materiais, autorização ou falha originais. Grupos com takes pendentes, ativos ou
+incertos e criação de projeto em andamento não podem ser encerrados. Grupos
+encerrados deixam o despacho da extensão e não podem receber novas gerações;
+os resultados confirmados permanecem registrados. Pedidos encerrados com parte
+dos vídeos pronta exibem “Encerrado parcialmente”.
+Mostrar etapas reais, pausa, falha e incerteza; não inventar percentual.
 
 As Fases 1–4 e o piloto anterior tiveram validações reais no Chrome Windows,
 incluindo Omni Frames 8 s/720p e download de MP4. O piloto Fábrica Padrão de três

@@ -73,6 +73,17 @@ export class QueueRepository {
     const batchId =
       input.executor === 'google-flow' ? input.flow.batchId : undefined;
     if (batchId && input.executor === 'google-flow') {
+      if (
+        sql
+          .prepare(
+            'SELECT 1 FROM order_dispatches d JOIN dispatch_closures x ON x.dispatch_id=d.dispatch_id WHERE d.batch_id=?',
+          )
+          .get(batchId)
+      )
+        throw new HttpError(
+          409,
+          'Este grupo foi encerrado após revisão. Nenhum take pode ser acrescentado.',
+        );
       const batch = new BatchStore(sql).get(clientId, batchId);
       if (batch.status !== 'ready' || batch.projectId !== input.flow.projectId)
         throw new HttpError(409, 'Batch project does not match task');

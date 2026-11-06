@@ -401,7 +401,13 @@ enviados. Registros antigos sem causa detalhada são identificados como tal.
 **Revisar take** permite consultar o histórico e registrar o resultado observado;
 **Conferir projeto no Flow** abre o projeto vinculado. A consulta não reenvia
 gerações; retomadas de grupos bloqueados continuam exigindo nova autorização
-explícita no chat.
+explícita no chat. Depois da revisão, **Solicitar nova tentativa no chat** copia
+uma solicitação vinculada ao grupo e à revisão atual para você enviar ao agente.
+**Encerrar este grupo** registra o motivo e encerra as gerações restantes após
+sua confirmação no painel. Takes pendentes, em execução ou com resultado
+incerto precisam ser resolvidos antes. Os vídeos prontos e o diagnóstico ficam
+preservados. Um pedido com vídeos concluídos e grupos abandonados aparece como
+**Encerrado parcialmente**, em vez de continuar exigindo revisão.
 
 Para revisar antes de gerar, diga “Apenas prepare o pedido 12, não execute”. O
 agente publica com `execute=false`; nenhuma geração é enviada. Depois, “Execute

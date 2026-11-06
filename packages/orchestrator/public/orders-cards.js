@@ -37,8 +37,13 @@ function cloneReview(parent, variation) {
     element(review, 'pre', variation.cloneVideo.directions[stage]);
   }
 }
-function generationCounts(parent, count) {
-  element(parent, 'p', 'Limite de geração', 'generation-title');
+function generationCounts(parent, count, closed) {
+  element(
+    parent,
+    'p',
+    closed ? 'Plano original de geração' : 'Limite de geração',
+    'generation-title',
+  );
   const counts = element(parent, 'div', '', 'generation-counts');
   icon(
     element(
@@ -175,7 +180,9 @@ export function renderOrder(parent, order, context) {
       ? 'Requer revisão'
       : order.state === 'prepared'
         ? 'Prévia pronta'
-        : states[order.state],
+        : order.state === 'failed' && order.counts.completed
+          ? 'Encerrado parcialmente'
+          : states[order.state],
     'badge',
   );
   badge.title = states[order.state];
@@ -208,7 +215,18 @@ export function renderOrder(parent, order, context) {
       warning ? 'warning' : 'message',
     );
   }
-  if (order.preparationHash) generationCounts(card, order.generationCounts);
+  const closedGroups = order.dispatches.filter(
+    (dispatch) => dispatch.closure,
+  ).length;
+  if (closedGroups)
+    element(
+      card,
+      'p',
+      `${order.counts.completed ?? 0} takes concluídos · ${closedGroups} grupo(s) encerrado(s) após revisão.`,
+      'hint',
+    );
+  if (order.preparationHash)
+    generationCounts(card, order.generationCounts, closedGroups > 0);
   if (order.materials.some((material) => !material.available))
     element(
       card,

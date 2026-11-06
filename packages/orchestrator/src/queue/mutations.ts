@@ -198,6 +198,14 @@ export class QueueMutations {
   }
 
   private retry(record: TaskRecord, acknowledged: boolean, now: number): void {
+    if (
+      this.database.connection
+        .prepare(
+          'SELECT 1 FROM queue_tasks q JOIN order_dispatches d ON d.batch_id=q.batch_id JOIN dispatch_closures x ON x.dispatch_id=d.dispatch_id WHERE q.id=?',
+        )
+        .get(record.summary.id)
+    )
+      throw new HttpError(409, 'Este grupo foi encerrado após revisão.');
     if (record.summary.state !== 'failed')
       throw new HttpError(409, 'Only failed, reviewed tasks can retry');
     if (record.summary.attemptCount >= record.summary.maxAttempts)

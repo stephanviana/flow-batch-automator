@@ -25,7 +25,12 @@ export interface ProductionOrder extends OrderDraft {
   lease: { worker: string; expiresAt: number } | null;
   preparation: PreparedOrder | null;
   preparationHash: string | null;
-  dispatches: { id: string; state: string; message: string }[];
+  dispatches: {
+    id: string;
+    state: string;
+    message: string;
+    closure?: { note: string; at: number; originalMessage: string };
+  }[];
   counts: Record<string, number>;
 }
 export function contentHash(value: unknown): string {
@@ -115,13 +120,25 @@ export class OrderRepository {
     const draft = orderDraftSchema.parse(JSON.parse(String(row.body)));
     const dispatches = this.database
       .prepare(
-        'SELECT c.id,c.state,c.message FROM order_dispatches d JOIN dispatch_commands c ON c.id=d.dispatch_id WHERE d.order_id=? ORDER BY c.rowid',
+        'SELECT c.id,c.state,c.message,x.note AS closure_note,x.closed_at FROM order_dispatches d JOIN dispatch_commands c ON c.id=d.dispatch_id LEFT JOIN dispatch_closures x ON x.dispatch_id=c.id WHERE d.order_id=? ORDER BY c.rowid',
       )
       .all(draft.id)
       .map((entry) => ({
         id: String(entry.id),
-        state: String(entry.state),
-        message: String(entry.message),
+        state: entry.closed_at === null ? String(entry.state) : 'cancelled',
+        message:
+          entry.closed_at === null
+            ? String(entry.message)
+            : `Grupo encerrado após revisão: ${String(entry.closure_note)}`,
+        ...(entry.closed_at === null
+          ? {}
+          : {
+              closure: {
+                note: String(entry.closure_note),
+                at: Number(entry.closed_at),
+                originalMessage: String(entry.message),
+              },
+            }),
       }));
     const counts: Record<string, number> = {};
     for (const entry of this.database
@@ -138,13 +155,27 @@ export class OrderRepository {
     if (state === 'preparing' && Number(row.lease_expires_at) <= Date.now())
       state = 'awaiting-preparation';
     if (state === 'dispatched') {
-      const total = preparation?.manifests.reduce(
-        (sum, manifest) => sum + manifest.tasks.length,
-        0,
-      );
+      const planned =
+        preparation?.manifests.reduce(
+          (sum, manifest) => sum + manifest.tasks.length,
+          0,
+        ) ?? 0;
+      const total = planned - this.closedTakeCount(draft.id);
+      const closed = dispatches.some((dispatch) => dispatch.closure);
+      const terminal =
+        (counts.completed ?? 0) +
+        (counts.failed ?? 0) +
+        (counts.cancelled ?? 0);
       if (counts.uncertain) state = 'uncertain';
       else if (dispatches.some((dispatch) => dispatch.state === 'blocked'))
         state = 'blocked';
+      else if (planned > 0 && counts.completed === planned) state = 'completed';
+      else if (
+        closed &&
+        terminal === total &&
+        !dispatches.some((dispatch) => dispatch.state === 'pending')
+      )
+        state = terminal ? 'failed' : 'cancelled';
       else if (total && counts.completed === total) state = 'completed';
       else if (
         total &&
@@ -176,6 +207,18 @@ export class OrderRepository {
             }
           : null,
     };
+  }
+
+  private closedTakeCount(orderId: string): number {
+    const rows = this.database
+      .prepare(
+        "SELECT json_array_length(c.body,'$.manifest.tasks') AS planned,(SELECT COUNT(*) FROM queue_tasks q WHERE q.batch_id=d.batch_id) AS registered FROM order_dispatches d JOIN dispatch_commands c ON c.id=d.dispatch_id JOIN dispatch_closures x ON x.dispatch_id=c.id WHERE d.order_id=?",
+      )
+      .all(orderId);
+    return rows.reduce(
+      (sum, row) => sum + Number(row.planned) - Number(row.registered),
+      0,
+    );
   }
 
   list(): (Omit<ProductionOrder, 'preparation'> & {
