@@ -338,14 +338,19 @@ export async function validateFlowTake({
       prepared.preparationHash,
     );
     await panel.goto(panelUrl);
-    await panel.locator('#connection-options summary').click();
-    await panel.locator('#diagnostics summary').click();
+    await panel
+      .getByRole('tab', { name: 'Fila e gerações', exact: true })
+      .click();
     await eventually(
       async () =>
         (await panel.locator('#queue-tasks').textContent()).includes(
           'Concluída',
         ),
       40000,
+    );
+    assert.deepEqual(
+      (await panel.locator('.task-output').allTextContents()).sort(),
+      ['MP4: 01-Gancho.mp4', 'MP4: 02-Body.mp4', 'MP4: 03-CTA.mp4'],
     );
     assert.equal(imageCount, singleImage ? 1 : 2);
     assert.equal(videoCount, 3);

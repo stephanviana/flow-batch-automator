@@ -4,6 +4,7 @@ import { URLSearchParams } from 'node:url';
 // Runs the installed extension's real MAIN-world injection against intercepted
 // HTTPS fixture pages. Never connects to Google or consumes credits.
 export async function validateFlow({ browser, panel, eventually }) {
+  await panel.getByRole('tab', { name: 'Início', exact: true }).click();
   const worker = browser.serviceWorkers()[0];
   const configuration = await worker.evaluate(async () => ({
     manifest: chrome.runtime.getManifest(),

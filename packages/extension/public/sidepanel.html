@@ -9,139 +9,219 @@
   </head>
   <body>
     <main>
-      <header>
-        <p class="eyebrow">GOOGLE FLOW · AUTOMAÇÃO LOCAL</p>
+      <header class="panel-header">
         <div class="brand">
           <span class="brand-mark" aria-hidden="true">F</span>
-          <h1>Flow Batch</h1>
+          <div>
+            <h1>Flow Batch</h1>
+            <p>Seu estúdio de produção</p>
+          </div>
         </div>
-        <p>Seu lote, ao lado do Flow.</p>
+        <span
+          id="connection-badge"
+          class="connection-badge"
+          data-connected="false"
+          >Offline</span
+        >
       </header>
-      <section
-        id="queue-activity"
-        class="queue-activity"
-        aria-labelledby="queue-activity-title"
-        data-tone="idle"
-        data-busy="false"
+      <nav class="panel-tabs" role="tablist" aria-label="Navegação da extensão">
+        <button
+          id="tab-home"
+          type="button"
+          role="tab"
+          aria-selected="true"
+          aria-controls="panel-home"
+          data-tab="home"
+        >
+          Início
+        </button>
+        <button
+          id="tab-queue"
+          type="button"
+          role="tab"
+          aria-selected="false"
+          aria-controls="panel-queue"
+          tabindex="-1"
+          data-tab="queue"
+        >
+          Fila e gerações
+        </button>
+        <button
+          id="tab-settings"
+          type="button"
+          role="tab"
+          aria-selected="false"
+          aria-controls="panel-settings"
+          tabindex="-1"
+          data-tab="settings"
+        >
+          Configurações
+        </button>
+      </nav>
+      <p id="panel-feedback" class="error" role="status" aria-live="polite"></p>
+      <div
+        id="panel-home"
+        class="tab-panel"
+        role="tabpanel"
+        aria-labelledby="tab-home"
+        tabindex="0"
       >
-        <div class="activity-heading">
-          <span class="activity-indicator" aria-hidden="true"></span>
-          <h2 id="queue-activity-title" role="status" aria-live="polite">
+        <div class="page-heading">
+          <p class="eyebrow">VISÃO GERAL</p>
+          <h2>Sua produção, em dia.</h2>
+          <p>Acompanhe os takes e acesse seus pedidos.</p>
+        </div>
+        <dl class="dashboard-stats" aria-label="Resumo da fila">
+          <div>
+            <dt>Pendentes</dt>
+            <dd id="count-pending">—</dd>
+          </div>
+          <div>
+            <dt>Em andamento</dt>
+            <dd id="count-active">—</dd>
+          </div>
+          <div>
+            <dt>Concluídos</dt>
+            <dd id="count-completed">—</dd>
+          </div>
+        </dl>
+        <section class="overview-card" aria-labelledby="overview-title">
+          <p class="eyebrow">AGORA</p>
+          <h2 id="overview-title" role="status" aria-live="polite">
             Consultando fila…
           </h2>
-        </div>
-        <p id="queue-activity-task" class="activity-task" hidden></p>
-        <p id="queue-activity-detail">O andamento aparecerá aqui.</p>
-        <ol id="queue-steps" aria-label="Etapas do take" hidden></ol>
-        <p id="queue-activity-time" class="hint" aria-live="off" hidden></p>
-      </section>
-      <section aria-labelledby="flow-title">
-        <h2 id="flow-title">Projeto no Google Flow</h2>
-        <p id="flow-status" role="status" aria-live="polite">
-          Abra seu projeto no Flow e verifique a conexão.
-        </p>
-        <p id="flow-project" class="project" hidden></p>
-        <div class="actions">
-          <button data-action="flow-open" type="button">
-            Abrir Google Flow
+          <p id="overview-detail">O andamento aparecerá aqui.</p>
+          <button type="button" class="text-button" data-tab-target="queue">
+            Acompanhar fila <span aria-hidden="true">→</span>
           </button>
-          <button data-action="flow-inspect" type="button" class="secondary">
-            Verificar projeto
-          </button>
+        </section>
+        <section class="orders-card" aria-labelledby="orders-title">
+          <h2 id="orders-title">Próxima produção</h2>
+          <p>
+            Monte um pedido no painel e peça ao agente para prepará-lo no chat.
+          </p>
+          <a
+            id="open-orders"
+            class="button-link"
+            href="http://127.0.0.1:4319/orders"
+            target="_blank"
+            rel="noopener"
+            title="Abrir em nova aba à direita"
+            >Abrir painel de pedidos <span aria-hidden="true">↗</span></a
+          >
+        </section>
+        <section class="plain-section" aria-labelledby="flow-title">
+          <h2 id="flow-title">Projeto no Google Flow</h2>
+          <p id="flow-status" role="status" aria-live="polite">
+            Abra seu projeto no Flow e verifique a conexão.
+          </p>
+          <p id="flow-project" class="project" hidden></p>
+          <div class="actions">
+            <button data-action="flow-open" type="button" class="secondary">
+              Abrir Google Flow
+            </button>
+            <button data-action="flow-inspect" type="button" class="secondary">
+              Verificar projeto
+            </button>
+          </div>
+          <p class="hint">A verificação não consome créditos.</p>
+        </section>
+      </div>
+      <div
+        id="panel-queue"
+        class="tab-panel"
+        role="tabpanel"
+        aria-labelledby="tab-queue"
+        tabindex="0"
+        hidden
+      >
+        <div class="page-heading">
+          <p class="eyebrow">PRODUÇÃO</p>
+          <h2>Fila e gerações</h2>
+          <p>Do primeiro take ao download.</p>
         </div>
-        <p class="hint">
-          Esta verificação só consulta o projeto e não consome créditos.
-        </p>
-      </section>
-      <section aria-labelledby="connection-title">
-        <h2 id="connection-title">Orquestrador local</h2>
-        <p id="status" role="status" aria-live="polite">
-          Aguardando verificação.
-        </p>
-        <button data-action="connect" type="button">
-          Conectar ao Flow Batch
-        </button>
-        <p id="code" class="code"></p>
-        <details id="connection-options">
-          <summary>Opções de conexão</summary>
+        <section
+          id="queue-activity"
+          class="queue-activity"
+          aria-labelledby="queue-activity-title"
+          data-tone="idle"
+          data-busy="false"
+        >
+          <div class="activity-heading">
+            <span class="activity-indicator" aria-hidden="true"></span>
+            <h2 id="queue-activity-title" role="status" aria-live="polite">
+              Consultando fila…
+            </h2>
+          </div>
+          <p id="queue-activity-task" class="activity-task" hidden></p>
+          <p id="queue-activity-detail">O andamento aparecerá aqui.</p>
+          <ol id="queue-steps" aria-label="Etapas do take" hidden></ol>
+          <p id="queue-activity-time" class="hint" aria-live="off" hidden></p>
+        </section>
+        <section class="queue-section" aria-labelledby="queue-title">
+          <h2 id="queue-title">Todos os takes</h2>
+          <p id="queue-status" role="status"></p>
+          <div class="actions">
+            <button data-action="queue-start" type="button">
+              Processar fila
+            </button>
+            <button data-action="queue-pause" type="button" class="secondary">
+              Pausar fila
+            </button>
+          </div>
+          <p id="queue-feedback" role="status"></p>
+          <p id="dispatch-status" class="hint" role="status" aria-live="polite">
+            Aguardando pedido autorizado.
+          </p>
+          <div id="queue-empty" class="empty-state" hidden>
+            <span aria-hidden="true">☰</span>
+            <h3>Nenhum take por aqui</h3>
+            <p>Os takes dos pedidos autorizados aparecerão nesta fila.</p>
+          </div>
+          <ul id="queue-tasks" aria-label="Takes da fila"></ul>
+          <details id="task-history">
+            <summary>Histórico da tarefa selecionada</summary>
+            <ol id="queue-history"></ol>
+          </details>
+        </section>
+      </div>
+      <div
+        id="panel-settings"
+        class="tab-panel"
+        role="tabpanel"
+        aria-labelledby="tab-settings"
+        tabindex="0"
+        hidden
+      >
+        <div class="page-heading">
+          <p class="eyebrow">PREFERÊNCIAS</p>
+          <h2>Configurações gerais</h2>
+          <p>Gerencie a conexão da sua extensão.</p>
+        </div>
+        <section aria-labelledby="connection-title">
+          <h2 id="connection-title">Orquestrador local</h2>
+          <p id="status" role="status" aria-live="polite">
+            Aguardando verificação.
+          </p>
+          <button data-action="connect" type="button">
+            Conectar ao Flow Batch
+          </button>
+          <p id="code" class="code"></p>
           <p class="hint">
             Compare o código com a página local para autorizar esta extensão.
           </p>
-          <div class="actions">
-            <button data-action="disconnect" type="button" class="secondary">
-              Desconectar
-            </button>
-            <button data-action="reconnect" type="button" class="secondary">
-              Reconectar
-            </button>
-          </div>
-        </details>
-      </section>
-      <section aria-labelledby="orders-title">
-        <h2 id="orders-title">Pedidos de produção</h2>
-        <p>
-          Monte seus pedidos no painel local. O agente prepara as copys e os
-          prompts; após sua autorização no chat, a extensão acompanha a
-          execução.
-        </p>
-        <a
-          id="open-orders"
-          class="button-link"
-          href="http://127.0.0.1:4319/orders"
-          target="_blank"
-          rel="noopener"
-          title="Abrir em nova aba à direita"
-          >Abrir painel de pedidos</a
-        >
-        <p id="dispatch-status" role="status" aria-live="polite">
-          Aguardando pedido autorizado.
-        </p>
-      </section>
-      <section aria-labelledby="queue-title">
-        <h2 id="queue-title">Fila</h2>
-        <p id="queue-status" role="status"></p>
-        <div class="actions">
-          <button data-action="queue-start" type="button">
-            Processar fila
-          </button>
-          <button data-action="queue-pause" type="button" class="secondary">
-            Pausar fila
-          </button>
-        </div>
-        <p id="queue-feedback" role="status"></p>
-        <ul id="queue-tasks"></ul>
-        <details id="task-history" open>
-          <summary>Histórico da tarefa selecionada</summary>
-          <ol id="queue-history"></ol>
-        </details>
-      </section>
-      <details id="diagnostics">
-        <summary>Testes simulados</summary>
-        <p class="hint">
-          Validação da conexão e da fila, sem gerações no Flow.
-        </p>
-        <button data-action="enqueue-demo" type="button">
-          Enfileirar Hook, Body e CTA simulados
-        </button>
-        <button
-          data-action="enqueue-retry-demo"
-          type="button"
-          class="secondary"
-        >
-          Enfileirar falha recuperável
-        </button>
-        <button
-          data-action="enqueue-stall-demo"
-          type="button"
-          class="secondary"
-        >
-          Enfileirar teste de resultado incerto
-        </button>
-        <button data-action="simulate" type="button" class="secondary" disabled>
-          Enviar teste simulado (5 s)
-        </button>
-        <ul id="history"></ul>
-      </details>
+          <details id="connection-options">
+            <summary>Opções de conexão</summary>
+            <div class="actions">
+              <button data-action="disconnect" type="button" class="secondary">
+                Desconectar</button
+              ><button data-action="reconnect" type="button" class="secondary">
+                Reconectar
+              </button>
+            </div>
+          </details>
+        </section>
+      </div>
     </main>
     <script type="module" src="sidepanel.js"></script>
   </body>

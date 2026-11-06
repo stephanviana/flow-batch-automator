@@ -1,6 +1,8 @@
 import { popupReplySchema } from '@flow-batch/protocol';
 import type { PopupRequest } from '@flow-batch/protocol';
 import { renderQueue } from './queue-ui.js';
+import { initializePanelTabs } from './panel-tabs.js';
+import { renderConnectionBadge, renderDashboard } from './dashboard-ui.js';
 import {
   beginQueueControl,
   finishQueueControl,
@@ -9,31 +11,17 @@ import {
 
 const status = document.querySelector<HTMLParagraphElement>('#status');
 const code = document.querySelector<HTMLParagraphElement>('#code');
-const history = document.querySelector<HTMLUListElement>('#history');
 const flowStatus = document.querySelector<HTMLParagraphElement>('#flow-status');
 const flowProject =
   document.querySelector<HTMLParagraphElement>('#flow-project');
 const ordersLink = document.querySelector<HTMLAnchorElement>('#open-orders');
-const simulate = document.querySelector<HTMLButtonElement>(
-  '[data-action="simulate"]',
-);
-if (
-  !status ||
-  !code ||
-  !history ||
-  !simulate ||
-  !flowStatus ||
-  !flowProject ||
-  !ordersLink
-)
+if (!status || !code || !flowStatus || !flowProject || !ordersLink)
   throw new Error('Side panel elements missing');
-const labels = {
-  sent: 'Enviada',
-  running: 'Em execução',
-  completed: 'Concluída',
-  interrupted: 'Interrompida · sem reenvio',
-};
-let simulationStamp = '';
+initializePanelTabs();
+
+function showError(message: string): void {
+  document.querySelector('#panel-feedback')!.textContent = message;
+}
 let pendingRequests = 0;
 let requestSequence = 0;
 let appliedSequence = 0;
@@ -43,7 +31,7 @@ ordersLink.addEventListener('click', async (event): Promise<void> => {
   try {
     await refresh({ type: 'orders-open' });
   } catch {
-    status.textContent = 'Não foi possível abrir o painel. Tente novamente.';
+    showError('Não foi possível abrir o painel. Tente novamente.');
   }
 });
 
@@ -69,9 +57,10 @@ async function refresh(
     if (control) controlError = data.operationError ?? undefined;
     if (sequence < appliedSequence) return data;
     appliedSequence = sequence;
+    document.querySelector('#panel-feedback')!.textContent = '';
     status!.textContent = data.state.message;
+    renderConnectionBadge(data.state.phase === 'connected');
     code!.textContent = data.state.code ? `Código: ${data.state.code}` : '';
-    simulate!.disabled = data.state.phase !== 'connected';
     if (data.flow) {
       flowStatus!.textContent = data.flow.message;
       flowStatus!.dataset.phase = data.flow.phase;
@@ -81,25 +70,17 @@ async function refresh(
         : '';
     }
     renderQueue(data.queue, data.inspection, data.operationError, refresh);
-    const nextSimulationStamp = JSON.stringify(data.simulations);
-    if (nextSimulationStamp === simulationStamp) return data;
-    simulationStamp = nextSimulationStamp;
-    history!.replaceChildren();
-    for (const task of data.simulations) {
-      const entry = document.createElement('li');
-      entry.textContent = `${task.id.slice(0, 8)} · ${labels[task.state]}`;
-      history!.append(entry);
-    }
     return data;
   } catch (error) {
     controlError =
       'Não foi possível confirmar o comando. Confira a conexão e tente novamente.';
     if (sequence >= appliedSequence) {
       appliedSequence = sequence;
-      renderQueueActivity(
-        null,
-        'Não foi possível atualizar a fila. Confira a conexão com a extensão.',
-      );
+      const message =
+        'Não foi possível atualizar a fila. Confira a conexão com a extensão.';
+      renderQueueActivity(null, message);
+      renderDashboard(null, message);
+      renderConnectionBadge(false);
     }
     throw error;
   } finally {
@@ -115,24 +96,19 @@ for (const button of document.querySelectorAll<HTMLButtonElement>(
     try {
       await refresh({ type: button.dataset.action as PopupRequest['type'] });
     } catch {
-      status.textContent = 'Recarregue a extensão e tente novamente.';
+      showError('Recarregue a extensão e tente novamente.');
     } finally {
       const action = button.dataset.action ?? '';
-      if (
-        button !== simulate &&
-        !action.startsWith('queue-') &&
-        !action.startsWith('enqueue-')
-      )
-        button.disabled = false;
+      if (!action.startsWith('queue-')) button.disabled = false;
     }
   });
 }
 void refresh().catch((): void => {
-  status.textContent = 'Não foi possível consultar a extensão.';
+  showError('Não foi possível consultar a extensão.');
 });
 setInterval((): void => {
   if (pendingRequests) return;
   void refresh().catch((): void => {
-    status.textContent = 'Aguardando resposta do worker…';
+    showError('Aguardando resposta da extensão…');
   });
 }, 2000);

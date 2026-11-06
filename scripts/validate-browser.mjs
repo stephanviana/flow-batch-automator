@@ -1,12 +1,17 @@
-import { installInstructions } from './test-support/instruction-package.mjs';
+import { instructionFiles } from './test-support/instruction-package.mjs';
+import { consolidatedDocument } from '../packages/orchestrator/dist/library/routing.js';
 import assert from 'node:assert/strict';
-import { spawn, execFileSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
 import { cp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { chromium } from 'playwright';
+import {
+  sendPanelRequest,
+  validatePanelDesign,
+} from './browser-panel-design.mjs';
 import { validateQueue } from './browser-queue.mjs';
 import { validateFlow } from './browser-flow.mjs';
 import { validateFlowTake } from './browser-flow-take.mjs';
@@ -23,20 +28,26 @@ const ordersOnly =
   process.argv.includes('--orders-only') ||
   reuseOnly ||
   Boolean(requestedFormat);
-const port = requestedFormat ? 4339 : 4319;
+const portArgument = process.argv.find((argument) =>
+  argument.startsWith('--port='),
+);
+const port = portArgument
+  ? Number(portArgument.slice(7))
+  : requestedFormat
+    ? 4339
+    : 4319;
+if (!Number.isInteger(port) || port < 1024 || port > 65535)
+  throw new Error('Invalid browser test port');
+const isolatedExtension = Boolean(requestedFormat) || port !== 4319;
 const base = `http://127.0.0.1:${port}`;
-const extensionDirectory = requestedFormat
+const extensionDirectory = isolatedExtension
   ? resolve(directory, 'extension')
   : resolve('packages/extension/dist');
 await mkdir(directory, { recursive: true });
-installInstructions(resolve(directory, 'instructions'));
-execFileSync(
-  process.execPath,
-  ['scripts/library.mjs', 'convert', resolve(directory, 'instructions')],
-  {
-    env: { ...process.env, FLOW_BATCH_HOME: resolve(directory, 'cli-state') },
-    stdio: 'pipe',
-  },
+await mkdir(resolve(directory, 'instructions'), { recursive: true });
+await writeFile(
+  resolve(directory, 'instructions/biblioteca.md'),
+  consolidatedDocument(instructionFiles()),
 );
 const log = createWriteStream(resolve(directory, 'server.log'));
 let server;
@@ -51,7 +62,7 @@ process.on('unhandledRejection', (error) => {
 });
 
 async function prepareIsolatedExtension() {
-  if (!requestedFormat) return;
+  if (!isolatedExtension) return;
   await cp('packages/extension/dist', extensionDirectory, { recursive: true });
   // Rewrite only the fixture copy's loopback address, leaving production artifacts intact.
   for (const filename of await readdir(extensionDirectory)) {
@@ -130,8 +141,8 @@ async function openBrowser() {
   });
   await downloadSession.detach();
   await popup.goto(`chrome-extension://${extensionId}/sidepanel.html`);
+  await popup.getByRole('tab', { name: 'Configurações', exact: true }).click();
   await popup.locator('#connection-options summary').click();
-  await popup.locator('#diagnostics summary').click();
 }
 async function assertNonExportableIdentity() {
   const worker = browser.serviceWorkers()[0];
@@ -170,6 +181,7 @@ async function statusContains(text) {
   return (await popup.locator('#status').textContent()).includes(text);
 }
 async function connect() {
+  await popup.getByRole('tab', { name: 'Configurações', exact: true }).click();
   const pageOpened = browser.waitForEvent('page');
   await popup
     .getByRole('button', { name: 'Conectar ao Flow Batch', exact: true })
@@ -221,16 +233,17 @@ try {
   await openBrowser();
   await connect();
   const identity = await assertNonExportableIdentity();
+  await validatePanelDesign(popup, directory);
   if (
     !process.argv.includes('--queue-only') &&
     !process.argv.includes('--flow-only') &&
     !ordersOnly
   ) {
-    await popup
-      .getByRole('button', { name: 'Enviar teste simulado (5 s)' })
-      .click();
+    await sendPanelRequest(popup, 'simulate');
     await eventually(async () =>
-      (await popup.locator('#history').textContent()).includes('Concluída'),
+      (await sendPanelRequest(popup, 'status')).simulations.some(
+        (task) => task.state === 'completed',
+      ),
     );
     // A heartbeat must keep the real MV3 worker and authenticated socket alive.
     const heartbeatWorker = browser.serviceWorkers()[0];
@@ -240,24 +253,31 @@ try {
     assert.equal(await heartbeatWorker.evaluate(() => true), true);
     popup = await browser.newPage();
     await popup.goto(`chrome-extension://${extensionId}/sidepanel.html`);
+    await popup
+      .getByRole('tab', { name: 'Configurações', exact: true })
+      .click();
     await popup.locator('#connection-options summary').click();
-    await popup.locator('#diagnostics summary').click();
     await eventually(() => statusContains('Conectada e autenticada'));
     assert.equal(await statusContains('Conectada e autenticada'), true);
 
-    await popup
-      .getByRole('button', { name: 'Enviar teste simulado (5 s)' })
-      .click();
+    await sendPanelRequest(popup, 'simulate');
     await eventually(async () =>
-      (await popup.locator('#history').textContent()).includes('Em execução'),
+      (await sendPanelRequest(popup, 'status')).simulations.some(
+        (task) => task.state === 'running',
+      ),
     );
     await stopServer();
     await startServer();
     await eventually(() => statusContains('Conectada e autenticada'), 40000);
     await eventually(async () =>
-      (await popup.locator('#history').textContent()).includes('Interrompida'),
+      (await sendPanelRequest(popup, 'status')).simulations.some(
+        (task) => task.state === 'interrupted',
+      ),
     );
-    assert.equal(await popup.locator('#history li').count(), 2);
+    assert.equal(
+      (await sendPanelRequest(popup, 'status')).simulations.length,
+      2,
+    );
 
     // Close the entire isolated browser and reopen the same test profile.
     await browser.close();
@@ -265,18 +285,24 @@ try {
     await openBrowser();
     await eventually(() => statusContains('Conectada e autenticada'), 40000);
     assert.equal(await assertNonExportableIdentity(), identity);
-    assert.equal(await popup.locator('#history li').count(), 2);
+    assert.equal(
+      (await sendPanelRequest(popup, 'status')).simulations.length,
+      2,
+    );
     management = await browser.newPage();
     await management.goto(`${base}/connect`);
     await management.getByRole('button', { name: 'Revogar acesso' }).click();
     await eventually(() => statusContains('Acesso revogado'));
     await popup
+      .getByRole('tab', { name: 'Configurações', exact: true })
+      .click();
+    await popup
       .getByRole('button', { name: 'Reconectar', exact: true })
       .click();
     await eventually(() => statusContains('confirme uma nova autorização'));
     assert.equal(
-      await popup.locator('[data-action="simulate"]').isDisabled(),
-      true,
+      (await sendPanelRequest(popup, 'simulate')).state.phase,
+      'error',
     );
     const state = await browser
       .serviceWorkers()[0]
@@ -286,6 +312,10 @@ try {
     assert.equal(state.enabled, false);
     assert.equal(state.revoked, true);
     await connect();
+    assert.equal(
+      (await sendPanelRequest(popup, 'status')).simulations.length,
+      2,
+    );
     assert.equal(await assertNonExportableIdentity(), identity);
   }
   await validateFlow({ browser, panel: popup, eventually });

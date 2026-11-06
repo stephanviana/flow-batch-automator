@@ -388,6 +388,10 @@ a principal, a primeira imagem restante passa a ser a principal. O limite é de
 5. Acompanhe as etapas, falhas e downloads no painel ou na extensão. Os projetos
    são preparados por lote e recuperados pelo vínculo persistido.
 
+A extensão organiza as funções nas abas **Início** (resumo e pedidos),
+**Fila e gerações** (takes, andamento e histórico) e **Configurações** (conexão
+local), sem controles de testes simulados.
+
 Para revisar antes de gerar, diga “Apenas prepare o pedido 12, não execute”. O
 agente publica com `execute=false`; nenhuma geração é enviada. Depois, “Execute
 o pedido 12” permite `flow_approve` pelo número, sem hash. Arquivos e materiais
@@ -474,8 +478,11 @@ pnpm test:browser:session
 ```
 
 Os testes usam contratos sintéticos, SQLite temporário e Chrome isolado com
-fixtures, sem perfil pessoal, Flow real ou consumo. `test:browser:formats` usa
-4339; `test:browser:library`, 4349; clonagem, 4329; design de pedidos, 4359;
+fixtures, sem perfil pessoal, Flow real ou consumo. `pnpm test:browser --port=4389`
+valida também as abas da extensão, navegação por teclado, resumo e cards
+horizontais em larguras de 280 a 640 px. A opção `--port` usa uma cópia isolada
+da extensão para preservar o servidor da instalação na porta 4319.
+`test:browser:formats` usa 4339; `test:browser:library`, 4349; clonagem, 4329; design de pedidos, 4359;
 conexão, 4369. `test:browser:connect` cobre a página com identidades sintéticas e
 WebSocket autenticado: confirmação, cancelamento, expiração, estados de conexão,
 revogação e nova autorização, com capturas de 320 a 1920 px.

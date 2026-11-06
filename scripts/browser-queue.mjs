@@ -1,4 +1,8 @@
 import assert from 'node:assert/strict';
+import {
+  sendPanelRequest,
+  validateQueueRows,
+} from './browser-panel-design.mjs';
 
 export async function validateQueue({
   popup,
@@ -6,13 +10,17 @@ export async function validateQueue({
   stopServer,
   startServer,
 }) {
+  await popup
+    .getByRole('tab', { name: 'Fila e gerações', exact: true })
+    .click();
   const tasks = popup.locator('#queue-tasks > li');
-  await popup.locator('[data-action="enqueue-demo"]').click();
+  await sendPanelRequest(popup, 'enqueue-demo');
   await eventually(async () => (await tasks.count()) === 3);
   assert.equal(
     await popup.locator('#queue-tasks [data-state="queued"]').count(),
     3,
   );
+  await validateQueueRows(popup);
   // A slow acknowledgement must not leave the start button visually silent.
   await popup.evaluate(() => {
     const original = chrome.runtime.sendMessage.bind(chrome.runtime);
@@ -65,7 +73,7 @@ export async function validateQueue({
     async () => (await popup.locator('#queue-history li').count()) === 6,
   );
 
-  await popup.locator('[data-action="enqueue-retry-demo"]').click();
+  await sendPanelRequest(popup, 'enqueue-retry-demo');
   await eventually(
     async () =>
       (await popup.locator('#queue-tasks [data-state="completed"]').count()) ===
@@ -77,7 +85,7 @@ export async function validateQueue({
     1,
   );
   await popup.getByRole('button', { name: 'Pausar fila', exact: true }).click();
-  await popup.locator('[data-action="enqueue-demo"]').click();
+  await sendPanelRequest(popup, 'enqueue-demo');
   await eventually(
     async () =>
       (await popup.locator('#queue-tasks [data-state="queued"]').count()) === 3,
