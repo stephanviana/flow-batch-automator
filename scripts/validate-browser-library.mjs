@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -61,7 +61,7 @@ try {
   assert.deepEqual((await readdir(instructions)).sort(), [
     '.historico',
     'biblioteca.json',
-    'instrucoes',
+    'biblioteca.md',
   ]);
   const metadata = JSON.parse(
     await readFile(resolve(instructions, 'biblioteca.json'), 'utf8'),
@@ -69,6 +69,29 @@ try {
   assert.equal(metadata.current, null);
   installInstructions(instructions);
   assert.equal((await getStatus()).library.configured, true);
+  execFileSync(
+    process.execPath,
+    ['scripts/library.mjs', 'convert', instructions],
+    {
+      env: { ...process.env, FLOW_BATCH_HOME: resolve(directory, 'cli-state') },
+      stdio: 'pipe',
+    },
+  );
+  const converted = (await getStatus()).library;
+  assert.equal(converted.format, 'document');
+  assert.equal(converted.configured, true);
+  assert.deepEqual(converted.files, ['biblioteca.md']);
+  const documentResponse = await page.request.post(
+    `${base}/manage/library/file`,
+    {
+      headers: { 'X-Flow-Management': '1', Origin: base },
+      data: {},
+    },
+  );
+  assert.ok(documentResponse.ok());
+  const document = await documentResponse.json();
+  assert.equal(document.path, 'biblioteca.md');
+  assert.match(document.text, /# \[common\]/);
   const connector = await page.request.get(`${base}/agent/flow-batch-mcp.mjs`);
   assert.ok(connector.ok());
   assert.match(await connector.text(), /flow_checkout/);
@@ -77,7 +100,7 @@ try {
     fullPage: true,
   });
   console.log(
-    `Pasta vazia, importação local, painel de pedidos sem editor e download MCP validados. Evidências: ${directory}`,
+    `Biblioteca vazia, conversão para documento único, leitura MCP/HTTP, painel sem editor e download do conector validados. Evidências: ${directory}`,
   );
 } finally {
   await browser?.close();

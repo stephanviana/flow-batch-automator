@@ -5,15 +5,20 @@ export const libraryFileSchema = z
   .string()
   .max(180)
   .regex(
-    /^(instrucoes|fluxos|swipes)\/(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_.-]+\.(md|txt|json)$/,
+    /^(?:biblioteca\.md|(instrucoes|fluxos|swipes)\/(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_.-]+\.(md|txt|json))$/,
   )
   .refine((path) => !path.split('/').some((part) => part.startsWith('.')));
 export const instructionFileSchema = libraryFileSchema.refine(
-  (path) => path.startsWith('instrucoes/'),
+  (path) => path === 'biblioteca.md' || path.startsWith('instrucoes/'),
   'Use somente arquivos de instruções.',
 );
 export const libraryFilesSchema = z
-  .record(libraryFileSchema, z.string().max(262144))
+  .record(libraryFileSchema, z.string().max(8_388_608))
+  .refine((files) =>
+    Object.entries(files).every(
+      ([path, text]) => path === 'biblioteca.md' || text.length <= 262144,
+    ),
+  )
   .refine((files) => Object.keys(files).length <= 128)
   .refine(
     (files) =>

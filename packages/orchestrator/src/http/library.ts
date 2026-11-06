@@ -10,6 +10,7 @@ import {
 } from '@flow-batch/protocol';
 import type { LocalSessions } from '../security/local-session.js';
 import type { LibraryStore } from '../library/store.js';
+import { LIBRARY_DOCUMENT, resolvedFiles } from '../library/document.js';
 
 export function registerLibrary(
   app: FastifyInstance,
@@ -40,7 +41,7 @@ export function registerLibrary(
     sessions.require(request);
     const { path, revision } = z
       .strictObject({
-        path: instructionFileSchema,
+        path: instructionFileSchema.default(LIBRARY_DOCUMENT),
         revision: z
           .string()
           .regex(/^[a-f0-9]{64}$/)
@@ -50,17 +51,17 @@ export function registerLibrary(
     const files = revision
       ? library.revision(revision).files
       : library.draft().files;
-    return { path, text: files[path] ?? '' };
+    return { path, text: files[path] ?? resolvedFiles(files)[path] ?? '' };
   });
   app.post(
     '/manage/library/save',
-    { bodyLimit: 1_048_576 },
+    { bodyLimit: 16_777_216 },
     async (request) => {
       sessions.require(request);
       const { path, text, expectedDraftHash } = z
         .strictObject({
-          path: instructionFileSchema,
-          text: z.string().max(262144),
+          path: instructionFileSchema.default(LIBRARY_DOCUMENT),
+          text: z.string().max(8_388_608),
           expectedDraftHash: z.string().regex(/^[a-f0-9]{64}$/),
         })
         .parse(request.body);

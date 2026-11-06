@@ -21,13 +21,14 @@ Após a primeira publicação no registro, instale fora do repositório:
 
 ```sh
 npm install --global @nahpets01-org/flow-batch-automator
-flow-batch setup --library /CAMINHO/Minha-Biblioteca-Flow --extension /mnt/c/Users/SEU_USUARIO/flow-batch-extension
-flow-batch library import /CAMINHO/Minha-Biblioteca-Flow /CAMINHO/pacote-instrucoes.json
+flow-batch setup --extension /mnt/c/Users/SEU_USUARIO/flow-batch-extension
+flow-batch library import /CAMINHO/biblioteca.md
 flow-batch up
 flow-batch doctor
 ```
 
-`setup` inicializa somente a estrutura técnica vazia se a biblioteca não existe.
+`setup` cria `~/.flow-batch/biblioteca/biblioteca.md` com seções vazias se a
+biblioteca não existe. `--library PASTA` é opcional; a seleção persiste.
 Registra o MCP no Antigravity e no Codex com Node e caminhos absolutos do ambiente
 local, preserva outros servidores e cria backups dos arquivos alterados.
 `--clients codex` ou `--clients antigravity` escolhe apenas um cliente;
@@ -151,29 +152,48 @@ não permite substituir uma versão já publicada.
 
 ## Instalação e instruções locais
 
-O código da aplicação não inclui instruções criativas nem swipes. Escolha uma
-pasta para seu pacote de instruções, fora do repositório:
+Novas instalações usam um único `biblioteca.md`. O `setup` cria sua estrutura
+vazia automaticamente; o aplicativo não inclui instruções criativas nem swipes.
+Peça ao agente para preencher o documento ou importe um arquivo já configurado:
 
 ```sh
-pnpm install --frozen-lockfile
-pnpm build
-pnpm library init /CAMINHO/Minha-Biblioteca-Flow
-pnpm library import /CAMINHO/Minha-Biblioteca-Flow /CAMINHO/pacote-instrucoes.json
-pnpm library validate /CAMINHO/Minha-Biblioteca-Flow
+flow-batch library import /CAMINHO/biblioteca.md
+flow-batch library validate
 ```
 
-`init` cria `biblioteca.json`, `.historico/` e `instrucoes/rotas.json`, com rotas
-vazias. Não instala regras padrão, não cria uma pasta de swipes e não substitui
-arquivos existentes. Você pode importar um pacote, copiar uma pasta existente
-completa ou editar os arquivos diretamente. Sem instruções completas, o servidor
-continua atendendo pedidos e informa o que falta antes de reservar a preparação.
+O arquivo começa com `<!-- flow-biblioteca:1 -->` e usa seções de primeiro nível:
+`# [common]`, `# [copy]`, `# [image]`, uma seção por formato (`# [factory]`,
+`# [factory-group]`, `# [factory-truck]`, `# [factory-inclined]`, `# [pov]`,
+`# [full-pov]`, `# [seller]`, `# [clone]`) e `# [animation]`.
+O texto após cada marcador é o título livre da seção. Cabeçalhos normais e blocos
+de código podem ser usados dentro delas. Não há mapa de caminhos para configurar.
+Use pelo menos uma seção comum e preencha os formatos usados no pedido; a seção
+de animação mantém os templates e marcadores técnicos exigidos pelo compilador.
+Seções desconhecidas, repetidas e blocos de código sem fechamento são recusados.
 
-`instrucoes/rotas.json` aponta os documentos comuns, as bases dos formatos e o
-arquivo de templates de animação. As chaves técnicas são `version` (2), `common`,
-`formats` e `animation`. Os formatos correspondem aos identificadores executáveis
-da aplicação. Caminhos devem ficar sob `instrucoes/`; os templates precisam
-respeitar os marcadores e cabeçalhos técnicos do compilador. Pacotes históricos
-mantêm sua leitura para preservar preparações existentes.
+O MCP seleciona as seções comuns e dos formatos pedidos. As cópias técnicas no
+workspace de preparação não são novas fontes de instruções: atualize sempre o
+`biblioteca.md` local, por edição direta ou com `flow_library_read` e
+`flow_library_save` (o caminho padrão dessas ferramentas é `biblioteca.md`).
+`biblioteca.json` e `.historico/` são metadados administrados pelo aplicativo.
+Uma biblioteca incompleta não impede abrir o painel; a reserva informa as seções
+que faltam, sem buscar conteúdo no código.
+
+Bibliotecas existentes em `instrucoes/` continuam funcionando. Para converter:
+
+```sh
+flow-batch library convert
+```
+
+A conversão reúne regras, formatos e templates em `biblioteca.md` e preserva os
+originais em `.rascunhos/`. Reservas e preparações antigas preservam suas capturas.
+Não misture os dois formatos na pasta ativa. Importação de backups JSON antigos
+também continua disponível. Para escolher outra pasta em qualquer comando,
+informe-a antes do arquivo, como `library import PASTA ARQUIVO`.
+
+No checkout de desenvolvimento, `pnpm library` oferece os mesmos comandos após
+`pnpm install --frozen-lockfile` e `pnpm build`. `init [PASTA]` cria somente a
+estrutura vazia; sem destino explícito, usa a configuração local ou a pasta padrão.
 
 Copie `.env.example` para `.env`. Configure `WIN_EXTENSION_DIR` com uma pasta
 existente para a extensão do Chrome e `FLOW_LIBRARY_DIR` com a pasta de instruções.
@@ -197,12 +217,14 @@ Uma atualização de software preserva suas instruções e não importa conteúd
 ## Backup e mudança de computador
 
 ```sh
-pnpm library export /CAMINHO/Minha-Biblioteca-Flow /CAMINHO/backup-instrucoes.json
-pnpm library import /OUTRA/Minha-Biblioteca-Flow /CAMINHO/backup-instrucoes.json
-pnpm library restore /CAMINHO/Minha-Biblioteca-Flow HASH_DA_REVISAO
+flow-batch library export /CAMINHO/biblioteca.md
+# Na outra máquina, depois de setup:
+flow-batch library import /CAMINHO/biblioteca.md
+# Backup completo com histórico:
+flow-batch library export /CAMINHO/backup-instrucoes.json
 ```
 
-Guarde o backup em outro local. O JSON inclui os arquivos atuais e as capturas
+O Markdown transporta as instruções atuais em um arquivo. O JSON inclui os arquivos atuais e as capturas
 históricas da biblioteca. A pasta inteira também pode ser copiada ou versionada
 em um repositório privado próprio. Restaurações e importações preservam arquivos
 substituídos em `.rascunhos/`. Esse armazenamento de recuperação não integra o

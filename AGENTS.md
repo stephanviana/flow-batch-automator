@@ -16,8 +16,12 @@ pedido. Prefira o MCP local: `flow_list_orders`, `flow_checkout`, `flow_publish`
 e `flow_approve`. A biblioteca criativa fica exclusivamente em uma pasta local
 configurada por `LIBRARY_DIR` (Compose: `FLOW_LIBRARY_DIR`). O repositório não
 contém nem distribui copy, prompts, swipes ou modelos criativos de instalação.
-`pnpm library init PASTA` cria somente a estrutura técnica vazia;
-`pnpm library import PASTA PACOTE.JSON` importa instruções do usuário.
+Novas instalações usam `biblioteca.md` com seções explícitas, sem `rotas.json`
+editável. `setup` escolhe a pasta padrão quando `--library` é omitido.
+`pnpm library init [PASTA]` cria somente o documento técnico vazio;
+`pnpm library import [PASTA] ARQUIVO.MD_OU_JSON` importa instruções do usuário.
+`library convert [PASTA]` reúne a biblioteca antiga e preserva os originais em
+`.rascunhos/`. A leitura do formato separado e de capturas históricas é mantida.
 O painel `/orders` mantém pedidos e andamento, sem editor de instruções.
 
 Uma reserva valida o pacote local e captura automaticamente os arquivos usados,
@@ -194,7 +198,7 @@ mudanças apenas documentais não exigem criar testes de código.
 - `pnpm publish:npm --dry-run` simula; `pnpm publish:npm` audita uma cópia exata
   antes da publicação no destino configurado. Autenticação somente local, sem
   tokens no chat, documentação ou pacote. Não publicar raiz ou implantação.
-- `flow-batch setup --library PASTA --extension PASTA`: configura a instalação
+- `flow-batch setup --extension PASTA [--library PASTA]`: configura a instalação
   WSL e registra Antigravity/Codex. `up`, `down`, `status`, `logs` e `doctor`
   operam o Compose; `down` mantém o volume. Não executar instalação global nem
   adotar dados existentes durante testes; usar HOME/prefixo/volume sintéticos.
@@ -205,8 +209,10 @@ mudanças apenas documentais não exigem criar testes de código.
   `FLOW_TEST_NPM=CAMINHO` seleciona outra versão do npm somente nesse teste.
 - `pnpm mcp`: conector MCP stdio; o arquivo independente é servido em
   `/agent/flow-batch-mcp.mjs`, sem editor ou página de biblioteca.
-- `pnpm library init PASTA`, `import PASTA PACOTE.JSON`, `export PASTA BACKUP.JSON`,
-  `validate PASTA` e `restore PASTA REVISAO`: manutenção offline da pasta local.
+- `pnpm library init [PASTA]`, `import [PASTA] ARQUIVO.MD_OU_JSON`,
+  `export [PASTA] DESTINO.MD_OU_JSON`, `validate [PASTA]`, `convert [PASTA]` e
+  `restore [PASTA] REVISAO`: manutenção offline. Sem pasta explícita, usam a
+  instalação configurada ou `~/.flow-batch/biblioteca`.
 - `pnpm test:browser:library`: inicialização vazia, importação local, painel de
   pedidos sem editor e download do conector em Chrome isolado.
 - `pnpm orders list` / `show NUMERO`: consulta do agente pela API local.

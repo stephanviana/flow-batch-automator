@@ -12,8 +12,8 @@ O suporte nativo ao Windows fica para uma próxima etapa.
 
 ```sh
 npm install --global __PACKAGE_NAME__
-flow-batch setup --library /CAMINHO/Minha-Biblioteca-Flow --extension /mnt/c/Users/SEU_USUARIO/flow-batch-extension
-flow-batch library import /CAMINHO/Minha-Biblioteca-Flow /CAMINHO/pacote-instrucoes.json
+flow-batch setup --extension /mnt/c/Users/SEU_USUARIO/flow-batch-extension
+flow-batch library import /CAMINHO/biblioteca.md
 flow-batch up
 flow-batch doctor
 ```
@@ -25,8 +25,21 @@ Use `--clients codex` ou `--clients antigravity` para registrar somente um.
 O Codex respeita `CODEX_HOME` na primeira configuração. Reabra os clientes MCP.
 A instalação npm não tem scripts automáticos de configuração.
 
-A biblioteca não inclui regras criativas prontas: a pasta escolhida é inicializada
-vazia, ou preservada se já existe. Importe suas próprias instruções. Configuração,
+A biblioteca usa um único `~/.flow-batch/biblioteca/biblioteca.md`, criado com
+seções vazias por `setup`, sem regras criativas prontas. `--library PASTA` é
+opcional e permite outro destino. Peça ao agente para preencher o documento ou
+importe suas instruções. Seções comuns: `[common]`, `[copy]`, `[image]`; formatos:
+`[factory]`, `[factory-group]`, `[factory-truck]`, `[factory-inclined]`, `[pov]`,
+`[full-pov]`, `[seller]`, `[clone]`; templates: `[animation]`.
+Cada seção começa com `# [identificador] Título`. Preserve o marcador inicial
+`<!-- flow-biblioteca:1 -->` e os contratos dos templates de animação.
+
+`flow-batch library validate` confere o arquivo. Para outra máquina, copie o
+Markdown ou use `library export /CAMINHO/biblioteca.md` e importe após `setup`.
+`library convert` reúne bibliotecas antigas de vários arquivos, preservando os
+originais em `.rascunhos/`. A biblioteca existente não é convertida automaticamente.
+Backups JSON com histórico continuam disponíveis com `library export DESTINO.JSON`.
+Configuração,
 SQLite, materiais e arquivos de trabalho não são distribuídos pelo npm.
 
 `up` constrói as imagens localmente, sincroniza a extensão e espera o servidor.

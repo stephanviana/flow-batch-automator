@@ -15,6 +15,8 @@ import { delimiter, dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { releaseMetadata } from './npm/manifest.mjs';
 import { auditPackage } from './npm/audit.mjs';
+import { consolidatedDocument } from '../packages/orchestrator/dist/library/routing.js';
+import { instructionFiles } from './test-support/instruction-package.mjs';
 
 const require = createRequire(
   new URL('../packages/orchestrator/package.json', import.meta.url),
@@ -31,7 +33,7 @@ await auditPackage(artifact, release);
 const root = await mkdtemp(join(tmpdir(), 'flow-npm-package-'));
 const prefix = join(root, 'prefix');
 const home = join(root, 'home');
-const state = join(home, '.flow-batch');
+const state = join(home, '.flow-batch $HOME');
 const packageRoot = join(prefix, 'lib/node_modules', release.name);
 const environment = {
   ...process.env,
@@ -42,7 +44,7 @@ const environment = {
   FLOW_BATCH_HOME: state,
   FLOW_LOCAL_PACKAGE_DIRECTORY: packageRoot,
   FLOW_LOCAL_EXTENSION_DIRECTORY: join(root, 'extension with spaces'),
-  FLOW_LOCAL_LIBRARY_DIRECTORY: join(root, 'library $HOME'),
+  FLOW_LOCAL_LIBRARY_DIRECTORY: join(state, 'biblioteca'),
   npm_config_userconfig: '/dev/null',
   npm_config_cache: join(root, 'npm-cache'),
 };
@@ -157,13 +159,24 @@ try {
   const port = docker ? await freePort() : 4319;
   cli(
     'setup',
-    '--library',
-    join(root, 'library $HOME'),
     '--extension',
     join(root, 'extension with spaces'),
     '--project',
     project,
   );
+  const library = join(state, 'biblioteca');
+  assert.match(
+    await readFile(join(library, 'biblioteca.md'), 'utf8'),
+    /# \[common\]/,
+  );
+  const portable = join(root, 'portable-library.md');
+  const document = consolidatedDocument(instructionFiles());
+  await writeFile(portable, document);
+  cli('library', 'import', portable);
+  cli('library', 'validate');
+  const exported = join(root, 'exported-library.md');
+  cli('library', 'export', exported);
+  assert.equal(await readFile(exported, 'utf8'), document);
   if (docker) {
     // The shipped Chrome extension remains on 4319. Override only this synthetic
     // server fixture so the HTTP/MCP test never competes with a real installation.
@@ -209,6 +222,10 @@ try {
     artifact,
   ]);
   assert.equal(await readFile(join(state, 'user-data'), 'utf8'), 'preserved');
+  assert.equal(
+    await readFile(join(library, 'biblioteca.md'), 'utf8'),
+    document,
+  );
   assert.equal(
     await readFile(join(state, 'installation.json'), 'utf8'),
     configuration,

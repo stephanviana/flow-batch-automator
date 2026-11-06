@@ -5,7 +5,7 @@ import { executeLocalCommand } from './commands.js';
 const packageRoot = fileURLToPath(new URL('../', import.meta.url));
 const help = `Flow Batch Automator — WSL/Linux
 Uso: flow-batch COMANDO
-  setup --library PASTA --extension PASTA [--workspace PASTA]
+  setup --extension PASTA [--library PASTA] [--workspace PASTA]
         [--clients antigravity,codex] [--codex-config ARQUIVO]
         [--antigravity-config ARQUIVO]
         [--project NOME] [--volume NOME]
@@ -16,9 +16,10 @@ Uso: flow-batch COMANDO
   doctor              Verifica pré-requisitos, arquivos e contrato da API
   mcp                 Inicia o conector stdio
   mcp install CLIENTE [opções do instalador]
-  library init|import|export|validate|restore PASTA [ARQUIVO|REVISAO]
+  library init|import|export|validate|convert|restore [PASTA] [ARQUIVO|REVISAO]
   orders list|show|checkout|renew|publish|approve ...
 FLOW_BATCH_HOME escolhe a pasta de configuração (padrão: ~/.flow-batch).
+setup cria biblioteca/biblioteca.md vazio; --library escolhe outra pasta.
 Não há instalação automática por postinstall. setup registra os dois clientes;
 up mantém o serviço em Docker. Nenhum desses comandos autoriza gerações.`;
 async function main(): Promise<void> {

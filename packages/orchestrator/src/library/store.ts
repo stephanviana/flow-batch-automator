@@ -21,7 +21,12 @@ import {
   readText,
   writeDraft,
 } from './files.js';
-import { emptyRouting, validateLibrary } from './routing.js';
+import { consolidatedDocument, validateLibrary } from './routing.js';
+import {
+  documentText,
+  documentSections,
+  LIBRARY_DOCUMENT,
+} from './document.js';
 
 const metadataSchema = z.strictObject({
   version: z.literal(1),
@@ -56,7 +61,6 @@ export class LibraryStore {
   constructor(readonly root: string) {
     directory(root);
     directory(join(root, '.historico'));
-    directory(join(root, 'instrucoes'));
     if (!existsSync(join(root, 'biblioteca.json'))) {
       atomicWrite(
         join(root, 'biblioteca.json'),
@@ -66,11 +70,11 @@ export class LibraryStore {
           2,
         ) + '\n',
       );
-      if (!existsSync(join(root, 'instrucoes/rotas.json')))
-        writeDraft(root, {
-          'instrucoes/rotas.json':
-            JSON.stringify(emptyRouting(), null, 2) + '\n',
-        });
+      if (
+        !existsSync(join(root, 'instrucoes')) &&
+        !existsSync(join(root, LIBRARY_DOCUMENT))
+      )
+        writeDraft(root, { [LIBRARY_DOCUMENT]: documentText() });
     }
     this.metadata();
   }
@@ -124,6 +128,7 @@ export class LibraryStore {
     files: string[];
     configured: boolean;
     problem: string | null;
+    format: 'document' | 'files';
   } {
     const metadata = this.metadata(),
       draft = this.draft();
@@ -143,6 +148,8 @@ export class LibraryStore {
       files: Object.keys(draft.files).sort(),
       configured: problem === null,
       problem,
+      format:
+        draft.files[LIBRARY_DOCUMENT] === undefined ? 'files' : 'document',
     };
   }
   capture(
@@ -177,7 +184,20 @@ export class LibraryStore {
   save(path: string, text: string, expected: string): object {
     instructionFileSchema.parse(path);
     const files = this.checkDraft(expected);
+    if (files[LIBRARY_DOCUMENT] !== undefined && path !== LIBRARY_DOCUMENT)
+      throw new HttpError(
+        409,
+        'Atualize biblioteca.md; as demais instruções são seções desse documento.',
+      );
     libraryFilesSchema.parse({ ...files, [path]: text });
+    if (path === LIBRARY_DOCUMENT) {
+      if (Object.keys(files).some((file) => file !== LIBRARY_DOCUMENT))
+        throw new HttpError(
+          409,
+          'Converta os arquivos separados antes de salvar biblioteca.md.',
+        );
+      documentSections(text);
+    }
     writeDraft(this.root, { [path]: text });
     return this.status();
   }
@@ -219,14 +239,15 @@ export class LibraryStore {
     const archived: string[] = [],
       installed: string[] = [];
     try {
-      for (const folder of ['instrucoes']) {
-        directory(join(staged, folder));
+      for (const folder of [LIBRARY_DOCUMENT, 'instrucoes']) {
         if (existsSync(join(this.root, folder))) {
           renameSync(join(this.root, folder), join(archive, folder));
           archived.push(folder);
         }
-        renameSync(join(staged, folder), join(this.root, folder));
-        installed.push(folder);
+        if (existsSync(join(staged, folder))) {
+          renameSync(join(staged, folder), join(this.root, folder));
+          installed.push(folder);
+        }
       }
     } catch (error) {
       for (const folder of installed)
@@ -240,6 +261,18 @@ export class LibraryStore {
     this.checkDraft(expected);
     this.replaceDraft(this.revision(id).files);
     return this.status();
+  }
+  importDocument(text: string, expected: string): object {
+    this.checkDraft(expected);
+    const files = libraryFilesSchema.parse({ [LIBRARY_DOCUMENT]: text });
+    validateLibrary(files);
+    this.replaceDraft(files);
+    return this.status();
+  }
+  convert(expected: string): object {
+    const files = this.checkDraft(expected);
+    if (files[LIBRARY_DOCUMENT] !== undefined) return this.status();
+    return this.importDocument(consolidatedDocument(files), expected);
   }
   export(): LibraryBackup {
     const metadata = this.metadata();

@@ -11,7 +11,8 @@ Não analise código, containers ou testes para preparar pedidos. Erros de contr
 ou campos devem ser reportados a partir do diagnóstico da API.
 `flow_approve` depende de autorização explícita no chat para número, hash e extensão.
 
-As instruções ativas vêm da pasta local configurada. Cada reserva captura
+As instruções ativas vêm de `biblioteca.md` na pasta local configurada, ou do
+formato antigo ainda compatível. Cada reserva captura
 seus arquivos automaticamente. Os comandos abaixo são a alternativa pela CLI,
 executada na raiz do projeto após o build. Em caso de pacote incompleto, reporte
 os arquivos indicados pela API, sem procurar regras criativas no repositório.

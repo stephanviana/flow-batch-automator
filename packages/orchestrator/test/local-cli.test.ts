@@ -21,26 +21,24 @@ test('setup uses external state, initializes only an empty technical library and
     STANDALONE_MARKER + '\n',
   );
   const first = await setupLocal(state, packageRoot, root, {
-    library: join(root, 'library'),
     extension: join(root, 'extension'),
   });
+  assert.equal(first.configuration.libraryDirectory, join(state, 'biblioteca'));
   assert.equal(first.clients.length, 2);
   const metadata = await readFile(
-    join(root, 'library/biblioteca.json'),
+    join(state, 'biblioteca/biblioteca.json'),
     'utf8',
   );
-  assert.deepEqual(
-    JSON.parse(
-      await readFile(join(root, 'library/instrucoes/rotas.json'), 'utf8'),
-    ).common,
-    [],
+  assert.match(
+    await readFile(join(state, 'biblioteca/biblioteca.md'), 'utf8'),
+    /# \[common\]/,
   );
   await writeFile(join(state, 'user-data'), 'preserved');
   const second = await setupLocal(state, packageRoot, root, {});
   assert.equal(second.backup, null);
   assert.ok(second.clients.every((client) => !client.changed));
   assert.equal(
-    await readFile(join(root, 'library/biblioteca.json'), 'utf8'),
+    await readFile(join(state, 'biblioteca/biblioteca.json'), 'utf8'),
     metadata,
   );
   assert.equal(await readFile(join(state, 'user-data'), 'utf8'), 'preserved');

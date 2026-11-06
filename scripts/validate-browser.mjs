@@ -1,6 +1,6 @@
 import { installInstructions } from './test-support/instruction-package.mjs';
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
 import { cp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
@@ -30,6 +30,14 @@ const extensionDirectory = requestedFormat
   : resolve('packages/extension/dist');
 await mkdir(directory, { recursive: true });
 installInstructions(resolve(directory, 'instructions'));
+execFileSync(
+  process.execPath,
+  ['scripts/library.mjs', 'convert', resolve(directory, 'instructions')],
+  {
+    env: { ...process.env, FLOW_BATCH_HOME: resolve(directory, 'cli-state') },
+    stdio: 'pipe',
+  },
+);
 const log = createWriteStream(resolve(directory, 'server.log'));
 let server;
 let browser;

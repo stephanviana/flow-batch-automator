@@ -2,6 +2,7 @@ import {
   constants,
   closeSync,
   existsSync,
+  fstatSync,
   lstatSync,
   mkdirSync,
   openSync,
@@ -18,6 +19,7 @@ import {
   type LibraryFiles,
 } from '@flow-batch/protocol';
 import { HttpError } from '../security/errors.js';
+import { LIBRARY_DOCUMENT } from './document.js';
 
 export function directory(path: string): void {
   mkdirSync(path, { recursive: true, mode: 0o700 });
@@ -28,9 +30,15 @@ export function directory(path: string): void {
     );
 }
 export function readText(path: string, limit = 16_777_216): string {
-  const fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+  const fd = openSync(
+    path,
+    constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+  );
   try {
-    if (lstatSync(path).size > limit)
+    const file = fstatSync(fd);
+    if (!file.isFile())
+      throw new HttpError(409, 'A biblioteca exige arquivos regulares.');
+    if (file.size > limit)
       throw new HttpError(413, 'Arquivo da biblioteca excede o limite.');
     return readFileSync(fd, 'utf8');
   } finally {
@@ -45,6 +53,9 @@ export function atomicWrite(path: string, contents: string): void {
 }
 export function draftFiles(root: string): LibraryFiles {
   const files: LibraryFiles = {};
+  if (existsSync(join(root, LIBRARY_DOCUMENT))) {
+    files[LIBRARY_DOCUMENT] = readText(join(root, LIBRARY_DOCUMENT), 8_388_608);
+  }
   function walk(folder: string, prefix: string): void {
     for (const entry of readdirSync(folder, { withFileTypes: true })) {
       const relative = `${prefix}/${entry.name}`;

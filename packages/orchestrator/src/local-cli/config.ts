@@ -52,11 +52,12 @@ export function setupConfiguration(
   previous: Installation | null,
   paths: SetupPaths,
 ): Installation {
-  const library = paths.library ?? previous?.libraryDirectory;
+  const library =
+    paths.library ?? previous?.libraryDirectory ?? join(root, 'biblioteca');
   const extension = paths.extension ?? previous?.extensionDirectory;
-  if (!library || !extension)
+  if (!extension)
     throw new Error(
-      'Primeira configuração: informe --library PASTA e --extension PASTA.',
+      'Primeira configuração: informe --extension PASTA. A biblioteca usa a pasta padrão; --library é opcional.',
     );
   const project = paths.project ?? previous?.project ?? 'flow-batch-local';
   return installationSchema.parse({

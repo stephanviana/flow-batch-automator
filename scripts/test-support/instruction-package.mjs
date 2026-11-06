@@ -1,5 +1,5 @@
 // Synthetic compiler contracts only. Never installed by the application.
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 const formats = [
   'factory',
@@ -44,6 +44,7 @@ export function instructionFiles() {
   };
 }
 export function installInstructions(root) {
+  rmSync(join(root, 'biblioteca.md'), { force: true });
   for (const [path, text] of Object.entries(instructionFiles())) {
     const destination = join(root, path);
     mkdirSync(dirname(destination), { recursive: true });
