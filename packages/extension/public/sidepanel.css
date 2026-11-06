@@ -384,3 +384,19 @@ ol {
     max-width: 90px;
   }
 }
+
+.queue-view-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.queue-view-actions button {
+  width: auto;
+  min-height: 32px;
+  margin: 0;
+  padding: 6px 10px;
+  font-size: 0.76rem;
+}

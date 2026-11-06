@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
 import {
+  validateCompletedClearing,
+  validateClearingDuringReview,
+} from './browser-queue-clearing.mjs';
+import {
   sendPanelRequest,
   validateQueueRows,
 } from './browser-panel-design.mjs';
@@ -73,6 +77,7 @@ export async function validateQueue({
     async () => (await popup.locator('#queue-history li').count()) === 6,
   );
 
+  await validateCompletedClearing(popup, eventually);
   await sendPanelRequest(popup, 'enqueue-retry-demo');
   await eventually(
     async () =>
@@ -141,6 +146,7 @@ export async function validateQueue({
       .isDisabled(),
     true,
   );
+  await validateClearingDuringReview(popup, eventually);
   await popup
     .locator('#queue-tasks [data-state="uncertain"]')
     .getByRole('button', { name: 'Revisar: confirmar sem envio externo' })

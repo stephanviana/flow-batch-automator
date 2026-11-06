@@ -1,6 +1,6 @@
 import { popupReplySchema } from '@flow-batch/protocol';
 import type { PopupRequest } from '@flow-batch/protocol';
-import { renderQueue } from './queue-ui.js';
+import { renderQueue, initializeQueueView } from './queue-ui.js';
 import { initializePanelTabs } from './panel-tabs.js';
 import { renderConnectionBadge, renderDashboard } from './dashboard-ui.js';
 import {
@@ -103,6 +103,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>(
     }
   });
 }
+initializeQueueView();
 void refresh().catch((): void => {
   showError('Não foi possível consultar a extensão.');
 });

@@ -390,7 +390,10 @@ a principal, a primeira imagem restante passa a ser a principal. O limite é de
 
 A extensão organiza as funções nas abas **Início** (resumo e pedidos),
 **Fila e gerações** (takes, andamento e histórico) e **Configurações** (conexão
-local), sem controles de testes simulados.
+local), sem controles de testes simulados. **Limpar fila** retira apenas os takes
+concluídos da visualização atual, sem salvar a limpeza. Pendentes, execuções,
+falhas e resultados incertos permanecem visíveis; histórico e arquivos são
+preservados. Ao reabrir a extensão, a lista volta a mostrar os registros.
 
 Para revisar antes de gerar, diga “Apenas prepare o pedido 12, não execute”. O
 agente publica com `execute=false`; nenhuma geração é enviada. Depois, “Execute

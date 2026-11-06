@@ -6,9 +6,17 @@ import type {
 } from '@flow-batch/protocol';
 import { taskRow, taskStateLabels } from './queue-task-row.js';
 import { renderDashboard } from './dashboard-ui.js';
+import { QueueViewControls } from './queue-view-controls.js';
 import { renderQueueActivity } from './queue-activity.js';
 type Send = (message: PopupRequest) => Promise<unknown>;
 let historyStamp = '';
+let renderLatestView = (): void => {};
+const view = new QueueViewControls(() => renderLatestView());
+
+export function initializeQueueView(): void {
+  view.initialize();
+}
+
 function renderTaskList(
   container: Element,
   records: TaskSummary[],
@@ -44,10 +52,15 @@ export function renderQueue(
   const tasks = document.querySelector('#queue-tasks');
   const history = document.querySelector('#queue-history');
   if (!summary || !feedback || !tasks || !history) return;
-  renderQueueActivity(queue, error);
+  renderLatestView = (): void => renderQueue(queue, inspection, error, send);
+  view.update(queue);
+  const visibleTasks = queue?.tasks.filter((task) => view.visible(task)) ?? [];
+  const visibleInspection =
+    inspection && view.visible(inspection.task) ? inspection : null;
+  renderQueueActivity(queue ? { ...queue, tasks: visibleTasks } : null, error);
   renderDashboard(queue, error);
   const empty = document.querySelector<HTMLElement>('#queue-empty');
-  if (empty) empty.hidden = !queue || queue.tasks.length > 0;
+  if (empty) empty.hidden = !queue || visibleTasks.length > 0;
   summary.textContent = !queue
     ? 'Fila indisponível. Conecte a extensão.'
     : queue.blockedByReview
@@ -61,11 +74,11 @@ export function renderQueue(
       0,
     );
     summary.textContent += ` ${total} tarefas: ${queue.counts.queued} pendentes, ${queue.counts.completed} concluídas.`;
-    if (total > queue.tasks.length)
-      summary.textContent += ` Exibindo ${queue.tasks.length} takes nesta lista.`;
+    if (total > visibleTasks.length)
+      summary.textContent += ` Exibindo ${visibleTasks.length} takes nesta lista.`;
   }
-  renderTaskList(tasks, queue?.tasks ?? [], send);
-  renderHistory(inspection, history);
+  renderTaskList(tasks, visibleTasks, send);
+  renderHistory(visibleInspection, history);
 }
 
 function renderHistory(inspection: TaskDetail | null, history: Element): void {

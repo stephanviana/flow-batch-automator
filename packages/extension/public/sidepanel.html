@@ -173,6 +173,23 @@
           <p id="dispatch-status" class="hint" role="status" aria-live="polite">
             Aguardando pedido autorizado.
           </p>
+          <div class="queue-view-actions">
+            <button
+              id="queue-clear"
+              type="button"
+              class="secondary"
+              title="Remove os concluídos desta lista. Histórico e arquivos são preservados."
+              disabled
+            >
+              Limpar fila
+            </button>
+          </div>
+          <p
+            id="queue-view-feedback"
+            class="hint"
+            role="status"
+            aria-live="polite"
+          ></p>
           <div id="queue-empty" class="empty-state" hidden>
             <span aria-hidden="true">☰</span>
             <h3>Nenhum take por aqui</h3>
