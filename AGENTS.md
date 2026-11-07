@@ -300,7 +300,8 @@ mudanças apenas documentais não exigem criar testes de código.
   `/mnt/c/Users/stephan/flow-batch-extension` no WSL.
 - Servidor em `0.0.0.0` no container e publicação somente em `127.0.0.1:4319`.
   Execute sem privilégios, com raiz somente para leitura e volume SQLite próprio.
-- SQLite com WAL, foreign keys, busy timeout, migrações transacionais versionadas
+- SQLite com WAL, foreign keys, busy timeout, temporários em memória para a raiz
+  somente leitura do container, migrações transacionais versionadas
   e encerramento limpo. Não usar `docker compose down -v` como parada normal.
 - Materiais importados ficam no volume persistente local; não montar pastas
   arbitrárias do Windows no servidor. `sync-extension` não tem rede e escreve

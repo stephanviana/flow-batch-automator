@@ -17,6 +17,9 @@ export function openDatabase(
     if (journal?.journal_mode !== 'wal')
       throw new Error('SQLite WAL is unavailable');
     database.exec('PRAGMA synchronous = NORMAL');
+    // Migrations can spill statement journals to disk for large order bodies.
+    // Keep SQLite temporaries in memory when the container root is read-only.
+    database.exec('PRAGMA temp_store = MEMORY');
     migrate(database);
     return database;
   } catch (error) {

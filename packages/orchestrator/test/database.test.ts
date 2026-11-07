@@ -19,6 +19,7 @@ test('real SQLite persists data and migrations across close/reopen with required
     'wal',
   );
   assert.equal(database.prepare('PRAGMA foreign_keys').get()?.foreign_keys, 1);
+  assert.equal(database.prepare('PRAGMA temp_store').get()?.temp_store, 2);
   assert.equal(database.prepare('PRAGMA busy_timeout').get()?.timeout, 1234);
   database.exec(
     "INSERT INTO application_metadata (key, value) VALUES ('persistence-test', 'preserved')",
