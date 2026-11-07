@@ -398,13 +398,15 @@ preservados. Ao reabrir a extensão, a lista volta a mostrar os registros.
 preparação, as mensagens de envio e o histórico de geração. No painel local,
 **Ver diagnóstico** também consulta pedidos que ainda não foram preparados ou
 enviados. Registros antigos sem causa detalhada são identificados como tal.
-**Revisar take** permite consultar o histórico e registrar o resultado observado;
+**Ver histórico** mostra as etapas do take; **Encerrar tentativa** encerra um
+resultado incerto como falha, sem exigir nota ou confirmação adicional e sem
+registrá-lo como download concluído.
 **Conferir projeto no Flow** abre o projeto vinculado. A consulta não reenvia
 gerações; retomadas de grupos bloqueados continuam exigindo nova autorização
 explícita no chat. Depois da revisão, **Solicitar nova tentativa no chat** copia
 uma solicitação vinculada ao grupo e à revisão atual para você enviar ao agente.
-**Encerrar este grupo** registra o motivo e encerra as gerações restantes após
-sua confirmação no painel. Takes pendentes, em execução ou com resultado
+**Encerrar este grupo** encerra as gerações restantes com um clique, sem campo
+de nota nem confirmação adicional. Takes pendentes, em execução ou com resultado
 incerto precisam ser resolvidos antes. Os vídeos prontos e o diagnóstico ficam
 preservados. Um pedido com vídeos concluídos e grupos abandonados aparece como
 **Encerrado parcialmente**, em vez de continuar exigindo revisão.

@@ -95,8 +95,8 @@ Só admite falha comprovadamente anterior ao envio da criação do projeto, sem
 qualquer take registrado no lote; mantém materiais e preparações imutáveis,
 registra a autorização e preserva o corpo anterior. Resultados incertos, grupos
 já enfileirados e identidades revogadas nunca são retomados por essa operação.
-O painel oferece encerramento explícito de grupos bloqueados, com motivo e
-confirmação de revisão. `dispatch_closures` registra a decisão sem alterar corpo,
+O painel oferece encerramento explícito de grupos bloqueados com um clique,
+sem campo de nota ou confirmação adicional. `dispatch_closures` registra a decisão sem alterar corpo,
 materiais, autorização ou falha originais. Grupos com takes pendentes, ativos ou
 incertos e criação de projeto em andamento não podem ser encerrados. Grupos
 encerrados deixam o despacho da extensão e não podem receber novas gerações;

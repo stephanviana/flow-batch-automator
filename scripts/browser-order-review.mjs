@@ -100,14 +100,10 @@ export async function validateOrderReview({
     /Conexão interrompida/,
   );
   const row = panel.locator(`[data-task-id="${fixture.taskId}"]`);
-  await row.locator('.task-review > summary').click();
-  assert.equal(
-    await row.getByRole('textbox', { name: 'Nota de revisão' }).isVisible(),
-    true,
-  );
+  assert.equal(await row.getByRole('textbox').count(), 0);
   assert.equal(
     await row
-      .getByRole('button', { name: 'Encerrar tentativa com falha' })
+      .getByRole('button', { name: 'Encerrar tentativa', exact: true })
       .isVisible(),
     true,
   );
@@ -183,12 +179,7 @@ async function verifyProjectLookup(browser, panel, row, taskId) {
 
 async function verifyGroupClosure(browser, panel, row, fixture, base) {
   await row
-    .getByRole('textbox', { name: 'Nota de revisão' })
-    .fill(
-      'Conferi o resultado sintético. Encerrar esta tentativa sem nova geração.',
-    );
-  await row
-    .getByRole('button', { name: 'Encerrar tentativa com falha' })
+    .getByRole('button', { name: 'Encerrar tentativa', exact: true })
     .click();
   await panel
     .locator(`[data-task-id="${fixture.taskId}"][data-state="failed"]`)
@@ -198,22 +189,10 @@ async function verifyGroupClosure(browser, panel, row, fixture, base) {
   try {
     await orders.goto(`${base}/orders?dispatch=${fixture.dispatchId}`);
     await orders.locator('.order-review[open]').waitFor();
-    await orders.locator('.dispatch-close-form > summary').click();
+    assert.equal(await orders.getByLabel('Motivo do encerramento').count(), 0);
+    assert.equal(await orders.getByRole('checkbox').count(), 0);
     await orders
-      .getByLabel('Motivo do encerramento')
-      .fill('Manter os vídeos prontos e encerrar o grupo nesta validação.');
-    await orders
-      .getByRole('button', { name: 'Confirmar encerramento' })
-      .click();
-    assert.equal(
-      await orders.locator('#orders article[data-state="blocked"]').count(),
-      1,
-    );
-    await orders
-      .getByLabel('Conferi a revisão e quero encerrar este grupo.')
-      .check();
-    await orders
-      .getByRole('button', { name: 'Confirmar encerramento' })
+      .getByRole('button', { name: 'Encerrar este grupo', exact: true })
       .click();
     await orders.getByText('Encerrado parcialmente', { exact: true }).waitFor();
     assert.equal(

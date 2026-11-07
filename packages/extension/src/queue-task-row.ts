@@ -140,7 +140,7 @@ function appendTaskActions(
       { type: 'queue-open-project', taskId: task.id },
       send,
     );
-  if (task.state === 'uncertain') appendTaskReview(row, actions, task, send);
+  if (task.state === 'uncertain') appendTaskReview(actions, task, send);
   if (
     task.state === 'failed' &&
     task.safeToRetry &&
@@ -155,7 +155,6 @@ function appendTaskActions(
 }
 
 function appendTaskReview(
-  row: HTMLElement,
   actions: HTMLElement,
   task: TaskSummary,
   send: Send,
@@ -169,33 +168,11 @@ function appendTaskReview(
       send,
     );
   if (task.state === 'uncertain' && task.executor === 'google-flow') {
-    const review = document.createElement('details');
-    review.className = 'task-review';
-    const summary = document.createElement('summary');
-    summary.textContent = 'Revisar take';
-    const explanation = document.createElement('p');
-    explanation.textContent =
-      'Confira o projeto e os downloads. Registre o resultado observado para encerrar esta tentativa; a revisão não reenvia a geração.';
-    review.append(summary, explanation);
-    const note = document.createElement('textarea');
-    note.placeholder =
-      'Confira o projeto no Flow e registre o resultado observado.';
-
-    note.maxLength = 500;
-    note.setAttribute('aria-label', 'Nota de revisão');
-    review.append(note);
-    row.insertBefore(review, actions);
     button(
-      review,
-      'Encerrar tentativa com falha',
+      actions,
+      'Encerrar tentativa',
       { type: 'queue-resolve', ...common, reviewOutcome: 'failed' },
-      async (message) => {
-        if (!note.value.trim()) {
-          note.focus();
-          return;
-        }
-        await send({ ...message, note: note.value });
-      },
+      send,
     );
   }
 }

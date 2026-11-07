@@ -96,7 +96,9 @@ export async function queueCommand(
             outcome: message.reviewOutcome ?? 'not_submitted',
             note:
               message.note ??
-              'Operador revisou o teste simulado; não houve envio externo ao Flow.',
+              (message.reviewOutcome === 'failed'
+                ? 'Tentativa encerrada pelo operador na extensão, sem reenvio.'
+                : 'Operador revisou o teste simulado; não houve envio externo ao Flow.'),
           };
   await signedRequest(clientId, 'POST', '/api/queue/actions', action);
 }

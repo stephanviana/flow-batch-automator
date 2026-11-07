@@ -352,26 +352,3 @@
 #orders-cleanup-feedback {
   margin-bottom: 0;
 }
-
-.dispatch-close-form {
-  margin-top: 16px;
-}
-.dispatch-close-form > summary {
-  color: var(--danger);
-}
-.dispatch-close-form label {
-  margin-top: 12px;
-}
-.dispatch-close-form .dispatch-close-consent {
-  display: flex;
-  align-items: start;
-  gap: 8px;
-  font-weight: 400;
-}
-.dispatch-close-consent input {
-  flex-shrink: 0;
-  margin-top: 5px;
-}
-.dispatch-close-form button {
-  margin-top: 12px;
-}

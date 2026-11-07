@@ -127,7 +127,7 @@ function taskReview(parent, diagnostic) {
     element(
       details,
       'p',
-      'Confira o projeto e os downloads. Na extensão, use Revisar take para registrar o resultado observado; a revisão não reenvia a geração.',
+      'Confira o projeto e os downloads. Na extensão, use Encerrar tentativa para liberar a fila após conferir o resultado; essa ação não reenvia a geração.',
     );
   }
   if (projectId) {

@@ -32,10 +32,10 @@ export function registerDispatchRecovery(
       const { number, dispatchId } = target.parse(request.params);
       const input = z
         .strictObject({
-          reviewed: z.literal(true),
+          reviewed: z.literal(true).optional(),
           reviewHash: z.string().regex(/^[a-f0-9]{64}$/),
           preparationHash: z.string().regex(/^[a-f0-9]{64}$/),
-          note: z.string().trim().min(1).max(500),
+          note: z.string().trim().min(1).max(500).optional(),
         })
         .parse(request.body);
       return new DispatchClosure(repository, clients).close(

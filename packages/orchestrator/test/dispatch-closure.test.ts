@@ -333,3 +333,29 @@ test('project creation in progress cannot be closed; abandoning an uncertain cre
     0,
   );
 });
+
+test('one-click closure accepts the current review hashes without a note or extra confirmation', async (t) => {
+  const { f, recovery, order, commandId, headers } = await blockedFixture(t);
+  const review = recovery.review(order.number, commandId);
+  const response = await f.app.inject({
+    method: 'POST',
+    url: `/manage/orders/${order.number}/dispatches/${commandId}/close`,
+    headers,
+    payload: {
+      reviewHash: review.reviewHash,
+      preparationHash: review.preparationHash,
+    },
+  });
+  assert.equal(response.statusCode, 200, response.body);
+  assert.equal(response.json().state, 'cancelled');
+  assert.equal(
+    f.database.prepare('SELECT COUNT(*) AS count FROM dispatch_closures').get()!
+      .count,
+    1,
+  );
+  assert.equal(
+    f.database.prepare('SELECT COUNT(*) AS count FROM queue_tasks').get()!
+      .count,
+    0,
+  );
+});

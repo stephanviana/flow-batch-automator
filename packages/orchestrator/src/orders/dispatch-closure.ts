@@ -6,7 +6,7 @@ import type { OrderRepository, ProductionOrder } from './repository.js';
 export interface DispatchClosureInput {
   reviewHash: string;
   preparationHash: string;
-  note: string;
+  note?: string | undefined;
 }
 
 export class DispatchClosure {
@@ -20,6 +20,7 @@ export class DispatchClosure {
     dispatchId: string,
     input: DispatchClosureInput,
   ): ProductionOrder {
+    const note = input.note ?? 'Grupo encerrado pelo operador no painel.';
     return this.repository.transaction(() => {
       const order = this.repository.get(number);
       if (!order.dispatches.some((dispatch) => dispatch.id === dispatchId))
@@ -33,7 +34,7 @@ export class DispatchClosure {
         if (
           previous.review_hash !== input.reviewHash ||
           previous.preparation_hash !== input.preparationHash ||
-          previous.note !== input.note
+          previous.note !== note
         )
           throw new HttpError(
             409,
@@ -62,7 +63,7 @@ export class DispatchClosure {
           dispatchId,
           input.reviewHash,
           input.preparationHash,
-          input.note,
+          note,
           Date.now(),
         );
       return this.repository.get(number);

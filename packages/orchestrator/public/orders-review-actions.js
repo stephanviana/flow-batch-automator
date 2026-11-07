@@ -18,35 +18,12 @@ function copyRequest(parent, label, message) {
   });
 }
 
-function closeForm(parent, dispatch, number, context) {
-  const disclosure = element(parent, 'details', '', 'dispatch-close-form');
-  element(disclosure, 'summary', 'Encerrar este grupo');
-  element(
-    disclosure,
-    'p',
-    'Encerra as gerações restantes deste grupo e preserva os vídeos já concluídos. O motivo e o diagnóstico ficam no histórico.',
-  );
-  const form = element(disclosure, 'form');
-  const label = element(form, 'label', 'Motivo do encerramento');
-  const note = element(label, 'textarea');
-  note.required = true;
-  note.maxLength = 500;
-  note.placeholder = 'Ex.: não quero gerar este grupo novamente.';
-  const consent = element(form, 'label', '', 'dispatch-close-consent');
-  const reviewed = element(consent, 'input');
-  reviewed.type = 'checkbox';
-  reviewed.required = true;
-  element(consent, 'span', 'Conferi a revisão e quero encerrar este grupo.');
-  const close = element(form, 'button', 'Confirmar encerramento', 'danger');
-  close.type = 'submit';
-  const feedback = element(form, 'p', '', 'error');
+function closeGroup(parent, dispatch, number, context) {
+  const close = element(parent, 'button', 'Encerrar este grupo', 'danger');
+  close.type = 'button';
+  const feedback = element(parent, 'p', '', 'error');
   feedback.setAttribute('role', 'status');
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    if (!note.value.trim()) {
-      note.focus();
-      return;
-    }
+  close.addEventListener('click', () => {
     void context.action(async () => {
       close.disabled = true;
       feedback.textContent = '';
@@ -54,10 +31,8 @@ function closeForm(parent, dispatch, number, context) {
         await context.api(
           `/manage/orders/${number}/dispatches/${dispatch.id}/close`,
           {
-            reviewed: reviewed.checked,
             reviewHash: dispatch.review.reviewHash,
             preparationHash: dispatch.review.preparationHash,
-            note: note.value.trim(),
           },
         );
         await context.refresh();
@@ -97,7 +72,7 @@ export function dispatchReviewActions(parent, dispatch, number, context) {
       `Revise o despacho ${dispatch.id} do pedido ${number} e explique o próximo passo. Não execute nem retome gerações.`,
     );
   }
-  if (review.canClose) closeForm(parent, dispatch, number, context);
+  if (review.canClose) closeGroup(parent, dispatch, number, context);
   else
     element(
       parent,
