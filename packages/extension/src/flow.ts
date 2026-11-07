@@ -3,8 +3,7 @@ import {
   type FlowInspection,
 } from '@flow-batch/protocol';
 import { flowRpcPage } from './flow-rpc-page.js';
-
-const flowPatterns = ['https://flow.google.com/*', 'https://labs.google/fx/*'];
+import { flowPatterns, locateFlow } from './flow-location.js';
 
 export async function openFlow(): Promise<void> {
   const tabs = await chrome.tabs.query({ url: flowPatterns });
@@ -25,37 +24,12 @@ export async function inspectFlow(): Promise<FlowInspection> {
     projectId: null,
     checkedAt: Date.now(),
   });
-  const tabs = await chrome.tabs.query({ url: flowPatterns, discarded: false });
-  const projects = tabs.filter((tab) => tab.url?.includes('/project/'));
-  const focusedWindow = await chrome.windows.getLastFocused();
-  const active = tabs.find(
-    (tab) => tab.active && tab.windowId === focusedWindow.id,
-  );
-  const selected =
-    active ??
-    (projects.length === 1 ? projects[0] : undefined) ??
-    (tabs.length === 1 ? tabs[0] : undefined);
-  if (!selected?.id)
-    return unavailable(
-      'no-tab',
-      tabs.length
-        ? 'Selecione a aba do projeto que deseja usar e verifique novamente.'
-        : 'Abra o Google Flow e entre na sua conta.',
-    );
   try {
-    const url = new URL(selected.url ?? '');
-    const projectId = url.pathname.match(
-      /\/project\/([a-zA-Z0-9_-]{1,128})(?:\/|$)/,
-    )?.[1];
-    if (url.origin !== 'https://flow.google.com')
-      return unavailable('not-ready', 'Abra seu projeto em flow.google.com.');
-    if (!projectId)
-      return unavailable(
-        'not-ready',
-        'Abra um projeto no Flow e verifique novamente.',
-      );
+    const { tab, inspection } = await locateFlow();
+    const projectId = inspection.projectId;
+    if (tab?.id === undefined || !projectId) return inspection;
     const [injection] = await chrome.scripting.executeScript({
-      target: { tabId: selected.id },
+      target: { tabId: tab.id },
       world: 'MAIN',
       func: flowRpcPage,
       args: [

@@ -25,6 +25,7 @@ const requestedFormat = process.argv
 if (requestedFormat && !['pov', 'full-pov', 'seller'].includes(requestedFormat))
   throw new Error('Unsupported browser fixture format');
 const reuseOnly = process.argv.includes('--reuse-only');
+const flowStatusOnly = process.argv.includes('--flow-status-only');
 const ordersOnly =
   process.argv.includes('--orders-only') ||
   reuseOnly ||
@@ -238,6 +239,7 @@ try {
   if (
     !process.argv.includes('--queue-only') &&
     !process.argv.includes('--flow-only') &&
+    !flowStatusOnly &&
     !ordersOnly
   ) {
     await sendPanelRequest(popup, 'simulate');
@@ -320,38 +322,42 @@ try {
     assert.equal(await assertNonExportableIdentity(), identity);
   }
   await validateFlow({ browser, panel: popup, eventually });
-  if (!process.argv.includes('--flow-only') && !ordersOnly)
-    await validateQueue({ popup, eventually, stopServer, startServer });
-  await validateFlowTake({
-    browser,
-    panel: popup,
-    eventually,
-    stopServer,
-    startServer,
-    media,
-    directory,
-    reuseOnly,
-    format: requestedFormat,
-    base,
-  });
-  await validateOrderReview({
-    browser,
-    panel: popup,
-    eventually,
-    directory,
-    base,
-  });
+  if (!flowStatusOnly) {
+    if (!process.argv.includes('--flow-only') && !ordersOnly)
+      await validateQueue({ popup, eventually, stopServer, startServer });
+    await validateFlowTake({
+      browser,
+      panel: popup,
+      eventually,
+      stopServer,
+      startServer,
+      media,
+      directory,
+      reuseOnly,
+      format: requestedFormat,
+      base,
+    });
+    await validateOrderReview({
+      browser,
+      panel: popup,
+      eventually,
+      directory,
+      base,
+    });
+  }
   await management.goto(`${base}/connect`);
   console.log(
-    reuseOnly
-      ? 'Real Chrome for Testing: automatic dispatch, exact Body/CTA frame reuse and grouped MP4 downloads passed against local fixtures.'
-      : ordersOnly
-        ? 'Real Chrome for Testing: pairing, project inspection, panel orders, agent preparation, authorization, shared frame, downloads and cleanup passed against local fixtures.'
-        : process.argv.includes('--flow-only')
-          ? 'Real Chrome for Testing: pairing, side panel, Flow transport and executor validated against local fixtures.'
-          : process.argv.includes('--queue-only')
-            ? 'Real Chrome for Testing: pairing, non-exportable identity and queue flow passed.'
-            : 'Real Chrome for Testing: matching codes, explicit confirmation, non-exportable persistent identity, simulation, heartbeat, server/browser restart, no resend, revocation, explicit reauthorization and queue flow passed.',
+    flowStatusOnly
+      ? 'Real Chrome for Testing: current Flow project state, navigation, closure and stale-cache handling passed without live requests.'
+      : reuseOnly
+        ? 'Real Chrome for Testing: automatic dispatch, exact Body/CTA frame reuse and grouped MP4 downloads passed against local fixtures.'
+        : ordersOnly
+          ? 'Real Chrome for Testing: pairing, project inspection, panel orders, agent preparation, authorization, shared frame, downloads and cleanup passed against local fixtures.'
+          : process.argv.includes('--flow-only')
+            ? 'Real Chrome for Testing: pairing, side panel, Flow transport and executor validated against local fixtures.'
+            : process.argv.includes('--queue-only')
+              ? 'Real Chrome for Testing: pairing, non-exportable identity and queue flow passed.'
+              : 'Real Chrome for Testing: matching codes, explicit confirmation, non-exportable persistent identity, simulation, heartbeat, server/browser restart, no resend, revocation, explicit reauthorization and queue flow passed.',
   );
   console.log(`Isolated evidence: ${directory}`);
   await popup.screenshot({

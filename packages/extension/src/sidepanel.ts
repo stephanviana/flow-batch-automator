@@ -69,7 +69,7 @@ async function refresh(
       flowStatus!.dataset.phase = data.flow.phase;
       flowProject!.hidden = !data.flow.projectId;
       flowProject!.textContent = data.flow.projectId
-        ? `Projeto: ${data.flow.projectId}`
+        ? `Projeto aberto: ${data.flow.projectId}`
         : '';
     }
     renderQueue(data.queue, data.inspection, data.operationError, refresh);

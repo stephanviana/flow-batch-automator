@@ -91,7 +91,7 @@ export async function validateFlow({ browser, panel, eventually }) {
     await inspect('ready', 'Sessão verificada');
     assert.equal(
       await panel.locator('#flow-project').textContent(),
-      'Projeto: test-project',
+      'Projeto aberto: test-project',
     );
     assert.equal(rpcCount, 1);
     const snapshot = await panel.evaluate(() =>
@@ -111,7 +111,13 @@ export async function validateFlow({ browser, panel, eventually }) {
     responseMode = 'http-error';
     await inspect('error', 'HTTP 403');
     await flow.goto('https://flow.google.com/');
-    await inspect('not-ready', 'Abra um projeto');
+    await eventually(async () =>
+      (await panel.locator('#flow-status').textContent()).includes(
+        'Nenhum projeto aberto',
+      ),
+    );
+    assert.equal(await panel.locator('#flow-project').isVisible(), false);
+    await validateCurrentProject(browser, panel, flow, worker, eventually);
     await panel.setViewportSize({ width: 300, height: 900 });
     assert.equal(
       await panel.evaluate(
@@ -127,4 +133,89 @@ export async function validateFlow({ browser, panel, eventually }) {
     await flow.close();
     await browser.unroute('https://flow.google.com/**');
   }
+}
+
+async function validateCurrentProject(
+  browser,
+  panel,
+  flow,
+  worker,
+  eventually,
+) {
+  await worker.evaluate(() =>
+    chrome.storage.local.set({
+      dispatchFlow: {
+        phase: 'ready',
+        projectId: 'old-completed-project',
+        message: 'Projeto anterior pronto.',
+        checkedAt: Date.now() + 60000,
+      },
+    }),
+  );
+  await panel.reload();
+  await panel.getByRole('tab', { name: 'Início', exact: true }).click();
+  await eventually(async () =>
+    (await panel.locator('#flow-status').textContent()).includes(
+      'Nenhum projeto aberto',
+    ),
+  );
+  assert.equal(await panel.locator('#flow-project').isVisible(), false);
+  let observedRequests = 0;
+  const observe = (request) => {
+    if (request.url().includes('/batchexecute')) observedRequests++;
+  };
+  browser.on('request', observe);
+  try {
+    await flow.evaluate(() =>
+      globalThis.history.pushState({}, '', '/project/another-project'),
+    );
+    await eventually(
+      async () =>
+        (await panel.locator('#flow-project').textContent()) ===
+        'Projeto aberto: another-project',
+    );
+    assert.equal(
+      await panel.locator('#flow-status').getAttribute('data-phase'),
+      'not-ready',
+    );
+    await flow.evaluate(() => globalThis.history.pushState({}, '', '/'));
+    await eventually(async () =>
+      (await panel.locator('#flow-status').textContent()).includes(
+        'Nenhum projeto aberto',
+      ),
+    );
+    assert.equal(await panel.locator('#flow-project').isVisible(), false);
+    const background = await browser.newPage();
+    try {
+      await background.goto(
+        'https://flow.google.com/project/background-project',
+      );
+      await flow.bringToFront();
+      await eventually(async () =>
+        (await panel.locator('#flow-status').textContent()).includes(
+          'Nenhum projeto aberto',
+        ),
+      );
+      assert.equal(await panel.locator('#flow-project').isVisible(), false);
+    } finally {
+      await background.close();
+    }
+    assert.equal(
+      observedRequests,
+      0,
+      'Dashboard navigation must never send automatic Flow RPCs',
+    );
+  } finally {
+    browser.off('request', observe);
+  }
+  await flow.close();
+  await eventually(
+    async () =>
+      (await panel.locator('#flow-status').getAttribute('data-phase')) ===
+      'no-tab',
+  );
+  assert.equal(await panel.locator('#flow-project').isVisible(), false);
+  console.log(
+    'Live Flow dashboard: home, SPA navigation, another project, active home with background project, closed tab and panel reload clear stale state without RPCs.',
+  );
 }

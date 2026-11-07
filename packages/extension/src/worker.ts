@@ -9,7 +9,6 @@ import {
   type QueueSnapshot,
   type TaskDetail,
   type FlowInspection,
-  flowInspectionSchema,
 } from '@flow-batch/protocol';
 import { z } from 'zod';
 import { ExtensionConnection } from './connection.js';
@@ -18,6 +17,7 @@ import { signedRequest } from './api.js';
 import { ApiError } from './api.js';
 import { queueCommand } from './queue-client.js';
 import { inspectFlow, openFlow } from './flow.js';
+import { currentFlow } from './flow-location.js';
 import { FlowInputError } from './flow-errors.js';
 import { processDispatches } from './dispatch-runner.js';
 import { openOrdersPanel } from './orders-navigation.js';
@@ -42,14 +42,6 @@ async function snapshot(): Promise<{
 }> {
   const state = await readState();
   const config = await preferences();
-  const dispatchFlow = flowInspectionSchema.safeParse(
-    (await chrome.storage.local.get('dispatchFlow')).dispatchFlow,
-  );
-  if (
-    dispatchFlow.success &&
-    dispatchFlow.data.checkedAt > (flow?.checkedAt ?? 0)
-  )
-    flow = dispatchFlow.data;
   let simulations: Simulation[] = [];
   let queue: QueueSnapshot | null = null;
   let dispatchIssues: DispatchIssue[] = [];
@@ -97,6 +89,9 @@ async function snapshot(): Promise<{
       }
     }
   }
+  const previousFlow = flow;
+  const visibleFlow = await currentFlow(previousFlow);
+  if (flow === previousFlow && visibleFlow !== previousFlow) flow = null;
   return {
     state,
     simulations,
@@ -104,7 +99,7 @@ async function snapshot(): Promise<{
     queue,
     inspection,
     operationError,
-    flow,
+    flow: visibleFlow,
   };
 }
 

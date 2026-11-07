@@ -103,14 +103,6 @@ export async function prepareDispatchBatch(
       'Criação do projeto exige revisão. Nenhum outro projeto será criado automaticamente.',
     );
   await openProject(batch.projectId, false);
-  await chrome.storage.local.set({
-    activeBatchId: batch.id,
-    dispatchFlow: {
-      phase: 'ready',
-      projectId: batch.projectId,
-      message: `Projeto do lote ${batch.name} pronto.`,
-      checkedAt: Date.now(),
-    },
-  });
+  await chrome.storage.local.set({ activeBatchId: batch.id });
   return batch;
 }

@@ -394,6 +394,10 @@ local), sem controles de testes simulados. **Limpar fila** remove os takes
 finalizados (concluídos, falhos ou cancelados) da lista e dos totais do dashboard,
 inclusive após reabrir a extensão. Takes pendentes, em execução ou com resultado
 incerto permanecem visíveis. Histórico, vídeos e autorizações são preservados.
+O dashboard acompanha o projeto atualmente aberto na aba do Flow. Ao voltar à
+página inicial ou fechar a aba, retira o projeto anterior e orienta a iniciar uma
+nova produção. Essa atualização consulta apenas a localização da aba; a leitura
+da sessão/projeto continua no botão **Verificar projeto**, sem gerar mídia.
 **Revisar pedido** abre o diagnóstico do grupo bloqueado, com a situação da
 preparação, as mensagens de envio e o histórico de geração. No painel local,
 **Ver diagnóstico** também consulta pedidos que ainda não foram preparados ou
@@ -507,6 +511,7 @@ pnpm test:browser:library
 pnpm test:browser:cloning
 pnpm test:browser:orders-design
 pnpm test:browser:connect
+pnpm test:browser:flow --flow-status-only --port=4399
 pnpm test:browser:session
 ```
 
