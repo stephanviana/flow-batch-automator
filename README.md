@@ -390,10 +390,10 @@ a principal, a primeira imagem restante passa a ser a principal. O limite é de
 
 A extensão organiza as funções nas abas **Início** (resumo e pedidos),
 **Fila e gerações** (takes, andamento e histórico) e **Configurações** (conexão
-local), sem controles de testes simulados. **Limpar fila** retira apenas os takes
-concluídos da visualização atual, sem salvar a limpeza. Pendentes, execuções,
-falhas e resultados incertos permanecem visíveis; histórico e arquivos são
-preservados. Ao reabrir a extensão, a lista volta a mostrar os registros.
+local), sem controles de testes simulados. **Limpar fila** remove os takes
+finalizados (concluídos, falhos ou cancelados) da lista e dos totais do dashboard,
+inclusive após reabrir a extensão. Takes pendentes, em execução ou com resultado
+incerto permanecem visíveis. Histórico, vídeos e autorizações são preservados.
 **Revisar pedido** abre o diagnóstico do grupo bloqueado, com a situação da
 preparação, as mensagens de envio e o histórico de geração. No painel local,
 **Ver diagnóstico** também consulta pedidos que ainda não foram preparados ou
@@ -411,11 +411,19 @@ incerto precisam ser resolvidos antes. Os vídeos prontos e o diagnóstico ficam
 preservados. Um pedido com vídeos concluídos e grupos abandonados aparece como
 **Encerrado parcialmente**, em vez de continuar exigindo revisão.
 
-No painel, **Limpar lista** retira da visualização atual os pedidos sem envio ou
-já encerrados. **Limpar da lista** faz o mesmo para um pedido específico. A
-limpeza não é salva; pedidos em preparação, execução ou revisão permanecem
-visíveis. Os registros e materiais são preservados, e uma mudança no estado ou
-na preparação faz o pedido reaparecer.
+No painel, **Limpar lista** remove os pedidos sem envio ou já encerrados.
+**Limpar da lista** faz o mesmo para um pedido específico. A limpeza persiste
+após atualizar ou reabrir o painel e também retira da extensão os takes
+finalizados desses pedidos. Pedidos em preparação, execução ou revisão
+permanecem visíveis. Não há confirmação adicional. Os registros internos e
+materiais são preservados; pedidos removidos não podem ser preparados ou
+despachados novamente.
+
+Quando todos os pedidos da lista forem limpos, a numeração dos novos pedidos
+recomeça em **#1**. Os UUIDs internos continuam únicos, e os diretórios de
+preparação dos novos ciclos são separados por UUID para preservar os anteriores.
+Os números usados no chat e na API consultam o ciclo atual. A consulta histórica
+por UUID continua disponível em `GET /manage/orders/id/UUID`.
 
 Para revisar antes de gerar, diga “Apenas prepare o pedido 12, não execute”. O
 agente publica com `execute=false`; nenhuma geração é enviada. Depois, “Execute

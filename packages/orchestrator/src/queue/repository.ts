@@ -10,6 +10,7 @@ import {
 import type { QueueDatabase, TaskRecord } from './database.js';
 import { HttpError } from '../security/errors.js';
 import { BatchStore } from '../persistence/batches.js';
+import { VISIBLE_QUEUE_TASK } from './visibility.js';
 import { FlowImages } from './flow-images.js';
 
 export function queueHash(value: unknown): string {
@@ -84,6 +85,14 @@ export class QueueRepository {
           409,
           'Este grupo foi encerrado após revisão. Nenhum take pode ser acrescentado.',
         );
+      if (
+        sql
+          .prepare(
+            'SELECT 1 FROM order_dispatches d JOIN production_orders o ON o.id=d.order_id WHERE d.batch_id=? AND o.archived_at IS NOT NULL',
+          )
+          .get(batchId)
+      )
+        throw new HttpError(409, 'Este pedido foi removido da lista.');
       const batch = new BatchStore(sql).get(clientId, batchId);
       if (batch.status !== 'ready' || batch.projectId !== input.flow.projectId)
         throw new HttpError(409, 'Batch project does not match task');
@@ -126,11 +135,12 @@ export class QueueRepository {
     );
   }
 
-  snapshot(clientId: string): QueueSnapshot {
+  snapshot(clientId: string, visibleOnly = false): QueueSnapshot {
     const sql = this.database.connection;
+    const visibility = visibleOnly ? ` AND ${VISIBLE_QUEUE_TASK}` : '';
     const rows = sql
       .prepare(
-        "SELECT id FROM queue_tasks WHERE client_id=? ORDER BY CASE WHEN state='uncertain' THEN 0 WHEN state IN ('dispatching','submitted','generating','download_pending') THEN 1 WHEN state='queued' THEN 2 ELSE 3 END,CASE WHEN state IN ('completed','failed','cancelled') THEN -sequence ELSE sequence END LIMIT 50",
+        `SELECT q.id FROM queue_tasks q WHERE q.client_id=?${visibility} ORDER BY CASE WHEN state='uncertain' THEN 0 WHEN state IN ('dispatching','submitted','generating','download_pending') THEN 1 WHEN state='queued' THEN 2 ELSE 3 END,CASE WHEN state IN ('completed','failed','cancelled') THEN -sequence ELSE sequence END LIMIT 50`,
       )
       .all(clientId);
     const counts = Object.fromEntries(
@@ -138,7 +148,7 @@ export class QueueRepository {
     );
     for (const row of sql
       .prepare(
-        'SELECT state,COUNT(*) AS count FROM queue_tasks WHERE client_id=? GROUP BY state',
+        `SELECT q.state,COUNT(*) AS count FROM queue_tasks q WHERE q.client_id=?${visibility} GROUP BY q.state`,
       )
       .all(clientId))
       counts[String(row.state)] = Number(row.count);

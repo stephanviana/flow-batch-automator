@@ -201,6 +201,14 @@ export class QueueMutations {
     if (
       this.database.connection
         .prepare(
+          'SELECT 1 FROM queue_tasks q JOIN order_dispatches d ON d.batch_id=q.batch_id JOIN production_orders o ON o.id=d.order_id WHERE q.id=? AND o.archived_at IS NOT NULL',
+        )
+        .get(record.summary.id)
+    )
+      throw new HttpError(409, 'Este pedido foi removido da lista.');
+    if (
+      this.database.connection
+        .prepare(
           'SELECT 1 FROM queue_tasks q JOIN order_dispatches d ON d.batch_id=q.batch_id JOIN dispatch_closures x ON x.dispatch_id=d.dispatch_id WHERE q.id=?',
         )
         .get(record.summary.id)

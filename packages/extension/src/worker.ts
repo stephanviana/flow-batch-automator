@@ -66,7 +66,7 @@ async function snapshot(): Promise<{
     }
     try {
       queue = queueSnapshotSchema.parse(
-        await signedRequest(config.clientId, 'GET', '/api/queue'),
+        await signedRequest(config.clientId, 'GET', '/api/queue/view'),
       );
     } catch {
       /* Keep the connection status independent from queue availability. */
@@ -139,6 +139,7 @@ async function command(
     const config = await preferences();
     if (!config.clientId || config.revoked) throw new Error('Connect first');
     await queueCommand(config.clientId, message);
+    if (message.type === 'queue-clear') inspectedTaskId = undefined;
   }
   return snapshot();
 }

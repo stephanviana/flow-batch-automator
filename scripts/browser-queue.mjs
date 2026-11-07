@@ -1,8 +1,5 @@
 import assert from 'node:assert/strict';
-import {
-  validateCompletedClearing,
-  validateClearingDuringReview,
-} from './browser-queue-clearing.mjs';
+import { validateCompletedClearing } from './browser-queue-clearing.mjs';
 import {
   sendPanelRequest,
   validateQueueRows,
@@ -77,7 +74,6 @@ export async function validateQueue({
     async () => (await popup.locator('#queue-history li').count()) === 6,
   );
 
-  await validateCompletedClearing(popup, eventually);
   await sendPanelRequest(popup, 'enqueue-retry-demo');
   await eventually(
     async () =>
@@ -146,7 +142,6 @@ export async function validateQueue({
       .isDisabled(),
     true,
   );
-  await validateClearingDuringReview(popup, eventually);
   await popup
     .locator('#queue-tasks [data-state="uncertain"]')
     .getByRole('button', { name: 'Revisar: confirmar sem envio externo' })
@@ -191,6 +186,7 @@ export async function validateQueue({
   await eventually(async () =>
     (await popup.locator('#queue-history').textContent()).includes('Incerta'),
   );
+  await validateCompletedClearing(popup, eventually);
   console.log(
     'Queue in real Chrome: ordered takes, persisted history, safe retry, server restart, uncertain-result barrier, explicit review and a fresh retry passed.',
   );

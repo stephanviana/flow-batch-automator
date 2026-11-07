@@ -97,3 +97,46 @@ test('an unknown migration history is refused without changing it', () => {
     database.close();
   }
 });
+
+test('large existing order bodies upgrade without relying on temporary filesystem writes', (context) => {
+  const directory = mkdtempSync(join(tmpdir(), 'flow-database-upgrade-'));
+  context.after(() => rmSync(directory, { recursive: true, force: true }));
+  const filename = join(directory, 'db.sqlite');
+  const legacy = new DatabaseSync(filename);
+  const body = JSON.stringify({
+    fixture: 'large synthetic body '.repeat(20000),
+  });
+  try {
+    migrate(
+      legacy,
+      migrations.filter((migration) => migration.version <= 10),
+    );
+    const insert = legacy.prepare(
+      "INSERT INTO production_orders(id,body,body_hash,state,created_at) VALUES (?,?,?,'awaiting-preparation',1)",
+    );
+    for (const id of ['synthetic-1', 'synthetic-2', 'synthetic-3'])
+      insert.run(id, body, 'fixture');
+  } finally {
+    legacy.close();
+  }
+  const upgraded = openDatabase(filename, 3000);
+  try {
+    assert.equal(upgraded.prepare('PRAGMA temp_store').get()?.temp_store, 2);
+    assert.deepEqual(
+      upgraded
+        .prepare(
+          'SELECT public_number,body FROM production_orders ORDER BY number',
+        )
+        .all()
+        .map((row) => ({ ...row })),
+      [1, 2, 3].map((public_number) => ({ public_number, body })),
+    );
+    assert.equal(
+      upgraded.prepare('SELECT COUNT(*) AS count FROM queue_visibility').get()
+        ?.count,
+      0,
+    );
+  } finally {
+    upgraded.close();
+  }
+});

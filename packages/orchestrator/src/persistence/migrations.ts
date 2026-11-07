@@ -108,6 +108,18 @@ export const migrations: readonly Migration[] = [
       note TEXT NOT NULL, closed_at INTEGER NOT NULL
     ) STRICT;`,
   },
+  {
+    version: 11,
+    sql: `ALTER TABLE production_orders ADD COLUMN public_number INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE production_orders ADD COLUMN number_cycle INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE production_orders ADD COLUMN archived_at INTEGER;
+    UPDATE production_orders SET public_number=number;
+    CREATE UNIQUE INDEX order_public_number ON production_orders(number_cycle,public_number);
+    INSERT INTO application_metadata(key,value) VALUES ('orders_cycle','0');
+    CREATE TABLE queue_visibility (
+      task_id TEXT PRIMARY KEY REFERENCES queue_tasks(id), revision INTEGER NOT NULL, cleared_at INTEGER NOT NULL
+    ) STRICT;`,
+  },
 ];
 
 export function migrate(

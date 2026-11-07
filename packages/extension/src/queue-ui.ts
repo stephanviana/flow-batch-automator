@@ -6,17 +6,9 @@ import type {
 } from '@flow-batch/protocol';
 import { taskRow, taskStateLabels } from './queue-task-row.js';
 import { renderDashboard } from './dashboard-ui.js';
-import { QueueViewControls } from './queue-view-controls.js';
 import { renderQueueActivity } from './queue-activity.js';
 type Send = (message: PopupRequest) => Promise<unknown>;
 let historyStamp = '';
-let renderLatestView = (): void => {};
-const view = new QueueViewControls(() => renderLatestView());
-
-export function initializeQueueView(): void {
-  view.initialize();
-}
-
 function renderTaskList(
   container: Element,
   records: TaskSummary[],
@@ -52,15 +44,22 @@ export function renderQueue(
   const tasks = document.querySelector('#queue-tasks');
   const history = document.querySelector('#queue-history');
   if (!summary || !feedback || !tasks || !history) return;
-  renderLatestView = (): void => renderQueue(queue, inspection, error, send);
-  view.update(queue);
+  const clear = document.querySelector<HTMLButtonElement>('#queue-clear');
+  if (clear)
+    clear.disabled =
+      !queue ||
+      !['completed', 'failed', 'cancelled'].some(
+        (state) => queue.counts[state as keyof QueueSnapshot['counts']] > 0,
+      );
   const reviewOrders = document.querySelector<HTMLElement>(
     '#queue-review-orders',
   );
   if (reviewOrders) reviewOrders.hidden = !queue?.blockedByReview;
-  const visibleTasks = queue?.tasks.filter((task) => view.visible(task)) ?? [];
+  const visibleTasks = queue?.tasks ?? [];
   const visibleInspection =
-    inspection && view.visible(inspection.task) ? inspection : null;
+    inspection && visibleTasks.some((task) => task.id === inspection.task.id)
+      ? inspection
+      : null;
   renderQueueActivity(queue ? { ...queue, tasks: visibleTasks } : null, error);
   renderDashboard(queue, error);
   const empty = document.querySelector<HTMLElement>('#queue-empty');

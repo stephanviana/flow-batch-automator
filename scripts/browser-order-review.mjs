@@ -208,15 +208,25 @@ async function verifyGroupClosure(browser, panel, row, fixture, base) {
     await orders
       .getByRole('button', { name: 'Limpar da lista', exact: true })
       .click();
+    await orders
+      .getByText('Nenhum pedido salvo. O próximo pedido começa em #1.', {
+        exact: true,
+      })
+      .waitFor();
     assert.equal(await orders.locator('#orders article').count(), 0);
     await orders.reload();
-    await orders.getByText('Encerrado parcialmente', { exact: true }).waitFor();
+    await orders
+      .getByText('Nenhum pedido salvo. O próximo pedido começa em #1.', {
+        exact: true,
+      })
+      .waitFor();
+    assert.deepEqual((await sendPanelRequest(panel, 'status')).queue.tasks, []);
     assert.equal(
       (await sendPanelRequest(panel, 'status')).dispatchIssues.length,
       0,
     );
     console.log(
-      'Review outcome: explicit group closure preserves completed videos and task history, removes the review block and allows temporary order list clearing. No generation was resumed.',
+      'Review outcome: explicit group closure preserves completed videos and task history, removes the review block and persists order and queue clearing. No generation was resumed.',
     );
   } finally {
     await orders.close();

@@ -50,7 +50,7 @@ async function run() {
           directory: prepared.directory,
           expiresAt: prepared.expiresAt,
           preparationFile: prepared.preparationFile,
-          contextFile: resolve(directory, 'contexto.json'),
+          contextFile: resolve(prepared.directory, 'contexto.json'),
           libraryRevision: prepared.context.revision,
         }),
       );

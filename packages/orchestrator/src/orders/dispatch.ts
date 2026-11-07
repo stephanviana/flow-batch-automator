@@ -17,6 +17,11 @@ export async function dispatchOrder(
   authorize: () => void = () => {},
 ): Promise<ReturnType<OrderRepository['get']>> {
   const order = repository.get(id);
+  if (order.archivedAt)
+    throw new HttpError(
+      409,
+      'Este pedido foi removido da lista e não pode ser enviado.',
+    );
   if (order.state === 'dispatched' || order.state === 'completed') {
     authorize();
     return order;

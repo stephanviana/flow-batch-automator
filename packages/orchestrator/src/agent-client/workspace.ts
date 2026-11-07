@@ -121,6 +121,13 @@ function draftProducts(
   }));
   return products;
 }
+export function orderWorkspace(
+  directory: string,
+  order: ProductionOrder,
+): string {
+  return order.numberCycle > 0 ? resolve(directory, order.id) : directory;
+}
+
 export async function checkout(
   api: AgentApi,
   number: number,
@@ -133,6 +140,7 @@ export async function checkout(
     order: ProductionOrder;
     variationPlan: Awaited<ReturnType<typeof plan>>;
   }>(`/manage/orders/${number}`);
+  directory = orderWorkspace(directory, order);
   const existing = (await optionalJson(resolve(directory, 'pedido.json'))) as
     (Lease & { variationPlan: unknown }) | undefined;
   let lease: Lease;

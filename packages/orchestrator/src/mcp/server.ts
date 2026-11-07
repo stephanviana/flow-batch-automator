@@ -6,7 +6,11 @@ import {
   instructionFileSchema,
   orderPublicationSchema,
 } from '@flow-batch/protocol';
-import { checkout, publishWorkspace } from '../agent-client/workspace.js';
+import {
+  checkout,
+  publishWorkspace,
+  orderWorkspace,
+} from '../agent-client/workspace.js';
 import { requireContract, type AgentApi } from '../agent-client/http.js';
 import type { ProductionOrder } from '../orders/repository.js';
 import { ORDER_EXECUTION_POLICY } from '../agent-client/workflow.js';
@@ -117,16 +121,16 @@ export function createMcpServer(api: AgentApi, workspace: string): McpServer {
         const execution = execute
           ? await orderExecution(api, clientId)
           : undefined;
-        if (!preparation)
-          return publishWorkspace(
-            api,
-            resolve(workspace, String(number)),
-            execution,
-          );
         await requireContract(api);
         const { order } = await api<{ order: ProductionOrder }>(
           `/manage/orders/${number}`,
         );
+        if (!preparation)
+          return publishWorkspace(
+            api,
+            orderWorkspace(resolve(workspace, String(number)), order),
+            execution,
+          );
         return api(`/manage/orders/${order.id}/prepare`, {
           ...preparation,
           ...(execution ? { execution } : {}),

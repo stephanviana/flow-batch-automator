@@ -227,6 +227,7 @@ async function verifyReviewState() {
   const response = await api('/manage/orders');
   const fixture = globalThis.structuredClone(response);
   fixture.orders[0].state = 'blocked';
+  fixture.orders[0].clearable = false;
   fixture.orders[0].dispatches = [
     {
       id: randomUUID(),
@@ -347,10 +348,10 @@ try {
   await page.goto(`${base}/orders`);
   await saveOrderFromEditor();
   await prepareFixture();
-  await validateOrdersCleanup(page, base);
   await captureResponsive();
   await verifyReviewState();
   await verifyControls();
+  await validateOrdersCleanup(page, base);
   const database = new DatabaseSync(config.databasePath, { readOnly: true });
   assert.equal(
     database.prepare('SELECT count(*) AS n FROM dispatch_commands').get().n,

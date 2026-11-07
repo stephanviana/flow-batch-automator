@@ -1,6 +1,6 @@
 import { popupReplySchema } from '@flow-batch/protocol';
 import type { PopupRequest } from '@flow-batch/protocol';
-import { renderQueue, initializeQueueView } from './queue-ui.js';
+import { renderQueue } from './queue-ui.js';
 import { renderDispatchIssues } from './dispatch-issues-ui.js';
 import { initializePanelTabs } from './panel-tabs.js';
 import { renderConnectionBadge, renderDashboard } from './dashboard-ui.js';
@@ -51,10 +51,12 @@ async function refresh(
     const response: unknown = await chrome.runtime.sendMessage(request);
     const data = popupReplySchema.parse(response);
     const dispatch = await chrome.storage.local.get('dispatchStatus');
-    if (typeof dispatch.dispatchStatus === 'string')
-      document.querySelector<HTMLParagraphElement>(
-        '#dispatch-status',
-      )!.textContent = dispatch.dispatchStatus;
+    document.querySelector<HTMLParagraphElement>(
+      '#dispatch-status',
+    )!.textContent =
+      typeof dispatch.dispatchStatus === 'string'
+        ? dispatch.dispatchStatus
+        : 'Nenhum envio recente.';
     if (control) controlError = data.operationError ?? undefined;
     if (sequence < appliedSequence) return data;
     appliedSequence = sequence;
@@ -72,6 +74,9 @@ async function refresh(
     }
     renderQueue(data.queue, data.inspection, data.operationError, refresh);
     renderDispatchIssues(data.dispatchIssues, refresh);
+    if (request.type === 'queue-clear' && !data.operationError)
+      document.querySelector('#queue-view-feedback')!.textContent =
+        'Takes finalizados removidos da fila.';
     return data;
   } catch (error) {
     controlError =
@@ -105,7 +110,6 @@ for (const button of document.querySelectorAll<HTMLButtonElement>(
     }
   });
 }
-initializeQueueView();
 void refresh().catch((): void => {
   showError('Não foi possível consultar a extensão.');
 });

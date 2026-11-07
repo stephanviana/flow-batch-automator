@@ -1,3 +1,4 @@
+import { OrderVisibility } from '../orders/visibility.js';
 import { Readable } from 'node:stream';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -31,6 +32,18 @@ export function registerOrders(
   app.get('/manage/orders', async (request) => {
     sessions.require(request);
     return { orders: repository.list() };
+  });
+  app.post('/manage/orders/clear', async (request) => {
+    sessions.require(request);
+    const { ids } = z
+      .strictObject({ ids: z.array(z.uuid()).min(1).max(200) })
+      .parse(request.body);
+    return new OrderVisibility(repository).clear(ids);
+  });
+  app.get('/manage/orders/id/:id', async (request) => {
+    sessions.require(request);
+    const order = repository.get(id(request.params));
+    return { order };
   });
   app.post('/manage/orders', { bodyLimit: 262144 }, async (request) => {
     sessions.require(request);
@@ -90,6 +103,8 @@ export function registerOrders(
       };
       authorize();
       const order = repository.get(key);
+      if (order.archivedAt)
+        throw new HttpError(409, 'Este pedido foi removido da lista.');
       if (order.state !== 'prepared' && !order.dispatches.length)
         repository.requireLease(key, input.leaseId);
       const revision = bindings.bind(key, input.leaseId);

@@ -39,6 +39,11 @@ export async function queueCommand(
   clientId: string,
   message: PopupRequest,
 ): Promise<void> {
+  if (message.type === 'queue-clear') {
+    await signedRequest(clientId, 'POST', '/api/queue/view', {});
+    await chrome.storage.local.remove('dispatchStatus');
+    return;
+  }
   if (message.type.startsWith('enqueue-')) {
     await signedRequest(clientId, 'POST', '/api/queue', {
       requestId: crypto.randomUUID(),

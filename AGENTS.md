@@ -101,8 +101,14 @@ materiais, autorização ou falha originais. Grupos com takes pendentes, ativos 
 incertos e criação de projeto em andamento não podem ser encerrados. Grupos
 encerrados deixam o despacho da extensão e não podem receber novas gerações;
 os resultados confirmados permanecem registrados. Pedidos encerrados com parte
-dos vídeos pronta exibem “Encerrado parcialmente”. A limpeza do painel é apenas
-visual e temporária, para pedidos sem envio ou já encerrados.
+dos vídeos pronta exibem “Encerrado parcialmente”. A limpeza do painel persiste
+para pedidos sem envio ou já encerrados e também limpa seus takes finalizados
+na extensão. A extensão limpa concluídos, falhos e cancelados da lista e dos
+totais, mantendo pendentes, ativos e incertos. Nenhuma limpeza apaga materiais,
+tentativas ou autorizações. Pedidos removidos não aceitam nova preparação ou
+despacho. Ao esvaziar a lista, um novo ciclo recomeça em #1; números consultam o
+ciclo atual e UUIDs preservam acesso histórico. Checkouts dos novos ciclos usam
+subpastas por UUID para não sobrescrever arquivos de pedidos anteriores.
 Mostrar etapas reais, pausa, falha e incerteza; não inventar percentual.
 
 As Fases 1–4 e o piloto anterior tiveram validações reais no Chrome Windows,

@@ -9,6 +9,8 @@ import {
   type Material,
   type ImportManifest,
 } from '@flow-batch/protocol';
+import { canClearOrder } from './visibility.js';
+import { currentOrderCycle, nextOrderNumber } from './numbering.js';
 import { MaterialStore } from './material-store.js';
 import { HttpError } from '../security/errors.js';
 
@@ -19,6 +21,8 @@ export interface PreparedOrder {
 }
 export interface ProductionOrder extends OrderDraft {
   number: number;
+  numberCycle: number;
+  archivedAt: number | null;
   state: OrderState;
   createdAt: number;
   materials: Material[];
@@ -93,11 +97,20 @@ export class OrderRepository {
               'Escolha um vídeo MP4 como referência da clonagem.',
             );
       }
+      const cycle = currentOrderCycle(this.database);
+      const publicNumber = nextOrderNumber(this.database);
       this.database
         .prepare(
-          "INSERT INTO production_orders (id,body,body_hash,state,created_at) VALUES (?,?,?,'awaiting-preparation',?)",
+          "INSERT INTO production_orders (id,body,body_hash,state,created_at,public_number,number_cycle) VALUES (?,?,?,'awaiting-preparation',?,?,?)",
         )
-        .run(draft.id, JSON.stringify(draft), hash, Date.now());
+        .run(
+          draft.id,
+          JSON.stringify(draft),
+          hash,
+          Date.now(),
+          publicNumber,
+          cycle,
+        );
       const insert = this.database.prepare(
         'INSERT OR IGNORE INTO order_materials (order_id,material_id) VALUES (?,?)',
       );
@@ -111,8 +124,10 @@ export class OrderRepository {
     const row =
       typeof identity === 'number'
         ? this.database
-            .prepare('SELECT * FROM production_orders WHERE number=?')
-            .get(identity)
+            .prepare(
+              'SELECT * FROM production_orders WHERE public_number=? AND number_cycle=?',
+            )
+            .get(identity, currentOrderCycle(this.database))
         : this.database
             .prepare('SELECT * FROM production_orders WHERE id=?')
             .get(identity);
@@ -188,7 +203,9 @@ export class OrderRepository {
     }
     return {
       ...draft,
-      number: Number(row.number),
+      number: Number(row.public_number),
+      numberCycle: Number(row.number_cycle),
+      archivedAt: row.archived_at === null ? null : Number(row.archived_at),
       state,
       createdAt: Number(row.created_at),
       preparation,
@@ -223,14 +240,16 @@ export class OrderRepository {
 
   list(): (Omit<ProductionOrder, 'preparation'> & {
     generationCounts: { images: number; videos: number };
+    clearable: boolean;
   })[] {
     return this.database
       .prepare(
-        "SELECT id FROM production_orders ORDER BY CASE state WHEN 'awaiting-preparation' THEN 0 WHEN 'preparing' THEN 0 WHEN 'prepared' THEN 1 WHEN 'dispatched' THEN 2 ELSE 3 END,number DESC LIMIT 200",
+        "SELECT id FROM production_orders WHERE archived_at IS NULL AND number_cycle=? ORDER BY CASE state WHEN 'awaiting-preparation' THEN 0 WHEN 'preparing' THEN 0 WHEN 'prepared' THEN 1 WHEN 'dispatched' THEN 2 ELSE 3 END,number DESC LIMIT 200",
       )
-      .all()
+      .all(currentOrderCycle(this.database))
       .map((row) => {
-        const { preparation, ...summary } = this.get(String(row.id));
+        const order = this.get(String(row.id));
+        const { preparation, ...summary } = order;
         const videos =
           preparation?.manifests.reduce(
             (sum, manifest) => sum + manifest.tasks.length,
@@ -238,6 +257,7 @@ export class OrderRepository {
           ) ?? 0;
         return {
           ...summary,
+          clearable: canClearOrder(order),
           generationCounts: {
             images:
               preparation?.manifests.reduce(
@@ -257,6 +277,11 @@ export class OrderRepository {
   ): { leaseId: string; order: ProductionOrder } {
     return this.transaction(() => {
       const order = this.get(id);
+      if (order.archivedAt)
+        throw new HttpError(
+          409,
+          'Este pedido foi removido da lista e não aceita nova preparação.',
+        );
       if (
         order.state !== 'awaiting-preparation' &&
         !(revise && order.state === 'prepared')
@@ -306,6 +331,8 @@ export class OrderRepository {
     return this.transaction(() => {
       const hash = contentHash(preparation),
         order = this.get(id);
+      if (order.archivedAt)
+        throw new HttpError(409, 'Este pedido foi removido da lista.');
       if (order.preparationHash === hash && order.state !== 'preparing')
         return order;
       this.requireLease(id, leaseId);

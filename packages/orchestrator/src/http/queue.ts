@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { QueueVisibility } from '../queue/visibility.js';
 import { enqueueSchema, queueActionSchema } from '@flow-batch/protocol';
 import type { SignatureService } from '../security/signatures.js';
 import type { ClientStore } from '../persistence/clients.js';
@@ -19,6 +20,20 @@ export function registerQueueRoutes(
     const client = await signatures.http(request);
     clients.authorized(client.id, client.extensionId);
     return repository.snapshot(client.id);
+  });
+  app.get('/api/queue/view', async (request) => {
+    const client = await signatures.http(request);
+    clients.authorized(client.id, client.extensionId);
+    return repository.snapshot(client.id, true);
+  });
+  app.post('/api/queue/view', async (request) => {
+    const client = await signatures.http(request);
+    clients.authorized(client.id, client.extensionId);
+    z.strictObject({}).parse(request.body);
+    const cleared = new QueueVisibility(repository.database.connection).clear(
+      client.id,
+    );
+    return { cleared };
   });
   app.post('/api/queue', async (request) => {
     const client = await signatures.http(request);

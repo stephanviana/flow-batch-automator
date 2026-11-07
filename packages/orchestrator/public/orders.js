@@ -1,7 +1,7 @@
 import { api } from './management-api.js';
 export { api };
 import { element, productEditor } from './orders-editor.js';
-import { OrderListCleanup, canClearOrder } from './orders-cleanup.js';
+import { canClearOrder } from './orders-cleanup.js';
 import { renderOrder } from './orders-cards.js';
 import { icon } from './ui-icons.js';
 for (const node of document.querySelectorAll('[data-icon]'))
@@ -11,7 +11,6 @@ const status = document.querySelector('#status'),
 const products = [],
   container = document.querySelector('#products');
 const previewDisposers = [];
-const cleanup = new OrderListCleanup();
 let savedOrders = [];
 let draftId = crypto.randomUUID(),
   busy = false;
@@ -79,7 +78,7 @@ form.addEventListener('submit', (event) => {
   });
 });
 function renderSavedOrders() {
-  const orders = savedOrders.filter((order) => cleanup.visible(order));
+  const orders = savedOrders;
   const list = document.querySelector('#orders');
   document.querySelector('#clear-unsent-orders').disabled =
     !orders.some(canClearOrder);
@@ -105,19 +104,17 @@ function renderSavedOrders() {
   document.querySelector('#chat-instruction').textContent =
     `No chat: “Prepare o pedido ${first?.number ?? 1}”.`;
   if (!orders.length)
-    element(
-      list,
-      'p',
-      savedOrders.length
-        ? 'Nenhum pedido nesta lista. Os registros foram preservados.'
-        : 'Nenhum pedido salvo.',
-    );
+    element(list, 'p', 'Nenhum pedido salvo. O próximo pedido começa em #1.');
 }
 function clearOrders(orders) {
-  const count = cleanup.clear(orders);
-  renderSavedOrders();
-  document.querySelector('#orders-cleanup-feedback').textContent =
-    `${count} ${count === 1 ? 'pedido removido' : 'pedidos removidos'} da lista. Histórico preservado.`;
+  void action(async () => {
+    const ids = orders.filter(canClearOrder).map((order) => order.id);
+    if (!ids.length) return;
+    const result = await api('/manage/orders/clear', { ids });
+    await refresh();
+    document.querySelector('#orders-cleanup-feedback').textContent =
+      `${result.cleared} ${result.cleared === 1 ? 'pedido removido' : 'pedidos removidos'} da lista. Próximo pedido: #${result.nextNumber}.`;
+  });
 }
 document
   .querySelector('#clear-unsent-orders')
