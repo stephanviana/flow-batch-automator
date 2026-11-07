@@ -351,11 +351,6 @@ ol {
 #panel-feedback {
   font-size: 0.8rem;
 }
-.queue-activity {
-  padding: 16px;
-  border-left: 3px solid var(--muted);
-  background: #19232e;
-}
 @media (max-width: 340px) {
   main {
     padding-inline: 12px;

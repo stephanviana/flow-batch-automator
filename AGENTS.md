@@ -290,6 +290,9 @@ mudanças apenas documentais não exigem criar testes de código.
 - `pnpm test:browser:orders` / `pnpm test:browser:reuse` /
   `pnpm test:browser:formats`: pedidos pelo painel,
   preparação, despacho, reutilização e downloads em Chrome for Testing com fixtures.
+- `pnpm test:browser:queue-design`: assets compilados da extensão em Chrome com
+  snapshots sintéticos, layout de 280 a 640 px, etapas, tempo, pausa e revisão.
+  Não inicia servidor nem despacha pedidos.
 - `pnpm test:browser:queue` / `pnpm test:browser`: fila e percurso completo em
   perfil isolado. Não instalar bibliotecas globais nem usar o perfil pessoal.
 - `docker compose up -d --build` / `docker compose down`: atualizar/iniciar/parar.

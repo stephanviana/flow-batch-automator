@@ -394,6 +394,9 @@ local), sem controles de testes simulados. **Limpar fila** remove os takes
 finalizados (concluídos, falhos ou cancelados) da lista e dos totais do dashboard,
 inclusive após reabrir a extensão. Takes pendentes, em execução ou com resultado
 incerto permanecem visíveis. Histórico, vídeos e autorizações são preservados.
+A fila destaca o produto e o take atual em um card com etapas verticais de
+referência, imagem, vídeo e MP4, status e tempo na etapa em andamento. Falhas e
+resultados incertos interrompem o indicador de processamento e pedem revisão.
 O dashboard acompanha o projeto atualmente aberto na aba do Flow. Ao voltar à
 página inicial ou fechar a aba, retira o projeto anterior e orienta a iniciar uma
 nova produção. Essa atualização consulta apenas a localização da aba; a leitura
@@ -510,6 +513,7 @@ pnpm test:browser:formats
 pnpm test:browser:library
 pnpm test:browser:cloning
 pnpm test:browser:orders-design
+pnpm test:browser:queue-design
 pnpm test:browser:connect
 pnpm test:browser:flow --flow-status-only --port=4399
 pnpm test:browser:session

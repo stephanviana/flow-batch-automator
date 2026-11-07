@@ -136,7 +136,6 @@
         hidden
       >
         <div class="page-heading">
-          <p class="eyebrow">PRODUÇÃO</p>
           <h2>Fila e gerações</h2>
           <p>Do primeiro take ao download.</p>
         </div>
@@ -147,16 +146,34 @@
           data-tone="idle"
           data-busy="false"
         >
+          <header id="queue-activity-task" class="activity-task" hidden>
+            <h3 id="queue-activity-product"></h3>
+            <p id="queue-activity-meta"></p>
+          </header>
           <div class="activity-heading">
             <span class="activity-indicator" aria-hidden="true"></span>
-            <h2 id="queue-activity-title" role="status" aria-live="polite">
-              Consultando fila…
-            </h2>
+            <div>
+              <h2 id="queue-activity-title" role="status" aria-live="polite">
+                Consultando fila…
+              </h2>
+              <p id="queue-activity-detail">O andamento aparecerá aqui.</p>
+            </div>
           </div>
-          <p id="queue-activity-task" class="activity-task" hidden></p>
-          <p id="queue-activity-detail">O andamento aparecerá aqui.</p>
           <ol id="queue-steps" aria-label="Etapas do take" hidden></ol>
-          <p id="queue-activity-time" class="hint" aria-live="off" hidden></p>
+          <p class="activity-note" id="queue-activity-note" hidden></p>
+          <footer class="activity-footer">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="M12 11v6M12 7v1"></path>
+            </svg>
+            <p>As etapas são atualizadas automaticamente.</p>
+          </footer>
         </section>
         <section class="queue-section" aria-labelledby="queue-title">
           <div id="dispatch-issues" hidden>

@@ -39,7 +39,8 @@
     "test:package:native": "node scripts/validate-native-package.mjs",
     "package:npm": "pnpm build && node scripts/package-local.mjs",
     "audit:npm": "node scripts/audit-npm.mjs",
-    "publish:npm": "node scripts/publish-npm.mjs"
+    "publish:npm": "node scripts/publish-npm.mjs",
+    "test:browser:queue-design": "PLAYWRIGHT_BROWSERS_PATH=.cache/browsers node scripts/validate-browser-queue-design.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

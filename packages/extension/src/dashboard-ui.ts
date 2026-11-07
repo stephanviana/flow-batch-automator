@@ -1,5 +1,5 @@
 import type { QueueSnapshot } from '@flow-batch/protocol';
-import { queueActivity } from './queue-activity.js';
+import { queueActivity } from './queue-activity-state.js';
 
 function text(selector: string, value: string): void {
   const element = document.querySelector(selector);

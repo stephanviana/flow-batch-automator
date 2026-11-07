@@ -8,7 +8,7 @@ import {
   type TaskSummary,
   type QueueSnapshot,
 } from '@flow-batch/protocol';
-import { queueActivity } from '../src/queue-activity.js';
+import { queueActivity } from '../src/queue-activity-state.js';
 
 function task(
   state: TaskSummary['state'],
