@@ -40,5 +40,9 @@
   "runtime/extension/theme.css",
   "runtime/extension/worker.js",
   "runtime/healthcheck.mjs",
-  "runtime/sync-extension.mjs"
+  "runtime/sync-extension.mjs",
+  "dist/public/orders-cleanup.js",
+  "dist/public/orders-review-actions.js",
+  "dist/public/orders-review.js",
+  "runtime/extension/queue-activity.css"
 ]
