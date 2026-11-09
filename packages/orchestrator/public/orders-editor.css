@@ -220,6 +220,9 @@
   transform: rotate(-45deg);
   content: '';
 }
+.clone-mode {
+  margin-top: 12px;
+}
 .mode-choice strong {
   font-size: 14px;
 }

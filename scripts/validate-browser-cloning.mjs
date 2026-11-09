@@ -109,7 +109,10 @@ async function verifyModeSwitching(group, picker) {
   const reference = group.locator('.clone-reference');
   assert.equal(await standardMode.isChecked(), true);
   assert.equal(await reference.isVisible(), false);
-  assert.equal(await group.locator('select').count(), 1);
+  assert.equal(await group.locator('select').count(), 2);
+  const cloning = group.getByLabel('Modo de clonagem', { exact: true });
+  assert.equal(await cloning.isVisible(), false);
+  assert.equal(await cloning.isDisabled(), true);
   assert.equal(
     await standardFormat.locator('option').count(),
     Object.keys(preparationFormatLabels).filter((format) => format !== 'clone')
@@ -134,6 +137,8 @@ async function verifyModeSwitching(group, picker) {
     false,
   );
   assert.equal(await reference.isVisible(), true);
+  assert.equal(await cloning.isEnabled(), true);
+  assert.equal(await cloning.inputValue(), 'adapt-format');
   assert.ok((await reference.innerText()).includes('Importe um MP4'));
   assert.equal(await picker.evaluate((input) => input.checkValidity()), false);
   await group.getByLabel('Variações', { exact: true }).fill('1');
@@ -188,6 +193,7 @@ async function createOrder() {
   assert.deepEqual(await selectedFiles(picker), ['blue.mp4']);
   const group = page.locator('.group').first();
   const reference = await verifyModeSwitching(group, picker);
+  await group.getByLabel('Modo de clonagem').selectOption('preserve-copy');
   await readyVideo(page.locator('.file-list video'));
   await picker.setInputFiles({
     name: 'other.mp4',
@@ -212,7 +218,11 @@ async function createOrder() {
     .getByRole('button', { name: 'Salvar pedido', exact: true })
     .click();
   assert.equal(
-    await page.getByText('Nenhum pedido salvo.', { exact: true }).isVisible(),
+    await page
+      .getByText('Nenhum pedido salvo. O próximo pedido começa em #1.', {
+        exact: true,
+      })
+      .isVisible(),
     true,
   );
   await page
@@ -301,11 +311,13 @@ function completePreparation(preparation) {
         aspect_ratio: '9:16',
       };
       variation.copy = {
-        hook: 'Conheça este produto.',
+        hook: 'Conheça $& e $$ deste produto.',
         body: 'Veja os detalhes.',
         cta: 'Confira no carrinho.',
       };
       if (variation.cloneVideo) {
+        if (variation.cloneVideo.mode === 'preserve-copy')
+          variation.cloneVideo.transcript = { ...variation.copy };
         variation.cloneVideo.analysis =
           'Quadro azul sintético observado na referência; adaptação de teste, sem execução paga.';
         variation.cloneVideo.directions = {
@@ -347,6 +359,12 @@ async function verifyCheckoutAndPublish(api, order, secondaryImage) {
   const videoId = order.products[0].groups[0].videoReferenceId;
   assert.equal(cloned.cloneVideo.materialId, videoId);
   assert.equal(cloned.cloneVideo.analysis, '');
+  assert.equal(cloned.cloneVideo.mode, 'preserve-copy');
+  assert.deepEqual(cloned.cloneVideo.transcript, {
+    hook: '',
+    body: '',
+    cta: '',
+  });
   const bytes = await readFile(resolve(folder, `${videoId}.mp4`));
   assert.deepEqual(bytes, await readFile('scripts/fixtures/blue.mp4'));
   assert.equal(
@@ -361,6 +379,14 @@ async function verifyCheckoutAndPublish(api, order, secondaryImage) {
   await assert.rejects(
     api(`/manage/orders/${order.id}/prepare`, wrong),
     /pedido salvo/,
+  );
+  const changedCopy = globalThis.structuredClone(preparation);
+  changedCopy.products[0].variations.find(
+    (variation) => variation.format === 'clone',
+  ).copy.hook += ' ';
+  await assert.rejects(
+    api(`/manage/orders/${order.id}/prepare`, changedCopy),
+    /transcrição/,
   );
   await writeFile(
     resolve(folder, 'preparacao.json'),
@@ -434,6 +460,7 @@ try {
   let api = await localClient(base);
   const saved = (await api('/manage/orders/1')).order;
   assert.equal(saved.products[0].groups[0].format, 'clone');
+  assert.equal(saved.products[0].groups[0].cloneMode, 'preserve-copy');
   assert.equal(saved.products[0].groups[1].format, 'factory-group');
   await page.goto('about:blank');
   await app.close();

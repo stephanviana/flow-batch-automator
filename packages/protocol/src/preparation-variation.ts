@@ -26,10 +26,15 @@ function renderAnimation(
   direction: string,
   seconds: string,
 ): string {
-  const prompt = template
-    .replaceAll('{{duracao_segundos}}', seconds)
-    .replaceAll('{{fala}}', speech)
-    .replaceAll('{{direcao}}', direction);
+  const replacements: Record<string, string> = {
+    fala: speech,
+    direcao: direction,
+    duracao_segundos: seconds,
+  };
+  const prompt = template.replace(
+    /\{\{(fala|direcao|duracao_segundos)\}\}/g,
+    (_match, key: string) => replacements[key]!,
+  );
   if (/\{\{|\[INSERIR/.test(prompt))
     throw new Error('O prompt contém um placeholder não resolvido.');
   return prompt;

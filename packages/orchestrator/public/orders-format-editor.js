@@ -1,5 +1,10 @@
 import { element, field } from './orders-elements.js';
-import { formats, ORDER_GROUP_LIMIT } from './orders-config.js';
+import {
+  formats,
+  ORDER_GROUP_LIMIT,
+  cloneModes,
+  DEFAULT_CLONE_MODE,
+} from './orders-config.js';
 import { icon, iconButton } from './ui-icons.js';
 export { formats } from './orders-config.js';
 
@@ -18,7 +23,7 @@ function modePicker(parent) {
       'clone',
       'Clonar vídeo',
       'Clonar um vídeo',
-      'Adapte a estrutura de um vídeo de referência ao produto.',
+      'Adapte a estrutura ou preserve a copy original com outro cenário e avatar.',
     ],
   ]) {
     const label = element(picker, 'label', '', 'mode-choice');
@@ -46,6 +51,11 @@ function formatGroup(parent, materials) {
     'Escolha os formatos e a quantidade de variações.',
     'mode-guidance',
   );
+  const cloneMode = field(row, 'Modo de clonagem', 'select');
+  cloneMode.parentElement.className = 'select-field clone-mode';
+  for (const [value, title] of cloneModes)
+    element(cloneMode, 'option', title).value = value;
+  cloneMode.value = DEFAULT_CLONE_MODE;
   const controls = element(row, 'div', '', 'group-fields');
   const format = field(controls, 'Formato', 'select');
   format.parentElement.className = 'select-field';
@@ -76,6 +86,12 @@ function formatGroup(parent, materials) {
     format.disabled = clone;
     format.required = !clone;
     reference.hidden = !clone;
+    cloneMode.parentElement.hidden = !clone;
+    cloneMode.disabled = !clone;
+    hint.textContent =
+      cloneMode.value === 'preserve-copy'
+        ? 'Mantenha as falas originais; varie cenário e avatar sem reescrever a copy.'
+        : 'Adapte a estrutura do vídeo para criar nova copy do produto.';
     hint.hidden = !clone;
     const videos = materials.videos();
     videoName.textContent =
@@ -90,11 +106,13 @@ function formatGroup(parent, materials) {
     materials.clearAdditional();
     refresh();
   });
+  cloneMode.addEventListener('change', refresh);
   refresh();
   return {
     id: crypto.randomUUID(),
     mode,
     format,
+    cloneMode,
     count,
     remove,
     row,
@@ -161,7 +179,9 @@ export function formatsEditor(parent, materials) {
           id: choice.id,
           format: clone ? 'clone' : choice.format.value,
           count: Number(choice.count.value),
-          ...(clone ? { videoReferenceId } : {}),
+          ...(clone
+            ? { videoReferenceId, cloneMode: choice.cloneMode.value }
+            : {}),
         };
       });
     },

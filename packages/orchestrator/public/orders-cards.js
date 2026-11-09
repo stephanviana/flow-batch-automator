@@ -3,6 +3,7 @@ import { orderReview } from './orders-review.js';
 import { element } from './orders-elements.js';
 import { formats } from './orders-format-editor.js';
 import { icon } from './ui-icons.js';
+import { cloneModes, DEFAULT_CLONE_MODE } from './orders-config.js';
 import { referenceVideoPreview } from './orders-video-preview.js';
 
 const states = {
@@ -28,7 +29,20 @@ function cloneReview(parent, variation) {
     'summary',
     `${variation.name} · análise e adaptação do vídeo`,
   );
+  element(
+    review,
+    'p',
+    cloneModes.find(
+      ([mode]) => mode === (variation.cloneVideo.mode ?? DEFAULT_CLONE_MODE),
+    )?.[1] ?? 'Clonagem',
+  );
   element(review, 'p', variation.cloneVideo.analysis);
+  if (variation.cloneVideo.transcript)
+    details(
+      review,
+      'Copy original conferida',
+      JSON.stringify(variation.cloneVideo.transcript, null, 2),
+    );
   for (const [stage, label] of [
     ['hook', 'Gancho'],
     ['body', 'Body'],
@@ -115,6 +129,14 @@ function preparationPreview(parent, order, { api, report }) {
     }
   });
 }
+function groupLabel(group) {
+  const options = group.format === 'clone' ? cloneModes : formats;
+  const key =
+    group.format === 'clone'
+      ? (group.cloneMode ?? DEFAULT_CLONE_MODE)
+      : group.format;
+  return options.find(([value]) => value === key)?.[1] ?? group.format;
+}
 function orderDetails(parent, order, context, disposers) {
   const disclosure = element(parent, 'details', '', 'order-details');
   const summary = element(disclosure, 'summary', 'Detalhes');
@@ -127,7 +149,7 @@ function orderDetails(parent, order, context, disposers) {
     element(
       products,
       'li',
-      `${product.name}: ${product.groups.map((group) => `${group.count} × ${formats.find(([key]) => key === group.format)?.[1]}`).join('; ')}`,
+      `${product.name}: ${product.groups.map((group) => `${group.count} × ${groupLabel(group)}`).join('; ')}`,
     );
     for (const videoId of new Set(
       product.groups.map((group) => group.videoReferenceId).filter(Boolean),

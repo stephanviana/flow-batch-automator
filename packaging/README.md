@@ -116,3 +116,6 @@ Para revisar antes, diga “Apenas prepare o pedido 12, não execute”. Instala
 atualizar, importar instruções e publicar sem execução não autorizam geração.
 A aplicação usa a sessão do Flow no navegador;
 cookies e tokens Google não são exportados para o servidor.
+
+Clonagem permite adaptar a copy ou preservar exatamente a transcrição original,
+variando cenário/avatar. Os contratos validam os textos, sem transcrever o MP4.

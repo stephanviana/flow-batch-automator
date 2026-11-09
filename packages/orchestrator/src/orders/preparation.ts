@@ -5,9 +5,12 @@ import {
   type ImportManifest,
   type Preparation,
   materialFilename,
+  DEFAULT_CLONE_MODE,
+  type CloneMode,
 } from '@flow-batch/protocol';
 import type { PreparedOrder, ProductionOrder } from './repository.js';
 import { HttpError } from '../security/errors.js';
+import { verifyClonedTranscripts } from './clone-transcripts.js';
 import { ZodError } from 'zod';
 
 export { materialFilename as referencePath } from '@flow-batch/protocol';
@@ -38,6 +41,7 @@ export async function variationPlan(order: ProductionOrder): Promise<
     format: Preparation['variations'][number]['format'];
     name: string;
     videoReferenceId?: string;
+    cloneMode?: CloneMode;
   }[]
 > {
   const plan = [];
@@ -57,6 +61,7 @@ export async function variationPlan(order: ProductionOrder): Promise<
           ...(group.videoReferenceId
             ? { videoReferenceId: group.videoReferenceId }
             : {}),
+          ...(group.cloneMode ? { cloneMode: group.cloneMode } : {}),
           name: `${group.format} ${index + 1}`,
         });
   return plan;
@@ -83,7 +88,13 @@ async function compileProduct(
       ...entries.map((variation) => variation.id),
     ]);
     return compilePreparation(
-      { version: 1, id, product: product.name, reference, variations: entries },
+      {
+        version: 1,
+        id,
+        product: product.name,
+        reference,
+        variations: entries,
+      },
       templates,
     );
   }
@@ -138,17 +149,20 @@ export async function prepareOrder(
             (planned) =>
               planned.id === entry.id &&
               planned.format === entry.format &&
+              (planned.cloneMode ?? DEFAULT_CLONE_MODE) ===
+                (entry.cloneVideo?.mode ?? DEFAULT_CLONE_MODE) &&
               planned.videoReferenceId === entry.cloneVideo?.materialId,
           ),
       )
     )
       throw new HttpError(
         400,
-        'Formatos, quantidades ou IDs não correspondem ao pedido salvo.',
+        'Formatos, modos de clonagem, quantidades ou IDs não correspondem ao pedido salvo.',
       );
     const sorted = variations.map((planned) =>
       prepared.variations.find((entry) => entry.id === planned.id)!,
     );
+    verifyClonedTranscripts(sorted);
     manifests.push(
       ...(await compileProduct(order, product, sorted, templates)),
     );

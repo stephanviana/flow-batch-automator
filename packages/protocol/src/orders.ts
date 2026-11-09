@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { preparationFormatSchema, preparationSchema } from './preparations.js';
+import {
+  preparationFormatSchema,
+  preparationSchema,
+  cloneModeSchema,
+} from './preparations.js';
 
 export {
   MATERIAL_LIMIT,
@@ -23,6 +27,7 @@ export const orderProductSchema = z
           format: preparationFormatSchema,
           count: z.number().int().min(1).max(20),
           videoReferenceId: z.uuid().optional(),
+          cloneMode: cloneModeSchema.optional(),
         }),
       )
       .min(1)
@@ -30,6 +35,12 @@ export const orderProductSchema = z
   })
   .superRefine((product, context) => {
     for (const group of product.groups) {
+      if (group.format !== 'clone' && group.cloneMode !== undefined)
+        context.addIssue({
+          code: 'custom',
+          path: ['groups'],
+          message: 'cloneMode pertence somente aos grupos clone.',
+        });
       if (
         (group.format === 'clone') !== (group.videoReferenceId !== undefined) ||
         (group.videoReferenceId &&

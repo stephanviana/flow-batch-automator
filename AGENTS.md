@@ -52,6 +52,9 @@ em `skills/` são orientações técnicas para operar o MCP; a análise criativa
 regras de copy, imagem, animação e clonagem pertencem à biblioteca local configurada.
 O vídeo de clonagem é analisado pelo agente ativo; MP4 até 64 MB e imagens/documentos
 até 8 MB. A foto do produto continua como referência de geração do Flow.
+cloneMode=adapt-format é o padrão legado; preserve-copy exige cloneVideo.mode,
+transcript conferida e copy idêntica por take e entre variações do vídeo no
+produto. O agente analisa o áudio; o servidor valida igualdade sem invocar IA.
 
 O SQLite guarda registros; os materiais importados ficam em arquivos por hash
 em armazenamento persistente administrado pelo aplicativo, com deduplicação.

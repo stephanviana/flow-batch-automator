@@ -3,6 +3,8 @@ import {
   VIDEO_MATERIAL_LIMIT,
   ORDER_GROUP_LIMIT,
   preparationFormatLabels,
+  cloneModeLabels,
+  DEFAULT_CLONE_MODE,
 } from '@flow-batch/protocol';
 import { cp, mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -16,9 +18,19 @@ await cp(
   new URL('../../shared/styles/theme.css', import.meta.url),
   resolve(destination, 'theme.css'),
 );
+const browserConfiguration = {
+  MATERIAL_LIMIT,
+  VIDEO_MATERIAL_LIMIT,
+  ORDER_GROUP_LIMIT,
+  formats: Object.entries(preparationFormatLabels),
+  cloneModes: Object.entries(cloneModeLabels),
+  DEFAULT_CLONE_MODE,
+};
 await writeFile(
   resolve(destination, 'orders-config.js'),
-  `export const MATERIAL_LIMIT = ${MATERIAL_LIMIT};\nexport const VIDEO_MATERIAL_LIMIT = ${VIDEO_MATERIAL_LIMIT};\nexport const ORDER_GROUP_LIMIT = ${ORDER_GROUP_LIMIT};\nexport const formats = ${JSON.stringify(Object.entries(preparationFormatLabels))};\n`,
+  Object.entries(browserConfiguration)
+    .map(([name, value]) => `export const ${name} = ${JSON.stringify(value)};`)
+    .join('\n') + '\n',
 );
 await build({
   entryPoints: [new URL('./src/mcp/main.ts', import.meta.url).pathname],

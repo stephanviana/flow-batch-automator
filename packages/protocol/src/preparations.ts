@@ -36,8 +36,22 @@ export const preparationFormatLabels: Record<PreparationFormat, string> = {
   seller: 'Full Vendedora',
   clone: 'Clonar formato de vídeo',
 };
+export const cloneModeSchema = z.enum(['adapt-format', 'preserve-copy']);
+export type CloneMode = z.infer<typeof cloneModeSchema>;
+export const DEFAULT_CLONE_MODE: CloneMode = 'adapt-format';
+export const cloneModeLabels: Record<CloneMode, string> = {
+  'adapt-format': 'Adaptar formato e criar nova copy',
+  'preserve-copy': 'Manter copy original e mudar cenário e avatar',
+};
+export const takeCopySchema = z.strictObject({
+  hook: nonblankText,
+  body: nonblankText,
+  cta: nonblankText,
+});
 export const cloneVideoSchema = z.strictObject({
   materialId: z.uuid(),
+  mode: cloneModeSchema.optional(),
+  transcript: takeCopySchema.optional(),
   analysis: nonblankText,
   directions: z.strictObject({
     hook: nonblankText,
@@ -63,11 +77,7 @@ export const preparationSchema = z
             hookImage: creativeImageSchema,
             presenterImage: creativeImageSchema.optional(),
             cloneVideo: cloneVideoSchema.optional(),
-            copy: z.strictObject({
-              hook: nonblankText,
-              body: nonblankText,
-              cta: nonblankText,
-            }),
+            copy: takeCopySchema,
           })
           .refine(
             (variation) =>
@@ -85,7 +95,36 @@ export const preparationSchema = z
               (variation.format === 'clone') ===
               (variation.cloneVideo !== undefined),
             'A clonagem exige análise e direções do vídeo; os demais formatos não usam cloneVideo.',
-          ),
+          )
+          .superRefine((variation, context) => {
+            const clone = variation.cloneVideo;
+            if (!clone) return;
+            if (clone.mode !== 'preserve-copy') {
+              if (clone.transcript !== undefined)
+                context.addIssue({
+                  code: 'custom',
+                  path: ['cloneVideo', 'transcript'],
+                  message: 'Transcrição preservada exige preserve-copy.',
+                });
+              return;
+            }
+            if (!clone.transcript) {
+              context.addIssue({
+                code: 'custom',
+                path: ['cloneVideo', 'transcript'],
+                message: 'Informe a transcrição conferida do vídeo original.',
+              });
+              return;
+            }
+            for (const stage of ['hook', 'body', 'cta'] as const)
+              if (clone.transcript[stage] !== variation.copy[stage])
+                context.addIssue({
+                  code: 'custom',
+                  path: ['copy', stage],
+                  message:
+                    'A copy deve ser idêntica à transcrição original, incluindo espaços.',
+                });
+          }),
       )
       .min(1)
       .max(6),

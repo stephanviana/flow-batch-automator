@@ -573,3 +573,15 @@ A integração com a aba do Flow é inspirada no
 [FlowKit](https://github.com/crisng95/flowkit), referência `19cb87d`. O código
 adaptado preserva a [licença MIT](packages/extension/public/FlowKit-LICENSE.txt).
 Não recarregue a aba do Flow durante execução para atualizar a listagem.
+
+## Opções dos pedidos
+
+Grupos de clonagem podem adaptar formato e criar nova copy (`adapt-format`) ou
+manter a copy original com outro cenário/avatar (`preserve-copy`). O modo antigo
+sem campo continua sendo adaptação. Em preservação, o agente confere o áudio e
+registra `cloneVideo.transcript` em gancho, Body e CTA; `copy` deve ser idêntica
+a cada trecho, inclusive espaços, e todas as variações do mesmo vídeo no produto
+usam a mesma transcrição. O servidor valida a igualdade, sem transcrever áudio.
+A revisão mostra modo e transcrição. Limitações de áudio, duração ou oferta
+exigem orientação antes da publicação. Preservar texto não reutiliza o áudio nem
+a identidade/voz da pessoa original. As regras criativas estão em `formatos/clone.md`.

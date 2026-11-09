@@ -65,6 +65,13 @@ test('cloned formats require a product-owned video and complete adaptation, with
     { ...product.groups[0], videoReferenceId: undefined },
     { ...product.groups[0], videoReferenceId: randomUUID() },
     { ...product.groups[0], format: 'factory' },
+    { ...product.groups[0], cloneMode: 'unknown' },
+    {
+      ...product.groups[0],
+      format: 'seller',
+      videoReferenceId: undefined,
+      cloneMode: 'adapt-format',
+    },
   ])
     assert.equal(
       orderProductSchema.safeParse({ ...product, groups: [group] }).success,
@@ -148,4 +155,48 @@ test('video materials have their own cap while images and documents retain the 8
     materialSchema.safeParse({ ...material, mime: 'image/png' }).success,
     false,
   );
+});
+
+test('preserve-copy validates exact text and renders dollar sequences literally', async () => {
+  const clone = variation();
+  clone.cloneVideo.mode = 'preserve-copy';
+  clone.copy.hook = '  Original $& $$ $` — sem ajustes. ';
+  clone.cloneVideo.directions.body = 'Literal $& and $$ direction.';
+  clone.cloneVideo.transcript = { ...clone.copy };
+  const plan = {
+    version: 1,
+    id: randomUUID(),
+    product: 'Produto',
+    reference: `${randomUUID()}.png`,
+    variations: [clone],
+  };
+  const compiled = await compilePreparation(plan, animationTemplates);
+  for (const [index, stage] of (['hook', 'body', 'cta'] as const).entries()) {
+    assert.equal(compiled.tasks[index]!.original.copy, clone.copy[stage]);
+    assert.ok(
+      compiled.tasks[index]!.original.videoPrompt.includes(clone.copy[stage]),
+    );
+    assert.ok(
+      compiled.tasks[index]!.original.videoPrompt.includes(
+        clone.cloneVideo.directions[stage],
+      ),
+    );
+  }
+  const missing = {
+    ...clone,
+    cloneVideo: { ...clone.cloneVideo, transcript: undefined },
+  };
+  const changed = {
+    ...clone,
+    copy: { ...clone.copy, hook: clone.copy.hook.trim() },
+  };
+  const adapted = {
+    ...clone,
+    cloneVideo: { ...clone.cloneVideo, mode: 'adapt-format' },
+  };
+  for (const invalid of [missing, changed, adapted])
+    assert.equal(
+      preparationSchema.safeParse({ ...plan, variations: [invalid] }).success,
+      false,
+    );
 });

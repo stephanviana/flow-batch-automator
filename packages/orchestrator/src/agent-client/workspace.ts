@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import {
   materialFilename,
   usesSingleImage,
+  DEFAULT_CLONE_MODE,
   libraryFileSchema,
   orderPublicationSchema,
   type OrderPublication,
@@ -89,7 +90,7 @@ function draftProducts(
     id: product.id,
     variations: variationPlan
       .filter((variation) => variation.productId === product.id)
-      .map(({ id, name, format, videoReferenceId }) => ({
+      .map(({ id, name, format, videoReferenceId, cloneMode }) => ({
         id,
         name,
         format,
@@ -97,6 +98,10 @@ function draftProducts(
           ? {
               cloneVideo: {
                 materialId: videoReferenceId,
+                mode: cloneMode ?? DEFAULT_CLONE_MODE,
+                ...(cloneMode === 'preserve-copy'
+                  ? { transcript: { hook: '', body: '', cta: '' } }
+                  : {}),
                 analysis: '',
                 directions: { hook: '', body: '', cta: '' },
               },
