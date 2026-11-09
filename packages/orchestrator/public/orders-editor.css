@@ -196,29 +196,13 @@
   outline-offset: 3px;
 }
 .creation-mode input[type='radio'] {
-  appearance: none;
   flex: 0 0 18px;
   width: 18px;
   height: 18px;
   margin: 0;
   padding: 0;
-  border: 2px solid #637985;
-  border-radius: 50%;
-  background: transparent;
-}
-.creation-mode input:checked {
-  border-color: var(--accent);
-  background: var(--accent);
-}
-.creation-mode input:checked::after {
-  display: block;
-  width: 8px;
-  height: 5px;
-  margin: 3px 2px;
-  border-bottom: 2px solid #17483f;
-  border-left: 2px solid #17483f;
-  transform: rotate(-45deg);
-  content: '';
+  accent-color: var(--accent);
+  cursor: pointer;
 }
 .clone-mode {
   margin-top: 12px;
