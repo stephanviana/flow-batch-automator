@@ -117,6 +117,26 @@ atualizar, importar instruções e publicar sem execução não autorizam geraç
 A aplicação usa a sessão do Flow no navegador;
 cookies e tokens Google não são exportados para o servidor.
 
+## Chrome, diagnóstico e remoção
+
+Carregue a pasta de `--extension` em `chrome://extensions`, com modo de
+desenvolvedor e “Carregar sem compactação”. Após atualizar, recarregue a extensão
+e os clientes MCP. Confirme a identidade em `/connect`, abra `/orders` e mantenha
+a conta do Google Flow disponível no Chrome. Use `status`, `logs`, `doctor` e
+`library validate` para diagnóstico. Nenhuma instalação ou validação gera vídeos.
+
+Setup preserva opções omitidas. `--workspace`, `--runtime`, `--data`,
+`--clients`, `--codex-config`, `--antigravity-config`, `--project` e `--volume`
+configuram os destinos e o ambiente; não há opção de porta em setup.
+`FLOW_BATCH_HOME` escolhe o estado da CLI. Para o servidor direto, `LIBRARY_DIR`,
+`DATABASE_PATH`, `MATERIALS_DIR`, `HOST` e `PORT` configuram o runtime.
+Compose usa `FLOW_LIBRARY_DIR` e `WIN_EXTENSION_DIR`; Node direto não lê `.env`.
+Consulte o README do projeto para a tabela completa de variáveis e precedência.
+
+Para remover, execute down, remova a extensão e apenas a entrada flow-batch dos
+clientes, e use `npm uninstall --global __PACKAGE_NAME__`. Dados e volumes ficam
+preservados. Não remova downloads nem use down -v como parada habitual.
+
 Nos pedidos, escolha Omni 1.1 Flash (padrão) ou Veo 3.1 Lite para todos os vídeos.
 Clonagem permite adaptar a copy ou preservar exatamente a transcrição original,
 variando cenário/avatar. Os contratos validam os textos, sem transcrever o MP4.

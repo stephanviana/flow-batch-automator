@@ -123,6 +123,73 @@ inclui `node_modules` nem `runtime/app.tar.gz`. O conector MCP independente segu
 incluído para preservar sua instalação fora do prefixo npm e o download pela API.
 Esta mudança prepara uma nova versão; `0.6.0` já publicada mantém seu conteúdo.
 
+## Configuração, primeira execução e remoção
+
+`flow-batch --help` lista os comandos. Em `setup`, `--extension PASTA` é
+obrigatório na primeira configuração. `--library` e `--workspace` escolhem a
+biblioteca e o trabalho do agente; `--runtime native|docker` escolhe o runtime;
+`--data` escolhe os dados nativos, sem migrar volume Docker. `--clients codex`
+ou `antigravity` limita os clientes; `--codex-config`/`--antigravity-config`
+escolhem seus arquivos. `--project` e `--volume` identificam o Compose.
+Opções omitidas preservam valores salvos. Não existe opção de porta em setup.
+Os caminhos pertencem ao ambiente que executa o comando, Windows ou Linux/WSL.
+
+Depois de `up` e `doctor`, abra `chrome://extensions` no Chrome 120+, ative o
+modo do desenvolvedor e carregue sem compactação a pasta de `--extension`.
+Confirme a identidade em <http://127.0.0.1:4319/connect> e abra `/orders`.
+Entre no Google Flow nessa conta e mantenha a sessão disponível. Reabra os
+clientes MCP no ambiente onde foram configurados. Valide a biblioteca com
+`flow-batch library validate`; instalar e validar não iniciam gerações.
+A pasta inicial da extensão precisa estar vazia ou identificada como Flow Batch.
+
+Para diagnosticar, use `status`, `logs`, `doctor` e `library validate`.
+No Docker, confirme o daemon e `docker compose version`. Se a extensão não
+conectar, confira `/connect`, o servidor e a recarga da extensão. Se o MCP não
+aparecer, confira o registro e reabra o cliente. Uma geração incerta requer a
+revisão descrita adiante, sem reenvio automático.
+
+Atualize com `down`, atualização do pacote, `setup` e `up`; recarregue extensão
+e clientes MCP. Setup pode produzir backups das configurações que substituir:
+obtenha autorização para esses backups antes de executá-lo. As instruções
+instaladas não são sobrescritas. Trocar runtime ou ambiente não migra banco,
+materiais e capturas. Confira instalação/porta existente antes de alterar pastas.
+
+Para remover mantendo dados, execute `down`, confira `status`, remova a extensão
+no Chrome e apenas a entrada `flow-batch` nos clientes MCP. Depois use
+`npm uninstall --global @nahpets01-org/flow-batch-automator` (`npm.cmd` no Windows).
+Biblioteca, configuração, SQLite, materiais, workspace e volumes permanecem.
+Excluir esses dados exige decisão separada sobre os caminhos daquela instalação.
+Não remova downloads do Chrome nem use `docker compose down -v` como parada.
+
+### Variáveis de ambiente
+
+| Variável                 | Uso e padrão                                                                 |
+| ------------------------ | ---------------------------------------------------------------------------- |
+| `FLOW_BATCH_HOME`        | Configuração da CLI e pastas padrão; `~/.flow-batch`.                        |
+| `CODEX_HOME`             | Pasta do Codex; `~/.codex`; `--codex-config` tem precedência.                |
+| `FLOW_API_URL`           | MCP/CLI independente; `http://127.0.0.1:4319`.                               |
+| `FLOW_AGENT_WORKSPACE`   | Workspace MCP; `~/.flow-batch/pedidos`.                                      |
+| `FLOW_AGENT_NAME`        | Agente da CLI orders; `agente-local`.                                        |
+| `WIN_EXTENSION_DIR`      | Compose do checkout; pasta de extensão obrigatória.                          |
+| `FLOW_LIBRARY_DIR`       | Compose do checkout; pasta de instruções obrigatória.                        |
+| `HOST` / `PORT`          | Servidor direto; `127.0.0.1` / `4319`; porta de 1024 a 65535.                |
+| `DATABASE_PATH`          | Servidor direto; `./data/flow-batch.sqlite`.                                 |
+| `MATERIALS_DIR`          | Materiais; por padrão `materials` junto ao SQLite.                           |
+| `LIBRARY_DIR`            | Servidor direto; `~/.flow-batch/biblioteca`; container usa `/library`.       |
+| `SQLITE_BUSY_TIMEOUT_MS` | Espera SQLite; 3000 ms, de 100 a 10000.                                      |
+| `LOG_LEVEL`              | Padrão `info`; aceita `silent`, `fatal`, `error`, `warn`, `info` ou `debug`. |
+
+Na instalação npm, setup salva os valores; não é necessário criar `.env`.
+Compose lê `.env` para interpolação; Node direto não o carrega automaticamente.
+O runtime gerenciado define caminhos, host, porta e log pela configuração salva.
+`FLOW_LOCAL_PACKAGE_DIRECTORY`, `FLOW_LOCAL_EXTENSION_DIRECTORY` e
+`FLOW_LOCAL_LIBRARY_DIRECTORY` são internas à CLI Compose, não opções manuais.
+A extensão distribuída aponta para 4319. Não exponha a API na rede nem compartilhe
+`native.json`, que pode conter segredo de controle local.
+
+`PLAYWRIGHT_BROWSERS_PATH`, `FLOW_TEST_NPM` e `FLOW_TEST_WINDOWS_NODE` escolhem
+navegador, npm e Node Windows somente nos testes. Não são requisitos de operação.
+
 ## Gerar, auditar e publicar uma versão
 
 `packaging/npm.json` define nome, registro e visibilidade. A versão vem do
