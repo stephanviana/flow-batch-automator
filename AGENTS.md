@@ -20,15 +20,20 @@ confirmação nem hash de aprovação. Use `flow_publish` com `execute=true` e
 `execute=false`. Para executar uma preparação existente, `flow_approve` usa só
 número, autorização e extensão opcional. Isso não autoriza gerações nesta tarefa
 de manutenção nem retomadas automáticas após falha.
-A biblioteca criativa ativa fica na pasta escolhida por `LIBRARY_DIR` (Compose:
-`FLOW_LIBRARY_DIR`). Novas bibliotecas usam `base.md` com [common], [copy],
-[image] e [animation], e `formatos/*.md`, sem rotas editáveis. `library init`
-cria somente a estrutura vazia. `library split` mostra a divisão sem alterações;
-`--preserve-originals` aplica e arquiva os originais, exigindo autorização para
-esse backup. Layouts antigos e suas capturas continuam legíveis, sem conversão
-automática. `instrucoes.json` guarda a identidade e revisão; `.historico/` contém
-capturas necessárias. `biblioteca.json` migra por renomeação, preservando bytes;
-metadados conflitantes impedem abertura, sem backup automático.
+A biblioteca criativa versionada está em `instrucoes/`: base.md e oito arquivos
+`formatos/*.md`. O npm distribui esses textos sem segredos; setup instala a edição
+na pasta configurada apenas quando nova ou com scaffold modular vazio sem capturas.
+Conteúdo local existente, incompleto ou legado é preservado. O runtime usa
+somente LIBRARY_DIR (Compose: FLOW_LIBRARY_DIR), sem fallback no checkout/pacote.
+Atualizar o software não sincroniza instruções. Preserve os textos ao formatar.
+Metadados instrucoes.json, .historico/, .rascunhos/ e temporários são locais,
+ignorados no Git; capturas não são cache descartável. biblioteca.json migra por
+renomeação byte a byte; conflitos impedem abertura, sem backup automático.
+Novas bibliotecas usam base.md com [common], [copy], [image], [animation] e
+`formatos/*.md` sem rotas editáveis. library init cria só scaffold vazio;
+library split mostra prévia sem efeitos; --preserve-originals aplica e arquiva
+originais, exigindo autorização explícita para backup. Import/export, convert,
+restore e layouts legados permanecem; não converter bibliotecas automaticamente.
 O painel `/orders` mantém pedidos e andamento, sem editor de instruções.
 O seletor de referências aceita várias imagens por produto, acumuladas entre
 seleções e removidas individualmente. Todas entram nos materiais do pedido;
@@ -44,7 +49,7 @@ contexto e os mesmos materiais verificados. O compilador não invoca IA.
 Para operação, trabalhe fora do repositório e leia o contexto integral retornado
 pelo MCP. Não investigue código ou containers durante uma preparação. As skills
 em `skills/` são orientações técnicas para operar o MCP; a análise criativa e as
-regras de copy, imagem, animação e clonagem pertencem ao pacote externo.
+regras de copy, imagem, animação e clonagem pertencem à biblioteca local configurada.
 O vídeo de clonagem é analisado pelo agente ativo; MP4 até 64 MB e imagens/documentos
 até 8 MB. A foto do produto continua como referência de geração do Flow.
 

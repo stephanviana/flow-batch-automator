@@ -1,6 +1,9 @@
 import { readdir } from 'node:fs/promises';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
-import { LibraryStore } from '../library/store.js';
+import {
+  installInstructions,
+  type InstructionInstallResult,
+} from '../library/install.js';
 import { installMcpConnector, type McpInstallResult } from '../mcp/install.js';
 import { ensureDirectory, regularFile } from '../mcp/install-files.js';
 import {
@@ -135,6 +138,7 @@ export async function setupLocal(
   configuration: Installation;
   clients: McpInstallResult[];
   backup: string | null;
+  instructions: InstructionInstallResult;
 }> {
   const previous = await readInstallation(root);
   const config = setupConfiguration(root, previous, options);
@@ -142,11 +146,13 @@ export async function setupLocal(
   config.mcp = clientConfiguration(previous, homeDirectory, options);
   externalState(root, config, packageRoot);
   await extensionDestination(config.extensionDirectory);
-  await ensureDirectory(config.libraryDirectory);
   await ensureDirectory(config.workspace);
   if (config.runtime === 'native' && config.dataDirectory)
     await ensureDirectory(config.dataDirectory);
-  new LibraryStore(config.libraryDirectory);
+  const instructions = installInstructions(
+    join(packageRoot, 'instrucoes'),
+    config.libraryDirectory,
+  );
   const backup = await saveInstallation(root, config);
   const clients = await registerClients(
     root,
@@ -154,5 +160,5 @@ export async function setupLocal(
     homeDirectory,
     config,
   );
-  return { configuration: config, clients, backup };
+  return { configuration: config, clients, backup, instructions };
 }

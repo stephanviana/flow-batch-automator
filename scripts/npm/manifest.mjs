@@ -61,7 +61,13 @@ export function distributionManifest(release) {
     engines: release.engines,
     os: ['linux', 'win32'],
     bin: { 'flow-batch': 'bin/flow-batch.mjs' },
-    files: ['bin/', 'dist/', 'runtime/', 'THIRD_PARTY_NOTICES.md'],
+    files: [
+      'bin/',
+      'dist/',
+      'runtime/',
+      'instrucoes/',
+      'THIRD_PARTY_NOTICES.md',
+    ],
     dependencies: release.dependencies,
     publishConfig: { registry: release.registry, access: release.access },
   };

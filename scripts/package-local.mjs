@@ -8,7 +8,7 @@ import {
   rm,
   writeFile,
 } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { build } from 'esbuild';
 import {
   repositoryRoot as root,
@@ -18,6 +18,9 @@ import {
 import { createDependencyLock } from './npm/dependencies.mjs';
 import { auditPackage } from './npm/audit.mjs';
 
+import { bundledInstructions } from '../packages/orchestrator/dist/library/install.js';
+
+const instructions = bundledInstructions(join(root, 'instrucoes'));
 const staging = join(root, '.cache', 'local-package');
 const destination = join(root, 'dist', 'npm');
 const release = await releaseMetadata();
@@ -28,6 +31,11 @@ await rm(staging, { recursive: true, force: true });
 await mkdir(join(staging, 'bin'), { recursive: true });
 await mkdir(join(staging, 'runtime'), { recursive: true });
 await mkdir(destination, { recursive: true });
+for (const [path, text] of Object.entries(instructions)) {
+  const target = join(staging, 'instrucoes', path);
+  await mkdir(dirname(target), { recursive: true });
+  await writeFile(target, text, { flag: 'wx' });
+}
 const compilation = {
   platform: 'node',
   format: 'esm',

@@ -130,6 +130,7 @@ try {
     'THIRD_PARTY_NOTICES.md',
     'bin',
     'dist',
+    'instrucoes',
     'node_modules',
     'package.json',
     'runtime',

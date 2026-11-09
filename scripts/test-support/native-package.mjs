@@ -17,10 +17,8 @@ import { parseArgs } from 'node:util';
 import { DatabaseSync } from 'node:sqlite';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
-import { consolidatedDocument } from '../../packages/orchestrator/src/library/routing.ts';
 import { nativeAddress } from '../../packages/orchestrator/src/local-cli/native-state.ts';
 import { requestNativeControl } from '../../packages/orchestrator/src/local-cli/native-control.ts';
-import { instructionFiles } from './instruction-package.mjs';
 
 const { values } = parseArgs({
   options: {
@@ -139,10 +137,20 @@ try {
   config.port = await unusedPort();
   await writeFile(file, JSON.stringify(config, null, 2) + '\n');
   cli('setup');
-  const document = consolidatedDocument(instructionFiles());
-  const portable = join(root, 'biblioteca.md');
-  await writeFile(portable, document);
-  cli('library', 'import', portable);
+  const activeBase = join(config.libraryDirectory, 'base.md');
+  const document = await readFile(activeBase, 'utf8');
+  assert.equal(
+    document,
+    await readFile(join(packageRoot, 'instrucoes/base.md'), 'utf8'),
+  );
+  assert.ok(
+    (
+      await readFile(
+        join(config.libraryDirectory, 'formatos/seller.md'),
+        'utf8',
+      )
+    ).length > 0,
+  );
   cli('library', 'validate');
   const configured = await readFile(file, 'utf8');
   const antigravity = JSON.parse(
@@ -296,13 +304,19 @@ try {
     0,
   );
   database.close();
+  const capturedMetadata = await readFile(
+    join(config.libraryDirectory, 'instrucoes.json'),
+    'utf8',
+  );
   const runtimePath = environment.PATH;
   environment.PATH = process.env.PATH ?? process.env.Path;
   install(true);
   environment.PATH = runtimePath;
+  assert.equal(await readFile(activeBase, 'utf8'), document);
+  cli('setup');
   assert.equal(
-    await readFile(join(config.libraryDirectory, 'biblioteca.md'), 'utf8'),
-    document,
+    await readFile(join(config.libraryDirectory, 'instrucoes.json'), 'utf8'),
+    capturedMetadata,
   );
   cli('up');
   running = true;

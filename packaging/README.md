@@ -15,7 +15,6 @@ No PowerShell:
 ```powershell
 npm.cmd install --global __PACKAGE_NAME__
 flow-batch.cmd setup --extension "$env:USERPROFILE\flow-batch-extension"
-flow-batch.cmd library import "C:\CAMINHO\biblioteca.md"
 flow-batch.cmd up
 flow-batch.cmd doctor
 ```
@@ -37,7 +36,6 @@ não muda o runtime existente. Windows usa o modo nativo por padrão.
 ```sh
 npm install --global __PACKAGE_NAME__
 flow-batch setup --extension /mnt/c/Users/SEU_USUARIO/flow-batch-extension
-flow-batch library import /CAMINHO/biblioteca.md
 flow-batch up
 flow-batch doctor
 ```
@@ -49,17 +47,28 @@ Use `--clients codex` ou `--clients antigravity` para registrar somente um.
 O Codex respeita `CODEX_HOME` na primeira configuração. Reabra os clientes MCP.
 A instalação npm não tem scripts automáticos de configuração.
 
-Novas bibliotecas usam `base.md` com `[common]`, `[copy]`, `[image]` e
-`[animation]` e um arquivo em `formatos/` por formato. Setup cria a estrutura
-vazia; importe suas instruções com `library import`. Layouts antigos e capturas
-continuam legíveis. `instrucoes.json` preserva identidade e revisão, e
-`.historico/` contém capturas necessárias. O nome `biblioteca.json` é migrado
-sem alterar bytes; conflitos impedem abertura.
+O pacote inclui nove arquivos criativos: `base.md` e os oito formatos, em
+`instrucoes/`. Setup os instala na pasta ativa `~/.flow-batch/biblioteca` ou
+`--library PASTA`, somente quando nova ou com scaffold modular vazio sem capturas.
+Bibliotecas editadas, incompletas ou legadas são preservadas. Atualizações não
+sincronizam nem sobrescrevem instruções locais; o runtime usa somente essa pasta.
 
-`library split` mostra a divisão sem alterações; `--preserve-originals`
-aplica e arquiva originais, exigindo autorização para esse backup. `library
-validate` verifica a biblioteca. CLI e MCP usam `flow-orders/5`; atualize o
-conector junto do servidor.
+A base usa `<!-- flow-base:1 -->` e seções `[common]`, `[copy]`, `[image]` e
+`[animation]`. Os arquivos de `formatos/` identificam factory, factory-group,
+factory-truck, factory-inclined, pov, full-pov, seller e clone. Cada reserva
+entrega a base e os formatos pedidos; mantém suas capturas e templates imutáveis.
+Leia o README do projeto para os cabeçalhos e placeholders de animação.
+
+`instrucoes.json` guarda a identidade/revisão; `.historico/` contém capturas e
+não é cache descartável. `biblioteca.json` é renomeado sem backup nem alteração
+de bytes; metadados conflitantes impedem abertura. Não exclua esses dados.
+Layouts legados continuam funcionando. `library init` cria apenas scaffold vazio.
+`library split` mostra uma prévia sem alterações; `--preserve-originals` aplica
+com arquivo dos originais em `.rascunhos/`, exigindo autorização para esse backup.
+Import/export Markdown e JSON, convert e restore permanecem; operações que
+arquivam substituídos também exigem autorização. Não importe `base.md` isolado.
+`library validate` confere todos os formatos. O conector usa `flow-orders/5`;
+reabra os clientes ao atualizar. Nenhuma instrução autoriza créditos por si só.
 
 No modo Docker, `up` constrói as imagens localmente, sincroniza a extensão e espera o servidor.
 O npm instala as bibliotecas declaradas em `dependencies`, com versões diretas

@@ -44,5 +44,14 @@
   "dist/public/orders-cleanup.js",
   "dist/public/orders-review-actions.js",
   "dist/public/orders-review.js",
-  "runtime/extension/queue-activity.css"
+  "runtime/extension/queue-activity.css",
+  "instrucoes/base.md",
+  "instrucoes/formatos/clone.md",
+  "instrucoes/formatos/factory-group.md",
+  "instrucoes/formatos/factory-inclined.md",
+  "instrucoes/formatos/factory-truck.md",
+  "instrucoes/formatos/factory.md",
+  "instrucoes/formatos/full-pov.md",
+  "instrucoes/formatos/pov.md",
+  "instrucoes/formatos/seller.md"
 ]

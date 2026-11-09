@@ -9,3 +9,10 @@ data/
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
+
+# Estado local da biblioteca criativa versionada.
+/instrucoes/instrucoes.json
+/instrucoes/biblioteca.json
+/instrucoes/.historico/
+/instrucoes/.rascunhos/
+/instrucoes/**/.flow-*

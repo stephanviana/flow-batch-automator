@@ -11,3 +11,6 @@ data
 .env
 .env.*
 **/*.sqlite*
+
+# Runtime lê somente a biblioteca configurada e montada.
+instrucoes/

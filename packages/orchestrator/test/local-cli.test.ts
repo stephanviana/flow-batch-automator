@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import {
+  mkdtemp,
+  mkdir,
+  readFile,
+  rm,
+  writeFile,
+  cp,
+  stat,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setupLocal } from '../src/local-cli/setup.js';
@@ -10,11 +18,14 @@ import {
 } from '../src/local-cli/config.js';
 import { STANDALONE_MARKER } from '../src/mcp/install-config.js';
 
-test('setup uses external state, initializes only an empty modular library and preserves installed data on repeat', async (t) => {
+test('setup uses external state, installs the distributed instruction edition and preserves installed data on repeat', async (t) => {
   const root = await mkdtemp(join(tmpdir(), 'flow-local-cli-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const packageRoot = join(root, 'package');
   const state = join(root, 'state');
+  await cp('../../instrucoes', join(packageRoot, 'instrucoes'), {
+    recursive: true,
+  });
   await mkdir(join(packageRoot, 'bin'), { recursive: true });
   await writeFile(
     join(packageRoot, 'bin/flow-batch-mcp.mjs'),
@@ -25,6 +36,7 @@ test('setup uses external state, initializes only an empty modular library and p
   });
   assert.equal(first.configuration.libraryDirectory, join(state, 'biblioteca'));
   assert.equal(first.clients.length, 2);
+  assert.equal(first.instructions.status, 'installed');
   const metadata = await readFile(
     join(state, 'biblioteca/instrucoes.json'),
     'utf8',
@@ -87,6 +99,9 @@ test('repeat setup remembers a single client and its custom configuration path',
   t.after(() => rm(root, { recursive: true, force: true }));
   const packageRoot = join(root, 'package');
   const state = join(root, 'state');
+  await cp('../../instrucoes', join(packageRoot, 'instrucoes'), {
+    recursive: true,
+  });
   await mkdir(join(packageRoot, 'bin'), { recursive: true });
   await writeFile(
     join(packageRoot, 'bin/flow-batch-mcp.mjs'),
@@ -120,4 +135,18 @@ test('setup refuses state inside the npm prefix before initializing user files',
       /fora da pasta do pacote/,
     );
   }
+});
+
+test('an invalid distributed instruction edition cannot initialize the selected library destination', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'flow-invalid-edition-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const selected = join(root, 'Selected Library');
+  await assert.rejects(
+    setupLocal(join(root, 'state'), join(root, 'invalid-package'), root, {
+      library: selected,
+      extension: join(root, 'extension'),
+    }),
+    /edição distribuída/,
+  );
+  await assert.rejects(stat(selected), { code: 'ENOENT' });
 });

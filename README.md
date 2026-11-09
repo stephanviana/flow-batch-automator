@@ -22,7 +22,6 @@ No PowerShell, após publicar a versão com suporte nativo:
 ```powershell
 npm.cmd install --global @nahpets01-org/flow-batch-automator
 flow-batch.cmd setup --extension "$env:USERPROFILE\flow-batch-extension"
-flow-batch.cmd library import "C:\CAMINHO\biblioteca.md"
 flow-batch.cmd up
 flow-batch.cmd doctor
 ```
@@ -36,7 +35,7 @@ somente a instalação configurada; nenhum comando encerra processos por PID.
 Depois de reiniciar o computador, execute `up` novamente.
 
 No Windows, os dados ficam em `%USERPROFILE%\.flow-batch\data`, as instruções
-em `%USERPROFILE%\.flow-batch\biblioteca\biblioteca.md` e a configuração em
+em `%USERPROFILE%\.flow-batch\biblioteca` e a configuração em
 `%USERPROFILE%\.flow-batch\installation.json`. `FLOW_BATCH_HOME` escolhe outra
 pasta; `setup --data PASTA` permite outro destino para SQLite e materiais. As
 pastas ficam fora do prefixo npm e sobrevivem à reinstalação do pacote.
@@ -51,13 +50,15 @@ Após a primeira publicação no registro, instale fora do repositório:
 ```sh
 npm install --global @nahpets01-org/flow-batch-automator
 flow-batch setup --extension /mnt/c/Users/SEU_USUARIO/flow-batch-extension
-flow-batch library import /CAMINHO/biblioteca.md
 flow-batch up
 flow-batch doctor
 ```
 
-`setup` cria uma biblioteca modular vazia em `~/.flow-batch/biblioteca`
-se a biblioteca não existe. `--library PASTA` é opcional; a seleção persiste.
+`setup` instala a edição de instruções incluída no pacote em
+`~/.flow-batch/biblioteca`, ou no destino de `--library PASTA`. Só preenche uma
+pasta nova ou o scaffold modular vazio da ferramenta, sem capturas. Conteúdo
+próprio, arquivos removidos e bibliotecas incompletas/legadas são preservados.
+O caminho escolhido permanece salvo quando `--library` é omitido depois.
 Registra o MCP no Antigravity e no Codex com Node e caminhos absolutos do ambiente
 local, preserva outros servidores e cria backups dos arquivos alterados.
 `--clients codex` ou `--clients antigravity` escolhe apenas um cliente;
@@ -68,8 +69,8 @@ mas reserializa o documento; comentários e formatação ficam no backup.
 Reabra os clientes para carregar o MCP. A instalação npm não executa configuração
 automática nem encerra clientes.
 
-Biblioteca, pedidos, materiais, SQLite, credenciais e configurações individuais
-ficam fora do pacote. A configuração local usa `~/.flow-batch` por padrão;
+A edição criativa acompanha o pacote; a biblioteca ativa, pedidos, materiais,
+SQLite, credenciais e configurações individuais ficam fora do prefixo npm. A configuração local usa `~/.flow-batch` por padrão;
 `FLOW_BATCH_HOME` escolhe outra pasta e `--workspace PASTA` escolhe a pasta
 operacional. A extensão atual usa a porta 4319, publicada só em `127.0.0.1`.
 No modo Docker, `up` constrói imagens localmente, sincroniza a extensão e espera
@@ -196,26 +197,76 @@ não permite substituir uma versão já publicada.
 
 ## Instalação e instruções locais
 
-Novas bibliotecas usam `base.md` e os arquivos `formatos/*.md`. A base começa
-com `<!-- flow-base:1 -->` e contém as seções `[common]`, `[copy]`, `[image]`
-e `[animation]`. Preencha uma seção editorial, os formatos solicitados e os
-templates de animação. O checkout entrega a base e os formatos selecionados;
-novas reservas capturam as fontes e mantêm as anteriores imutáveis.
+A edição criativa versionada em `instrucoes/` acompanha o npm. `setup` instala
+seus nove arquivos fora do prefixo do pacote: `base.md` e um Markdown em
+`formatos/` para cada formato abaixo. O runtime lê exclusivamente a pasta ativa
+configurada por `LIBRARY_DIR` (Compose: `FLOW_LIBRARY_DIR`), sem buscar regras
+faltantes no pacote ou no checkout. Atualizar o software não sincroniza edições
+nem repõe formatos que o usuário removeu. Compare manualmente as edições quando
+quiser incorporar mudanças; `npm root --global` localiza o pacote instalado.
 
-`instrucoes.json` guarda a identidade e revisão; `.historico/` contém capturas
-necessárias. O nome antigo `biblioteca.json` é migrado por renomeação sem
-reescrever bytes. Metadados conflitantes impedem a abertura. Layouts legados
-continuam legíveis; não misture layouts nem crie rotas editáveis no modular.
+| Arquivo em `formatos/` | Formato                   |
+| ---------------------- | ------------------------- |
+| `factory.md`           | Fábrica Padrão            |
+| `factory-group.md`     | Fábrica Grupo             |
+| `factory-truck.md`     | Fábrica + Caminhão        |
+| `factory-inclined.md`  | Fábrica Esteira Inclinada |
+| `pov.md`               | POV + Vendedora           |
+| `full-pov.md`          | Full POV                  |
+| `seller.md`            | Full Vendedora            |
+| `clone.md`             | Clonagem                  |
 
-`library init [PASTA]` cria a estrutura vazia. `library split [PASTA]` mostra
-uma prévia sem alterações. `--preserve-originals` aplica a divisão e arquiva
-os originais em `.rascunhos/`, exigindo autorização explícita para esse backup.
-Importação, exportação, conversão e restauração de formatos legados continuam
-existindo; operações que arquivam arquivos também exigem autorização.
+`base.md` começa com `<!-- flow-base:1 -->`. Use `# [common]`, `# [copy]`,
+`# [image]` e `# [animation]`, com títulos livres após os identificadores.
+Preencha ao menos uma seção editorial e os formatos usados no pedido.
+`[animation]` contém os templates reconhecidos: cabeçalhos iniciados por
+`## Fábrica — `, `## Esteira inclinada — `, `## Vendedora — `, `## POV — ` e
+`## Clonagem — `, com o espaço após o travessão. Cada template usa um bloco
+cercado de crases com linguagem `text`, inclui `{{fala}}` e pode usar
+`{{direcao}}`/`{{duracao_segundos}}`. A última linha não vazia começa com
+`Visual exclusions:`. Placeholders não resolvidos e `[INSERIR` são recusados.
 
-CLI e MCP usam `flow-orders/5`. Edite a biblioteca local escolhida por
-`LIBRARY_DIR` ou `FLOW_LIBRARY_DIR` no Compose. Não há conteúdo criativo padrão
-no código; ausência de regras é reportada antes de reservar.
+O checkout entrega a base e apenas os formatos solicitados, sem rotas editáveis.
+Cada arquivo modular admite até 1 MiB; o conjunto admite até 8 MiB. Links
+simbólicos, mistura de layouts e formatos desconhecidos são recusados.
+`library validate` confere o catálogo completo; reservar exige os formatos
+selecionados. Uma biblioteca incompleta não impede abrir o painel.
+
+A identidade e revisão atual ficam em `instrucoes.json`; `.historico/` contém
+as capturas imutáveis das reservas. São dados operacionais, não cache. O nome
+antigo `biblioteca.json` é migrado por renomeação, sem reescrever bytes nem criar
+backup. Se ambos existirem com identidades ou revisões diferentes, a abertura é
+recusada. Uma duplicata equivalente perde só o nome legado. Preserve esses dados
+junto da biblioteca ativa; não os versione com os textos criativos.
+
+Layouts existentes em `biblioteca.md` e `instrucoes/` com rotas antigas continuam
+legíveis, inclusive em capturas. Para visualizar a divisão sem criar metadados,
+diretórios ou arquivos:
+
+```sh
+flow-batch library split [PASTA]
+```
+
+`library split [PASTA] --preserve-originals` aplica a divisão e arquiva fontes
+em `.rascunhos/`. Autorize explicitamente esse backup antes de executá-lo.
+Não há conversão automática de bibliotecas existentes. `library convert`
+continua reunindo arquivos em `biblioteca.md`; import/export Markdown e JSON e
+restore continuam disponíveis. Importação, conversão e restauração podem
+arquivar conteúdo substituído e também exigem autorização para esse backup.
+Um `base.md` isolado não é um documento completo para `library import`.
+
+`pnpm library init [PASTA]` cria somente os nove arquivos vazios da estrutura
+modular. Os demais comandos funcionam por `pnpm library` após o build, ou
+`flow-batch library` na instalação. Sem pasta explícita, usam a instalação salva
+ou `~/.flow-batch/biblioteca`. Não configure a pasta interna do npm como ativa.
+
+Leitura/salvamento MCP sem `path` resolve o arquivo principal do layout ativo:
+`base.md`, `biblioteca.md` ou as rotas legadas. Informe `revision` para ler uma
+captura. CLI e MCP usam `flow-orders/5`; atualize e reabra o conector junto do
+servidor. Isso é distinto do protocolo v5 da extensão. Edições só afetam novas
+reservas; capturas, materiais e preparações anteriores permanecem intactos.
+A base pode servir a futuros canais; novos canais e formatos exigem suporte
+no contrato e no motor. Não há módulo orgânico/DTC/ODR implementado.
 
 Copie `.env.example` para `.env`. Configure `WIN_EXTENSION_DIR` com uma pasta
 existente para a extensão do Chrome e `FLOW_LIBRARY_DIR` com a pasta de instruções.
