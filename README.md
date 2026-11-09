@@ -117,11 +117,11 @@ atualiza só o conector; `--config ARQUIVO` escolhe uma configuração específi
 Instalar ou atualizar não autoriza créditos. O pedido direto no chat para
 preparar um pedido inclui sua execução; use “apenas prepare” para revisar antes.
 
-A distribuição `0.6.1` entrega o servidor compilado em `dist/main.mjs` e os assets
+A distribuição `0.6.3` entrega o servidor compilado em `dist/main.mjs` e os assets
 em `dist/public/`, com dependências npm normais e versões exatas. O pacote não
 inclui `node_modules` nem `runtime/app.tar.gz`. O conector MCP independente segue
 incluído para preservar sua instalação fora do prefixo npm e o download pela API.
-Esta mudança prepara uma nova versão; `0.6.0` já publicada mantém seu conteúdo.
+Esta mudança prepara uma nova versão; `0.6.0`, `0.6.1` e `0.6.2` publicadas mantêm seu conteúdo.
 
 ## Configuração, primeira execução e remoção
 
@@ -209,7 +209,7 @@ pnpm publish:npm --dry-run
 ```
 
 O arquivo auditado fica em
-`dist/npm/nahpets01-org-flow-batch-automator-0.6.1.tgz`.
+`dist/npm/nahpets01-org-flow-batch-automator-0.6.3.tgz`.
 `pnpm package:local` continua disponível como alias de `package:npm`; a geração
 local não publica no registro. Também é possível instalar esse arquivo diretamente
 com `npm install --global --ignore-scripts /CAMINHO/ARQUIVO.tgz`; a primeira
