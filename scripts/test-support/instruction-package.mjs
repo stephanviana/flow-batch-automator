@@ -45,6 +45,8 @@ export function instructionFiles() {
 }
 export function installInstructions(root) {
   rmSync(join(root, 'biblioteca.md'), { force: true });
+  rmSync(join(root, 'base.md'), { force: true });
+  rmSync(join(root, 'formatos'), { recursive: true, force: true });
   for (const [path, text] of Object.entries(instructionFiles())) {
     const destination = join(root, path);
     mkdirSync(dirname(destination), { recursive: true });

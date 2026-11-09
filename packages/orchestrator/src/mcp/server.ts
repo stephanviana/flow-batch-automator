@@ -248,9 +248,9 @@ export function createMcpServer(api: AgentApi, workspace: string): McpServer {
     'flow_library_read',
     {
       description:
-        'Lê uma instrução da pasta local. Na preparação, informe revision para ler a captura da reserva.',
+        'Lê uma instrução da pasta local; sem path, usa o arquivo principal do layout ativo (base.md no modular). Na preparação, informe revision para ler a captura da reserva.',
       inputSchema: z.object({
-        path: instructionFileSchema.default('biblioteca.md'),
+        path: instructionFileSchema.optional(),
         revision: hash.optional(),
       }),
       annotations: { readOnlyHint: true },
@@ -263,7 +263,7 @@ export function createMcpServer(api: AgentApi, workspace: string): McpServer {
       description:
         'Atualiza um arquivo de instruções quando o usuário pedir manutenção. Novas reservas capturam as alterações automaticamente; reservas existentes preservam sua captura.',
       inputSchema: z.object({
-        path: instructionFileSchema.default('biblioteca.md'),
+        path: instructionFileSchema.optional(),
         text: z.string().max(8_388_608),
         expectedDraftHash: hash,
       }),

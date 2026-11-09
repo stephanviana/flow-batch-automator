@@ -22,20 +22,21 @@ import {
   writeDraft,
 } from './files.js';
 import { consolidatedDocument, validateLibrary } from './routing.js';
+import { documentSections, LIBRARY_DOCUMENT } from './document.js';
 import {
-  documentText,
-  documentSections,
-  LIBRARY_DOCUMENT,
-} from './document.js';
+  BASE_DOCUMENT,
+  emptyModules,
+  isModular,
+  validateModules,
+} from './modular.js';
+import {
+  initializeMetadata,
+  readMetadata,
+  METADATA_FILE,
+  type InstructionMetadata,
+} from './metadata.js';
+import { previewSplit, splitFiles, type SplitPreview } from './split.js';
 
-const metadataSchema = z.strictObject({
-  version: z.literal(1),
-  libraryId: z.uuid(),
-  current: z
-    .string()
-    .regex(/^[a-f0-9]{64}$/)
-    .nullable(),
-});
 export function filesHash(files: LibraryFiles): string {
   return createHash('sha256')
     .update(
@@ -60,28 +61,18 @@ function revisionHash(revision: Omit<LibraryRevision, 'revision'>): string {
 export class LibraryStore {
   constructor(readonly root: string) {
     directory(root);
-    directory(join(root, '.historico'));
-    if (!existsSync(join(root, 'biblioteca.json'))) {
-      atomicWrite(
-        join(root, 'biblioteca.json'),
-        JSON.stringify(
-          { version: 1, libraryId: randomUUID(), current: null },
-          null,
-          2,
-        ) + '\n',
-      );
-      if (
-        !existsSync(join(root, 'instrucoes')) &&
-        !existsSync(join(root, LIBRARY_DOCUMENT))
+    if (
+      initializeMetadata(root) &&
+      ![LIBRARY_DOCUMENT, BASE_DOCUMENT, 'instrucoes', 'formatos'].some(
+        (name) => existsSync(join(root, name)),
       )
-        writeDraft(root, { [LIBRARY_DOCUMENT]: documentText() });
-    }
+    )
+      writeDraft(root, emptyModules());
     this.metadata();
+    directory(join(root, '.historico'));
   }
-  private metadata(): z.infer<typeof metadataSchema> {
-    return metadataSchema.parse(
-      JSON.parse(readText(join(this.root, 'biblioteca.json'))),
-    );
+  private metadata(): InstructionMetadata {
+    return readMetadata(this.root);
   }
   revision(id: string): LibraryRevision {
     z.string()
@@ -128,7 +119,7 @@ export class LibraryStore {
     files: string[];
     configured: boolean;
     problem: string | null;
-    format: 'document' | 'files';
+    format: 'modular' | 'document' | 'files';
   } {
     const metadata = this.metadata(),
       draft = this.draft();
@@ -148,8 +139,11 @@ export class LibraryStore {
       files: Object.keys(draft.files).sort(),
       configured: problem === null,
       problem,
-      format:
-        draft.files[LIBRARY_DOCUMENT] === undefined ? 'files' : 'document',
+      format: isModular(draft.files)
+        ? 'modular'
+        : draft.files[LIBRARY_DOCUMENT] === undefined
+          ? 'files'
+          : 'document',
     };
   }
   capture(
@@ -190,6 +184,12 @@ export class LibraryStore {
         'Atualize biblioteca.md; as demais instruções são seções desse documento.',
       );
     libraryFilesSchema.parse({ ...files, [path]: text });
+    if (isModular(files)) validateModules({ ...files, [path]: text });
+    else if (path === BASE_DOCUMENT || path.startsWith('formatos/'))
+      throw new HttpError(
+        409,
+        'Use library split antes de mudar o layout da biblioteca.',
+      );
     if (path === LIBRARY_DOCUMENT) {
       if (Object.keys(files).some((file) => file !== LIBRARY_DOCUMENT))
         throw new HttpError(
@@ -216,7 +216,7 @@ export class LibraryStore {
       JSON.stringify(revision),
     );
     atomicWrite(
-      join(this.root, 'biblioteca.json'),
+      join(this.root, METADATA_FILE),
       JSON.stringify(
         { version: 1, libraryId, current: revision.revision },
         null,
@@ -239,7 +239,12 @@ export class LibraryStore {
     const archived: string[] = [],
       installed: string[] = [];
     try {
-      for (const folder of [LIBRARY_DOCUMENT, 'instrucoes']) {
+      for (const folder of [
+        LIBRARY_DOCUMENT,
+        BASE_DOCUMENT,
+        'instrucoes',
+        'formatos',
+      ]) {
         if (existsSync(join(this.root, folder))) {
           renameSync(join(this.root, folder), join(archive, folder));
           archived.push(folder);
@@ -273,6 +278,15 @@ export class LibraryStore {
     const files = this.checkDraft(expected);
     if (files[LIBRARY_DOCUMENT] !== undefined) return this.status();
     return this.importDocument(consolidatedDocument(files), expected);
+  }
+  split(expected: string, preserveOriginals = false): SplitPreview | object {
+    const original = this.checkDraft(expected);
+    if (!preserveOriginals) return previewSplit(original, expected);
+    if (isModular(original)) return this.status();
+    const divided = splitFiles(original);
+    this.checkDraft(expected);
+    this.replaceDraft(divided);
+    return this.status();
   }
   export(): LibraryBackup {
     const metadata = this.metadata();
@@ -328,7 +342,7 @@ export class LibraryStore {
     }
     this.replaceDraft(backup.draft);
     atomicWrite(
-      join(this.root, 'biblioteca.json'),
+      join(this.root, METADATA_FILE),
       JSON.stringify(
         { version: 1, libraryId: backup.libraryId, current: backup.current },
         null,

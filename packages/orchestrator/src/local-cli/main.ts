@@ -17,10 +17,11 @@ Uso: flow-batch COMANDO
   doctor              Verifica pré-requisitos, arquivos e contrato da API
   mcp                 Inicia o conector stdio
   mcp install CLIENTE [opções do instalador]
-  library init|import|export|validate|convert|restore [PASTA] [ARQUIVO|REVISAO]
+  library init|import|export|validate|convert|split|restore [PASTA] [ARQUIVO|REVISAO]
   orders list|show|checkout|renew|publish|approve ...
 FLOW_BATCH_HOME escolhe a pasta de configuração (padrão: ~/.flow-batch).
-setup cria biblioteca/biblioteca.md vazio; --library escolhe outra pasta.
+setup cria a biblioteca modular vazia; --library escolhe outra pasta.
+library split mostra a divisão sem alterar arquivos.
 Não há instalação automática por postinstall. setup registra os dois clientes;
 Windows usa Node nativo sem Docker; Linux/WSL usa Docker por padrão.
 --runtime native permite execução sem Docker no Linux/WSL também.

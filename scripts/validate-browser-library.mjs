@@ -60,13 +60,19 @@ try {
   assert.equal((await getStatus()).library.configured, false);
   assert.deepEqual((await readdir(instructions)).sort(), [
     '.historico',
-    'biblioteca.json',
-    'biblioteca.md',
+    'base.md',
+    'formatos',
+    'instrucoes.json',
   ]);
   const metadata = JSON.parse(
-    await readFile(resolve(instructions, 'biblioteca.json'), 'utf8'),
+    await readFile(resolve(instructions, 'instrucoes.json'), 'utf8'),
   );
   assert.equal(metadata.current, null);
+  const emptyRead = await page.request.post(`${base}/manage/library/file`, {
+    headers: { 'X-Flow-Management': '1', Origin: base },
+    data: {},
+  });
+  assert.equal((await emptyRead.json()).path, 'base.md');
   installInstructions(instructions);
   assert.equal((await getStatus()).library.configured, true);
   execFileSync(
@@ -92,6 +98,17 @@ try {
   const document = await documentResponse.json();
   assert.equal(document.path, 'biblioteca.md');
   assert.match(document.text, /# \[common\]/);
+  const beforePreview = (await readdir(instructions)).sort();
+  const preview = execFileSync(
+    process.execPath,
+    ['scripts/library.mjs', 'split', instructions],
+    {
+      env: { ...process.env, FLOW_BATCH_HOME: resolve(directory, 'cli-state') },
+      encoding: 'utf8',
+    },
+  );
+  assert.equal(JSON.parse(preview).preview, true);
+  assert.deepEqual((await readdir(instructions)).sort(), beforePreview);
   const connector = await page.request.get(`${base}/agent/flow-batch-mcp.mjs`);
   assert.ok(connector.ok());
   assert.match(await connector.text(), /flow_checkout/);
@@ -100,7 +117,7 @@ try {
     fullPage: true,
   });
   console.log(
-    `Biblioteca vazia, conversão para documento único, leitura MCP/HTTP, painel sem editor e download do conector validados. Evidências: ${directory}`,
+    `Biblioteca modular vazia, leitura padrão, compatibilidade legada, prévia de divisão e leitura HTTP, painel sem editor e download do conector validados. Evidências: ${directory}`,
   );
 } finally {
   await browser?.close();

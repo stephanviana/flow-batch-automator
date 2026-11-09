@@ -10,7 +10,7 @@ import {
 } from '../src/local-cli/config.js';
 import { STANDALONE_MARKER } from '../src/mcp/install-config.js';
 
-test('setup uses external state, initializes only an empty technical library and preserves installed data on repeat', async (t) => {
+test('setup uses external state, initializes only an empty modular library and preserves installed data on repeat', async (t) => {
   const root = await mkdtemp(join(tmpdir(), 'flow-local-cli-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const packageRoot = join(root, 'package');
@@ -26,11 +26,11 @@ test('setup uses external state, initializes only an empty technical library and
   assert.equal(first.configuration.libraryDirectory, join(state, 'biblioteca'));
   assert.equal(first.clients.length, 2);
   const metadata = await readFile(
-    join(state, 'biblioteca/biblioteca.json'),
+    join(state, 'biblioteca/instrucoes.json'),
     'utf8',
   );
   assert.match(
-    await readFile(join(state, 'biblioteca/biblioteca.md'), 'utf8'),
+    await readFile(join(state, 'biblioteca/base.md'), 'utf8'),
     /# \[common\]/,
   );
   await writeFile(join(state, 'user-data'), 'preserved');
@@ -38,7 +38,7 @@ test('setup uses external state, initializes only an empty technical library and
   assert.equal(second.backup, null);
   assert.ok(second.clients.every((client) => !client.changed));
   assert.equal(
-    await readFile(join(state, 'biblioteca/biblioteca.json'), 'utf8'),
+    await readFile(join(state, 'biblioteca/instrucoes.json'), 'utf8'),
     metadata,
   );
   assert.equal(await readFile(join(state, 'user-data'), 'utf8'), 'preserved');

@@ -1,6 +1,11 @@
 import { resolve, join, extname } from 'node:path';
 import { readFile, writeFile } from 'node:fs/promises';
-import { LibraryStore } from '../packages/orchestrator/dist/library/store.js';
+import { draftFiles } from '../packages/orchestrator/dist/library/files.js';
+import { previewSplit } from '../packages/orchestrator/dist/library/split.js';
+import {
+  LibraryStore,
+  filesHash,
+} from '../packages/orchestrator/dist/library/store.js';
 import {
   validateLibrary,
   consolidatedDocument,
@@ -10,7 +15,9 @@ import {
   stateDirectory,
 } from '../packages/orchestrator/dist/local-cli/config.js';
 
-const [command, ...args] = process.argv.slice(2);
+const [command, ...rawArgs] = process.argv.slice(2);
+const preserveOriginals = rawArgs.includes('--preserve-originals');
+const args = rawArgs.filter((argument) => argument !== '--preserve-originals');
 try {
   const root = stateDirectory();
   const installation = await readInstallation(root);
@@ -23,16 +30,34 @@ try {
       : (args[0] ?? defaultDirectory);
   const argument = usesFile ? args.at(-1) : undefined;
   if (
-    !['init', 'import', 'export', 'validate', 'restore', 'convert'].includes(
-      command,
-    ) ||
-    args.length > (usesFile ? 2 : 1)
+    ![
+      'init',
+      'import',
+      'export',
+      'validate',
+      'restore',
+      'convert',
+      'split',
+    ].includes(command) ||
+    args.length > (usesFile ? 2 : 1) ||
+    (preserveOriginals && command !== 'split')
   )
     throw new Error(
-      'Uso: library init [PASTA] | import [PASTA] BIBLIOTECA.MD_OU_BACKUP.JSON | export [PASTA] DESTINO.MD_OU_JSON | validate [PASTA] | convert [PASTA] | restore [PASTA] REVISAO',
+      'Uso: library init [PASTA] | import [PASTA] BIBLIOTECA.MD_OU_BACKUP.JSON | export [PASTA] DESTINO.MD_OU_JSON | validate [PASTA] | convert [PASTA] | split [PASTA] [--preserve-originals] | restore [PASTA] REVISAO',
     );
-  const path = resolve(destination),
-    library = new LibraryStore(path);
+  const path = resolve(destination);
+  if (command === 'split' && !preserveOriginals) {
+    const files = draftFiles(path);
+    console.log(
+      JSON.stringify(
+        { libraryDirectory: path, ...previewSplit(files, filesHash(files)) },
+        null,
+        2,
+      ),
+    );
+    process.exit(0);
+  }
+  const library = new LibraryStore(path);
   if (command === 'import') {
     if (!argument)
       throw new Error('Informe o arquivo do pacote de instruções.');
@@ -51,6 +76,8 @@ try {
     );
   } else if (command === 'validate') validateLibrary(library.draft().files);
   else if (command === 'convert') library.convert(library.draft().hash);
+  else if (command === 'split')
+    library.split(library.draft().hash, preserveOriginals);
   else if (command === 'restore') {
     if (!argument) throw new Error('Informe a revisão a restaurar.');
     library.restore(argument, library.draft().hash);

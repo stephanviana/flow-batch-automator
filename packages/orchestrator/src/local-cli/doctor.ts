@@ -61,7 +61,7 @@ export async function diagnose(
     });
   }
   for (const [check, file] of [
-    ['library', join(config.libraryDirectory, 'biblioteca.json')],
+    ['library', join(config.libraryDirectory, 'instrucoes.json')],
     [
       'extension',
       join(config.extensionDirectory, '.flow-batch-foundation.json'),

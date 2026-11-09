@@ -1,7 +1,6 @@
 import {
   constants,
   closeSync,
-  existsSync,
   fstatSync,
   lstatSync,
   mkdirSync,
@@ -9,9 +8,10 @@ import {
   readdirSync,
   readFileSync,
   renameSync,
+  rmSync,
   writeFileSync,
 } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import {
   libraryFileSchema,
@@ -20,8 +20,21 @@ import {
 } from '@flow-batch/protocol';
 import { HttpError } from '../security/errors.js';
 import { LIBRARY_DOCUMENT } from './document.js';
+import { BASE_DOCUMENT } from './modular.js';
 
+function localAncestors(path: string): void {
+  let current = resolve(path);
+  for (;;) {
+    const entry = lstatSync(current, { throwIfNoEntry: false });
+    if (entry?.isSymbolicLink())
+      throw new HttpError(409, 'A biblioteca não admite links simbólicos.');
+    const parent = dirname(current);
+    if (parent === current) return;
+    current = parent;
+  }
+}
 export function directory(path: string): void {
+  localAncestors(path);
   mkdirSync(path, { recursive: true, mode: 0o700 });
   if (!lstatSync(path).isDirectory() || lstatSync(path).isSymbolicLink())
     throw new HttpError(
@@ -30,6 +43,7 @@ export function directory(path: string): void {
     );
 }
 export function readText(path: string, limit = 16_777_216): string {
+  localAncestors(path);
   const before = lstatSync(path);
   if (!before.isFile() || before.isSymbolicLink())
     throw new HttpError(
@@ -58,13 +72,21 @@ export function atomicWrite(path: string, contents: string): void {
   directory(dirname(path));
   const temporary = join(dirname(path), `.flow-${randomUUID()}`);
   writeFileSync(temporary, contents, { flag: 'wx', mode: 0o600 });
-  renameSync(temporary, path);
+  try {
+    renameSync(temporary, path);
+  } finally {
+    rmSync(temporary, { force: true });
+  }
 }
 export function draftFiles(root: string): LibraryFiles {
   const files: LibraryFiles = {};
-  if (existsSync(join(root, LIBRARY_DOCUMENT))) {
-    files[LIBRARY_DOCUMENT] = readText(join(root, LIBRARY_DOCUMENT), 8_388_608);
-  }
+  localAncestors(root);
+  for (const name of [LIBRARY_DOCUMENT, BASE_DOCUMENT])
+    if (lstatSync(join(root, name), { throwIfNoEntry: false }))
+      files[name] = readText(
+        join(root, name),
+        name === BASE_DOCUMENT ? 1_048_576 : 8_388_608,
+      );
   function walk(folder: string, prefix: string): void {
     for (const entry of readdirSync(folder, { withFileTypes: true })) {
       const relative = `${prefix}/${entry.name}`;
@@ -80,10 +102,12 @@ export function draftFiles(root: string): LibraryFiles {
       }
     }
   }
-  for (const name of ['instrucoes']) {
+  for (const name of ['instrucoes', 'formatos']) {
     const path = join(root, name);
-    if (existsSync(path)) {
-      directory(path);
+    if (lstatSync(path, { throwIfNoEntry: false })) {
+      localAncestors(path);
+      if (!lstatSync(path).isDirectory())
+        throw new HttpError(409, 'A biblioteca exige pastas locais.');
       walk(path, name);
     }
   }

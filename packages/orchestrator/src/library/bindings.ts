@@ -4,7 +4,7 @@ import type { ProductionOrder } from '../orders/repository.js';
 import type { LibraryStore } from './store.js';
 import { instructionPaths, animationText } from './routing.js';
 import { ORDER_EXECUTION_POLICY } from '../agent-client/workflow.js';
-import { resolvedFiles } from './document.js';
+import { resolvedFiles } from './resolution.js';
 
 export class LibraryBindings {
   constructor(

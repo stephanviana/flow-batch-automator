@@ -56,8 +56,8 @@ flow-batch up
 flow-batch doctor
 ```
 
-`setup` cria `~/.flow-batch/biblioteca/biblioteca.md` com seções vazias se a
-biblioteca não existe. `--library PASTA` é opcional; a seleção persiste.
+`setup` cria uma biblioteca modular vazia em `~/.flow-batch/biblioteca`
+se a biblioteca não existe. `--library PASTA` é opcional; a seleção persiste.
 Registra o MCP no Antigravity e no Codex com Node e caminhos absolutos do ambiente
 local, preserva outros servidores e cria backups dos arquivos alterados.
 `--clients codex` ou `--clients antigravity` escolhe apenas um cliente;
@@ -196,48 +196,26 @@ não permite substituir uma versão já publicada.
 
 ## Instalação e instruções locais
 
-Novas instalações usam um único `biblioteca.md`. O `setup` cria sua estrutura
-vazia automaticamente; o aplicativo não inclui instruções criativas nem swipes.
-Peça ao agente para preencher o documento ou importe um arquivo já configurado:
+Novas bibliotecas usam `base.md` e os arquivos `formatos/*.md`. A base começa
+com `<!-- flow-base:1 -->` e contém as seções `[common]`, `[copy]`, `[image]`
+e `[animation]`. Preencha uma seção editorial, os formatos solicitados e os
+templates de animação. O checkout entrega a base e os formatos selecionados;
+novas reservas capturam as fontes e mantêm as anteriores imutáveis.
 
-```sh
-flow-batch library import /CAMINHO/biblioteca.md
-flow-batch library validate
-```
+`instrucoes.json` guarda a identidade e revisão; `.historico/` contém capturas
+necessárias. O nome antigo `biblioteca.json` é migrado por renomeação sem
+reescrever bytes. Metadados conflitantes impedem a abertura. Layouts legados
+continuam legíveis; não misture layouts nem crie rotas editáveis no modular.
 
-O arquivo começa com `<!-- flow-biblioteca:1 -->` e usa seções de primeiro nível:
-`# [common]`, `# [copy]`, `# [image]`, uma seção por formato (`# [factory]`,
-`# [factory-group]`, `# [factory-truck]`, `# [factory-inclined]`, `# [pov]`,
-`# [full-pov]`, `# [seller]`, `# [clone]`) e `# [animation]`.
-O texto após cada marcador é o título livre da seção. Cabeçalhos normais e blocos
-de código podem ser usados dentro delas. Não há mapa de caminhos para configurar.
-Use pelo menos uma seção comum e preencha os formatos usados no pedido; a seção
-de animação mantém os templates e marcadores técnicos exigidos pelo compilador.
-Seções desconhecidas, repetidas e blocos de código sem fechamento são recusados.
+`library init [PASTA]` cria a estrutura vazia. `library split [PASTA]` mostra
+uma prévia sem alterações. `--preserve-originals` aplica a divisão e arquiva
+os originais em `.rascunhos/`, exigindo autorização explícita para esse backup.
+Importação, exportação, conversão e restauração de formatos legados continuam
+existindo; operações que arquivam arquivos também exigem autorização.
 
-O MCP seleciona as seções comuns e dos formatos pedidos. As cópias técnicas no
-workspace de preparação não são novas fontes de instruções: atualize sempre o
-`biblioteca.md` local, por edição direta ou com `flow_library_read` e
-`flow_library_save` (o caminho padrão dessas ferramentas é `biblioteca.md`).
-`biblioteca.json` e `.historico/` são metadados administrados pelo aplicativo.
-Uma biblioteca incompleta não impede abrir o painel; a reserva informa as seções
-que faltam, sem buscar conteúdo no código.
-
-Bibliotecas existentes em `instrucoes/` continuam funcionando. Para converter:
-
-```sh
-flow-batch library convert
-```
-
-A conversão reúne regras, formatos e templates em `biblioteca.md` e preserva os
-originais em `.rascunhos/`. Reservas e preparações antigas preservam suas capturas.
-Não misture os dois formatos na pasta ativa. Importação de backups JSON antigos
-também continua disponível. Para escolher outra pasta em qualquer comando,
-informe-a antes do arquivo, como `library import PASTA ARQUIVO`.
-
-No checkout de desenvolvimento, `pnpm library` oferece os mesmos comandos após
-`pnpm install --frozen-lockfile` e `pnpm build`. `init [PASTA]` cria somente a
-estrutura vazia; sem destino explícito, usa a configuração local ou a pasta padrão.
+CLI e MCP usam `flow-orders/5`. Edite a biblioteca local escolhida por
+`LIBRARY_DIR` ou `FLOW_LIBRARY_DIR` no Compose. Não há conteúdo criativo padrão
+no código; ausência de regras é reportada antes de reservar.
 
 Copie `.env.example` para `.env`. Configure `WIN_EXTENSION_DIR` com uma pasta
 existente para a extensão do Chrome e `FLOW_LIBRARY_DIR` com a pasta de instruções.

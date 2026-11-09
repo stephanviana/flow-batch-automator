@@ -11,7 +11,10 @@ import {
 import type { LocalSessions } from '../security/local-session.js';
 import type { LibraryStore } from '../library/store.js';
 import { ORDER_EXECUTION_POLICY } from '../agent-client/workflow.js';
-import { LIBRARY_DOCUMENT, resolvedFiles } from '../library/document.js';
+import {
+  defaultInstructionPath,
+  resolvedFiles,
+} from '../library/resolution.js';
 
 export function registerLibrary(
   app: FastifyInstance,
@@ -41,9 +44,9 @@ export function registerLibrary(
   });
   app.post('/manage/library/file', async (request) => {
     sessions.require(request);
-    const { path, revision } = z
+    const { path: requestedPath, revision } = z
       .strictObject({
-        path: instructionFileSchema.default(LIBRARY_DOCUMENT),
+        path: instructionFileSchema.optional(),
         revision: z
           .string()
           .regex(/^[a-f0-9]{64}$/)
@@ -53,6 +56,7 @@ export function registerLibrary(
     const files = revision
       ? library.revision(revision).files
       : library.draft().files;
+    const path = requestedPath ?? defaultInstructionPath(files);
     return { path, text: files[path] ?? resolvedFiles(files)[path] ?? '' };
   });
   app.post(
@@ -62,12 +66,16 @@ export function registerLibrary(
       sessions.require(request);
       const { path, text, expectedDraftHash } = z
         .strictObject({
-          path: instructionFileSchema.default(LIBRARY_DOCUMENT),
+          path: instructionFileSchema.optional(),
           text: z.string().max(8_388_608),
           expectedDraftHash: z.string().regex(/^[a-f0-9]{64}$/),
         })
         .parse(request.body);
-      return library.save(path, text, expectedDraftHash);
+      return library.save(
+        path ?? defaultInstructionPath(library.draft().files),
+        text,
+        expectedDraftHash,
+      );
     },
   );
   app.get('/manage/library/export', async (request, reply) => {

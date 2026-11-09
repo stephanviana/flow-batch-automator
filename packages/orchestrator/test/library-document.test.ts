@@ -10,6 +10,7 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { baseSections, modulePaths } from '../src/library/modular.js';
 import { LibraryStore } from '../src/library/store.js';
 import {
   documentText,
@@ -23,22 +24,23 @@ import {
 } from '../src/library/routing.js';
 import { instructions } from './instruction-fixture.js';
 
-test('a new library has one empty instruction document and reports its missing sections', (t) => {
+test('a new library has an empty modular scaffold and reports its missing instructions', (t) => {
   const root = mkdtempSync(join(tmpdir(), 'flow-document-empty-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const store = new LibraryStore(root);
-  assert.deepEqual(store.status().files, ['biblioteca.md']);
-  assert.equal(store.status().format, 'document');
+  assert.deepEqual(store.status().files, [...modulePaths].sort());
+  assert.equal(store.status().format, 'modular');
   assert.equal(store.status().configured, false);
-  assert.match(store.status().problem!, /biblioteca.md/);
+  assert.match(store.status().problem!, /base.md/);
   assert.deepEqual(readdirSync(root).sort(), [
     '.historico',
-    'biblioteca.json',
-    'biblioteca.md',
+    'base.md',
+    'formatos',
+    'instrucoes.json',
   ]);
   assert.ok(
     Object.values(
-      documentSections(readFileSync(join(root, 'biblioteca.md'), 'utf8')),
+      baseSections(readFileSync(join(root, 'base.md'), 'utf8')),
     ).every((text) => text === ''),
   );
 });

@@ -166,7 +166,7 @@ try {
   );
   const library = join(state, 'biblioteca');
   assert.match(
-    await readFile(join(library, 'biblioteca.md'), 'utf8'),
+    await readFile(join(library, 'base.md'), 'utf8'),
     /# \[common\]/,
   );
   const portable = join(root, 'portable-library.md');

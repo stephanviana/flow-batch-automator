@@ -7,7 +7,14 @@ import {
   type PreparationFormat,
 } from '@flow-batch/protocol';
 import { HttpError } from '../security/errors.js';
-import { documentText, LIBRARY_DOCUMENT, resolvedFiles } from './document.js';
+import { documentText, LIBRARY_DOCUMENT } from './document.js';
+import { resolvedFiles } from './resolution.js';
+import {
+  BASE_DOCUMENT,
+  baseSections,
+  isModular,
+  modularRouting,
+} from './modular.js';
 
 const paths = z.array(instructionFileSchema).max(64);
 const routingSchema = z.strictObject({
@@ -27,6 +34,7 @@ export function emptyRouting(): z.infer<typeof routingSchema> {
   });
 }
 export function routing(files: LibraryFiles): z.infer<typeof routingSchema> {
+  if (isModular(files)) return routingSchema.parse(modularRouting(files));
   files = resolvedFiles(files);
   if (!files['instrucoes/rotas.json'])
     throw new HttpError(
@@ -46,6 +54,7 @@ export function instructionPaths(
   formats: PreparationFormat[],
 ): string[] {
   const document = files[LIBRARY_DOCUMENT] !== undefined;
+  const modular = isModular(files);
   files = resolvedFiles(files);
   const config = routing(files);
   const missingBases = formats.filter(
@@ -54,9 +63,11 @@ export function instructionPaths(
   if (!config.common.length || missingBases.length)
     throw new HttpError(
       409,
-      document
-        ? `Pacote de instruções incompleto: preencha as regras gerais, copy ou imagem e as seções ${missingBases.map((format) => `[${format}]`).join(', ') || 'dos formatos'} em biblioteca.md.`
-        : `Pacote de instruções incompleto: configure as regras comuns e as bases de ${missingBases.join(', ') || 'cada formato'} em instrucoes/rotas.json.`,
+      modular
+        ? `Biblioteca modular incompleta: preencha [common], [copy] ou [image] em base.md e os formatos solicitados: ${missingBases.map((format) => `formatos/${format}.md`).join(', ')}.`
+        : document
+          ? `Pacote de instruções incompleto: preencha as regras gerais, copy ou imagem e as seções ${missingBases.map((format) => `[${format}]`).join(', ') || 'dos formatos'} em biblioteca.md.`
+          : `Pacote de instruções incompleto: configure as regras comuns e as bases de ${missingBases.join(', ') || 'cada formato'} em instrucoes/rotas.json.`,
     );
   const selected = [
     ...new Set([
@@ -73,11 +84,21 @@ export function instructionPaths(
   return selected;
 }
 export function animationText(files: LibraryFiles): string {
+  if (isModular(files)) {
+    resolvedFiles(files);
+    const animation = baseSections(files[BASE_DOCUMENT]!).animation;
+    if (!animation?.trim())
+      throw new HttpError(
+        409,
+        'Biblioteca incompleta: preencha [animation] em base.md.',
+      );
+    return animation;
+  }
   files = resolvedFiles(files);
   const path = routing(files).animation;
   if (!files[path]?.trim())
     throw new HttpError(409, `Pacote de instruções incompleto: falta ${path}.`);
-  return files[path];
+  return files[path].replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
 }
 export function consolidatedDocument(files: LibraryFiles): string {
   validateLibrary(files);
@@ -86,7 +107,9 @@ export function consolidatedDocument(files: LibraryFiles): string {
   const combine = (paths: string[]): string =>
     [...new Set(paths)].map((path) => files[path] ?? '').join('\n\n');
   const text = documentText({
-    common: combine(config.common),
+    ...(isModular(files)
+      ? baseSections(files[BASE_DOCUMENT]!)
+      : { common: combine(config.common) }),
     ...Object.fromEntries(
       preparationFormatSchema.options.map((format) => [
         format,

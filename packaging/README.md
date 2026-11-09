@@ -25,7 +25,7 @@ Os comandos `.cmd` dispensam alterações na política de execução do PowerShe
 encerramento limpo pelo controle local autenticado; não mata processos por PID.
 Não há serviço Windows nem início automático após reiniciar o computador.
 O banco e os materiais ficam em `%USERPROFILE%\.flow-batch\data` e a biblioteca
-em `%USERPROFILE%\.flow-batch\biblioteca\biblioteca.md`. `--data PASTA` e
+em `%USERPROFILE%\.flow-batch\biblioteca`. `--data PASTA` e
 `FLOW_BATCH_HOME` permitem outros destinos, fora do prefixo npm.
 
 ## Instalação no Linux/WSL
@@ -49,22 +49,17 @@ Use `--clients codex` ou `--clients antigravity` para registrar somente um.
 O Codex respeita `CODEX_HOME` na primeira configuração. Reabra os clientes MCP.
 A instalação npm não tem scripts automáticos de configuração.
 
-A biblioteca usa um único `~/.flow-batch/biblioteca/biblioteca.md`, criado com
-seções vazias por `setup`, sem regras criativas prontas. `--library PASTA` é
-opcional e permite outro destino. Peça ao agente para preencher o documento ou
-importe suas instruções. Seções comuns: `[common]`, `[copy]`, `[image]`; formatos:
-`[factory]`, `[factory-group]`, `[factory-truck]`, `[factory-inclined]`, `[pov]`,
-`[full-pov]`, `[seller]`, `[clone]`; templates: `[animation]`.
-Cada seção começa com `# [identificador] Título`. Preserve o marcador inicial
-`<!-- flow-biblioteca:1 -->` e os contratos dos templates de animação.
+Novas bibliotecas usam `base.md` com `[common]`, `[copy]`, `[image]` e
+`[animation]` e um arquivo em `formatos/` por formato. Setup cria a estrutura
+vazia; importe suas instruções com `library import`. Layouts antigos e capturas
+continuam legíveis. `instrucoes.json` preserva identidade e revisão, e
+`.historico/` contém capturas necessárias. O nome `biblioteca.json` é migrado
+sem alterar bytes; conflitos impedem abertura.
 
-`flow-batch library validate` confere o arquivo. Para outra máquina, copie o
-Markdown ou use `library export /CAMINHO/biblioteca.md` e importe após `setup`.
-`library convert` reúne bibliotecas antigas de vários arquivos, preservando os
-originais em `.rascunhos/`. A biblioteca existente não é convertida automaticamente.
-Backups JSON com histórico continuam disponíveis com `library export DESTINO.JSON`.
-Configuração,
-SQLite, materiais e arquivos de trabalho não são distribuídos pelo npm.
+`library split` mostra a divisão sem alterações; `--preserve-originals`
+aplica e arquiva originais, exigindo autorização para esse backup. `library
+validate` verifica a biblioteca. CLI e MCP usam `flow-orders/5`; atualize o
+conector junto do servidor.
 
 No modo Docker, `up` constrói as imagens localmente, sincroniza a extensão e espera o servidor.
 O npm instala as bibliotecas declaradas em `dependencies`, com versões diretas

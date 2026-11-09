@@ -17,7 +17,7 @@ test('installation is empty, imports instructions without bundled content, prese
   const store = new LibraryStore(join(root, 'first'));
   assert.equal(store.status().configured, false);
   assert.equal(store.status().revision, null);
-  assert.throws(() => store.capture(), /incompleto/);
+  assert.throws(() => store.capture(), /incompleta/);
   instructions.installInstructions(store.root);
   const original = store.capture();
   store.save(

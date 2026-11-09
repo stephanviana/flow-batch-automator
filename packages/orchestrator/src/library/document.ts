@@ -18,7 +18,21 @@ const labels: Record<string, string> = {
   ),
   animation: 'Templates de animação',
 };
-export function documentText(sections: Record<string, string> = {}): string {
+export interface SectionLayout {
+  filename: string;
+  marker: string;
+  labels: Record<string, string>;
+}
+const legacyLayout: SectionLayout = {
+  filename: LIBRARY_DOCUMENT,
+  marker,
+  labels,
+};
+export function documentText(
+  sections: Record<string, string> = {},
+  layout: SectionLayout = legacyLayout,
+): string {
+  const { marker, labels } = layout;
   return (
     marker +
     '\n\n' +
@@ -28,13 +42,14 @@ export function documentText(sections: Record<string, string> = {}): string {
     '\n'
   );
 }
-export function documentSections(text: string): Record<string, string> {
+export function documentSections(
+  text: string,
+  layout: SectionLayout = legacyLayout,
+): Record<string, string> {
+  const { marker, labels, filename } = layout;
   text = text.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
   if (!text.startsWith(marker + '\n'))
-    throw new HttpError(
-      400,
-      'biblioteca.md exige o marcador <!-- flow-biblioteca:1 -->.',
-    );
+    throw new HttpError(400, `${filename} exige o marcador ${marker}.`);
   const sections: Record<string, string> = {};
   let active: string | undefined,
     fence = '',
@@ -68,7 +83,7 @@ export function documentSections(text: string): Record<string, string> {
       )
         throw new HttpError(
           400,
-          `Seção inválida ou repetida em biblioteca.md: ${key}.`,
+          `Seção inválida ou repetida em ${filename}: ${key}.`,
         );
       active = key;
       body = [];
@@ -76,11 +91,11 @@ export function documentSections(text: string): Record<string, string> {
     else if (line.trim())
       throw new HttpError(
         400,
-        'Coloque as instruções dentro das seções de biblioteca.md.',
+        `Coloque as instruções dentro das seções de ${filename}.`,
       );
   }
   if (fence)
-    throw new HttpError(400, 'Feche o bloco de código em biblioteca.md.');
+    throw new HttpError(400, `Feche o bloco de código em ${filename}.`);
   finish();
   return sections;
 }

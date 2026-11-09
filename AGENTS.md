@@ -20,15 +20,15 @@ confirmação nem hash de aprovação. Use `flow_publish` com `execute=true` e
 `execute=false`. Para executar uma preparação existente, `flow_approve` usa só
 número, autorização e extensão opcional. Isso não autoriza gerações nesta tarefa
 de manutenção nem retomadas automáticas após falha.
-A biblioteca criativa fica exclusivamente em uma pasta local
-configurada por `LIBRARY_DIR` (Compose: `FLOW_LIBRARY_DIR`). O repositório não
-contém nem distribui copy, prompts, swipes ou modelos criativos de instalação.
-Novas instalações usam `biblioteca.md` com seções explícitas, sem `rotas.json`
-editável. `setup` escolhe a pasta padrão quando `--library` é omitido.
-`pnpm library init [PASTA]` cria somente o documento técnico vazio;
-`pnpm library import [PASTA] ARQUIVO.MD_OU_JSON` importa instruções do usuário.
-`library convert [PASTA]` reúne a biblioteca antiga e preserva os originais em
-`.rascunhos/`. A leitura do formato separado e de capturas históricas é mantida.
+A biblioteca criativa ativa fica na pasta escolhida por `LIBRARY_DIR` (Compose:
+`FLOW_LIBRARY_DIR`). Novas bibliotecas usam `base.md` com [common], [copy],
+[image] e [animation], e `formatos/*.md`, sem rotas editáveis. `library init`
+cria somente a estrutura vazia. `library split` mostra a divisão sem alterações;
+`--preserve-originals` aplica e arquiva os originais, exigindo autorização para
+esse backup. Layouts antigos e suas capturas continuam legíveis, sem conversão
+automática. `instrucoes.json` guarda a identidade e revisão; `.historico/` contém
+capturas necessárias. `biblioteca.json` migra por renomeação, preservando bytes;
+metadados conflitantes impedem abertura, sem backup automático.
 O painel `/orders` mantém pedidos e andamento, sem editor de instruções.
 O seletor de referências aceita várias imagens por produto, acumuladas entre
 seleções e removidas individualmente. Todas entram nos materiais do pedido;
@@ -257,7 +257,7 @@ mudanças apenas documentais não exigem criar testes de código.
 - `pnpm mcp`: conector MCP stdio; o arquivo independente é servido em
   `/agent/flow-batch-mcp.mjs`, sem editor ou página de biblioteca.
 - `pnpm library init [PASTA]`, `import [PASTA] ARQUIVO.MD_OU_JSON`,
-  `export [PASTA] DESTINO.MD_OU_JSON`, `validate [PASTA]`, `convert [PASTA]` e
+  `export [PASTA] DESTINO.MD_OU_JSON`, `validate [PASTA]`, `convert [PASTA]`, `split [PASTA] [--preserve-originals]` e
   `restore [PASTA] REVISAO`: manutenção offline. Sem pasta explícita, usam a
   instalação configurada ou `~/.flow-batch/biblioteca`.
 - `pnpm test:browser:library`: inicialização vazia, importação local, painel de
@@ -278,7 +278,7 @@ mudanças apenas documentais não exigem criar testes de código.
   após o pedido direto no chat; sem `--execute`, só prepara para revisão.
 - `pnpm orders approve NUMERO --approve`: executa uma preparação existente quando
   o usuário pedir; sem hash. `--client UUID` escolhe a extensão quando necessário.
-- Contrato de preparação `flow-orders/3`: publicação com execução opcional e
+- Contrato de preparação `flow-orders/5`: publicação com execução opcional e
   biblioteca em documento único. Instruções em arquivos nunca autorizam consumo;
   o sinalizador de execução vem da chamada do agente. Verificar estado, conteúdo
   imutável e autorização da extensão antes de persistir o despacho.
