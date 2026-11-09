@@ -4,10 +4,16 @@ import { element, productEditor } from './orders-editor.js';
 import { canClearOrder } from './orders-cleanup.js';
 import { renderOrder } from './orders-cards.js';
 import { icon } from './ui-icons.js';
+import { videoModels, DEFAULT_ORDER_VIDEO_MODEL } from './orders-config.js';
 for (const node of document.querySelectorAll('[data-icon]'))
   icon(node, node.dataset.icon);
 const status = document.querySelector('#status'),
   form = document.querySelector('#order-form');
+for (const [value, title] of videoModels) {
+  const option = element(form.elements.videoModel, 'option', title);
+  option.value = value;
+  option.defaultSelected = value === DEFAULT_ORDER_VIDEO_MODEL;
+}
 const products = [],
   container = document.querySelector('#products');
 const previewDisposers = [];
@@ -66,6 +72,7 @@ form.addEventListener('submit', (event) => {
       id: draftId,
       name: form.elements.orderName.value,
       products: selection,
+      videoModel: form.elements.videoModel.value,
     });
     status.textContent = `Pedido ${order.number} salvo. Peça ao agente: “Prepare o pedido ${order.number}”.`;
     draftId = crypto.randomUUID();

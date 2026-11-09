@@ -3,7 +3,11 @@ import { orderReview } from './orders-review.js';
 import { element } from './orders-elements.js';
 import { formats } from './orders-format-editor.js';
 import { icon } from './ui-icons.js';
-import { cloneModes, DEFAULT_CLONE_MODE } from './orders-config.js';
+import {
+  cloneModes,
+  DEFAULT_CLONE_MODE,
+  videoModels,
+} from './orders-config.js';
 import { referenceVideoPreview } from './orders-video-preview.js';
 
 const states = {
@@ -209,6 +213,13 @@ export function renderOrder(parent, order, context) {
     'badge',
   );
   badge.title = states[order.state];
+  if (order.videoModel)
+    element(
+      card,
+      'p',
+      `Modelo: ${videoModels.find(([value]) => value === order.videoModel)?.[1] ?? order.videoModel}`,
+      'hint',
+    );
   element(
     card,
     'p',

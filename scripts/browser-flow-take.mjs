@@ -3,7 +3,10 @@ import { randomUUID, createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { URLSearchParams } from 'node:url';
 import { localClient, checkout } from './orders.mjs';
-import { usesSingleImage } from '../packages/protocol/dist/index.js';
+import {
+  usesSingleImage,
+  DEFAULT_ORDER_VIDEO_MODEL,
+} from '../packages/protocol/dist/index.js';
 import { resolve } from 'node:path';
 
 export async function validateFlowTake({
@@ -15,6 +18,7 @@ export async function validateFlowTake({
   media,
   directory,
   format = 'factory',
+  videoModel = DEFAULT_ORDER_VIDEO_MODEL,
   base = 'http://127.0.0.1:4319',
 }) {
   const singleImage = usesSingleImage(format);
@@ -33,7 +37,7 @@ export async function validateFlowTake({
     mediaCount = 0;
   const captchaTokens = new Set();
   let mode = 'success';
-  let expectedVideoModel = 'abra_i2v_8s';
+  const expectedVideoModel = videoModel;
   let expectedImageModel = 'GEM_PIX_2';
   let projectsCreated = 0;
   await browser.route('https://flow.google.com/**', async (route) => {
@@ -157,6 +161,11 @@ export async function validateFlowTake({
   try {
     await flow.goto(`https://flow.google.com/project/${projectId}`);
     await orders.goto(`${base}/orders`);
+    const videoPicker = orders.getByLabel('Modelo de vídeo no Flow', {
+      exact: true,
+    });
+    assert.equal(await videoPicker.inputValue(), DEFAULT_ORDER_VIDEO_MODEL);
+    await videoPicker.selectOption(videoModel);
     await orders
       .getByLabel('Nome do pedido', { exact: true })
       .fill('Pedido navegador');
@@ -183,6 +192,7 @@ export async function validateFlowTake({
     );
     const { order, variationPlan } = await api('/manage/orders/1');
     assert.equal(order.state, 'awaiting-preparation');
+    assert.equal(order.videoModel, videoModel);
     assert.equal(imageCount, 0);
     assert.equal(videoCount, 0);
     assert.equal(projectsCreated, 0);
@@ -243,6 +253,7 @@ export async function validateFlowTake({
     assert.equal(imageCount, 0);
     assert.equal(videoCount, 0);
     expectedTasks = prepared.preparation.manifests[0].tasks;
+    for (const task of expectedTasks) assert.equal(task.videoModel, videoModel);
     assert.equal(
       expectedTasks[1].reuseImageFrom,
       singleImage ? expectedTasks[0].id : undefined,

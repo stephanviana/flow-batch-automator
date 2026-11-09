@@ -55,6 +55,8 @@ até 8 MB. A foto do produto continua como referência de geração do Flow.
 cloneMode=adapt-format é o padrão legado; preserve-copy exige cloneVideo.mode,
 transcript conferida e copy idêntica por take e entre variações do vídeo no
 produto. O agente analisa o áudio; o servidor valida igualdade sem invocar IA.
+videoModel opcional no pedido aceita Omni 1.1 Flash ou Veo 3.1 Lite, aplicado a
+todos os takes; ausência legada resolve Omni na compilação sem regravar registros.
 
 O SQLite guarda registros; os materiais importados ficam em arquivos por hash
 em armazenamento persistente administrado pelo aplicativo, com deduplicação.

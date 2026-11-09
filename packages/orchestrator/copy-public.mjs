@@ -5,6 +5,8 @@ import {
   preparationFormatLabels,
   cloneModeLabels,
   DEFAULT_CLONE_MODE,
+  orderVideoModelLabels,
+  DEFAULT_ORDER_VIDEO_MODEL,
 } from '@flow-batch/protocol';
 import { cp, mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -25,6 +27,8 @@ const browserConfiguration = {
   formats: Object.entries(preparationFormatLabels),
   cloneModes: Object.entries(cloneModeLabels),
   DEFAULT_CLONE_MODE,
+  videoModels: Object.entries(orderVideoModelLabels),
+  DEFAULT_ORDER_VIDEO_MODEL,
 };
 await writeFile(
   resolve(destination, 'orders-config.js'),

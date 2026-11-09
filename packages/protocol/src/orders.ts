@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { orderVideoModelSchema } from './flow-models.js';
 import {
   preparationFormatSchema,
   preparationSchema,
@@ -68,6 +69,7 @@ export const orderDraftSchema = z
     id: z.uuid(),
     name: z.string().trim().min(1).max(120),
     products: z.array(orderProductSchema).min(1).max(30),
+    videoModel: orderVideoModelSchema.optional(),
   })
   .superRefine((order, context) => {
     if (

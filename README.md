@@ -576,6 +576,12 @@ Não recarregue a aba do Flow durante execução para atualizar a listagem.
 
 ## Opções dos pedidos
 
+O seletor “Modelo de vídeo no Flow” vale para todos os vídeos do pedido:
+Omni 1.1 Flash (`abra_i2v_8s`, padrão) ou Veo 3.1 Lite (`veo_3_1_i2v_lite`).
+O modelo escolhido aparece no acompanhamento. Pedidos antigos sem o campo usam
+o padrão ao compilar, sem alterar seu corpo. Nano Banana Pro continua gerando
+as imagens e a reutilização mantém o modelo escolhido para cada vídeo.
+
 Grupos de clonagem podem adaptar formato e criar nova copy (`adapt-format`) ou
 manter a copy original com outro cenário/avatar (`preserve-copy`). O modo antigo
 sem campo continua sendo adaptação. Em preservação, o agente confere o áudio e

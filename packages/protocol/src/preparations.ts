@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { imageSelectionSchema, flowVideoModelSchema } from './flow-models.js';
+import {
+  imageSelectionSchema,
+  flowVideoModelSchema,
+  DEFAULT_ORDER_VIDEO_MODEL,
+} from './flow-models.js';
 import { importTakeSchema } from './imports.js';
 
 const nonblankText = z
@@ -66,7 +70,7 @@ export const preparationSchema = z
     product: importTakeSchema.shape.product,
     reference: importTakeSchema.shape.reference,
     imageModel: imageSelectionSchema.default('GEM_PIX_2'),
-    videoModel: flowVideoModelSchema.default('abra_i2v_8s'),
+    videoModel: flowVideoModelSchema.default(DEFAULT_ORDER_VIDEO_MODEL),
     variations: z
       .array(
         z

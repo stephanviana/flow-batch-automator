@@ -20,6 +20,16 @@ export const flowVideoModelSchema = z.enum([
   'veo_3_1_i2v_s_fast_ultra',
 ]);
 export type FlowVideoModel = z.infer<typeof flowVideoModelSchema>;
+export const orderVideoModelSchema = z.enum([
+  'abra_i2v_8s',
+  'veo_3_1_i2v_lite',
+]);
+export type OrderVideoModel = z.infer<typeof orderVideoModelSchema>;
+export const DEFAULT_ORDER_VIDEO_MODEL: OrderVideoModel = 'abra_i2v_8s';
+export const orderVideoModelLabels: Record<OrderVideoModel, string> = {
+  abra_i2v_8s: 'Omni 1.1 Flash',
+  veo_3_1_i2v_lite: 'Veo 3.1 Lite',
+};
 export const imageSelectionSchema = z.enum(['GEM_PIX_2', 'BELUGA']);
 export const omniDurationSchema = z.union([
   z.literal(4),

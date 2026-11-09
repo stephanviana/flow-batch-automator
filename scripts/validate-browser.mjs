@@ -2,6 +2,7 @@ import { instructionFiles } from './test-support/instruction-package.mjs';
 import { consolidatedDocument } from '../packages/orchestrator/dist/library/routing.js';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { orderVideoModelSchema } from '../packages/protocol/dist/index.js';
 import { randomUUID } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
 import { cp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
@@ -18,6 +19,12 @@ import { validateFlow } from './browser-flow.mjs';
 import { validateFlowTake } from './browser-flow-take.mjs';
 import { startMediaFixture } from './browser-media.mjs';
 
+const modelArgument = process.argv.find((argument) =>
+  argument.startsWith('--video-model='),
+);
+const requestedVideoModel = modelArgument
+  ? orderVideoModelSchema.parse(modelArgument.slice('--video-model='.length))
+  : undefined;
 const directory = resolve('.cache', `browser-${randomUUID()}`);
 const requestedFormat = process.argv
   .find((argument) => argument.startsWith('--format='))
@@ -335,6 +342,7 @@ try {
       directory,
       reuseOnly,
       format: requestedFormat,
+      videoModel: requestedVideoModel,
       base,
     });
     await validateOrderReview({

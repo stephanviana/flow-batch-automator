@@ -28,6 +28,9 @@ const errors = [];
 const base = 'http://127.0.0.1:4359';
 
 async function saveOrderFromEditor() {
+  const model = page.getByLabel('Modelo de vídeo no Flow', { exact: true });
+  assert.equal(await model.inputValue(), 'abra_i2v_8s');
+  await model.selectOption('veo_3_1_i2v_lite');
   await page
     .getByLabel('Nome do pedido', { exact: true })
     .fill('Lote de vídeos 04/11');
@@ -66,6 +69,8 @@ async function saveOrderFromEditor() {
     document.querySelector('#status').textContent.includes('Pedido 1 salvo'),
   );
   assert.equal(await page.locator('#product-count').textContent(), '1 produto');
+  assert.equal(await model.inputValue(), 'abra_i2v_8s');
+  await page.getByText('Modelo: Veo 3.1 Lite', { exact: true }).waitFor();
   await page
     .getByRole('button', { name: 'Adicionar produto', exact: true })
     .click();

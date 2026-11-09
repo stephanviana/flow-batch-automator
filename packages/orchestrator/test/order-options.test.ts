@@ -3,7 +3,12 @@ import { test } from 'node:test';
 import { Readable } from 'node:stream';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { preparationFormatSchema, type OrderDraft } from '@flow-batch/protocol';
+import { DatabaseSync } from 'node:sqlite';
+import {
+  preparationFormatSchema,
+  type OrderDraft,
+  dispatchCommandSchema,
+} from '@flow-batch/protocol';
 import { fixture, pair, approve, type Fixture } from './support.js';
 import { draft, image, publication } from './orders-support.js';
 import {
@@ -56,6 +61,118 @@ async function allFormats(f: Fixture): Promise<OrderDraft> {
   }));
   return input;
 }
+for (const videoModel of [
+  undefined,
+  'abra_i2v_8s',
+  'veo_3_1_i2v_lite',
+] as const)
+  test(`order model ${videoModel ?? 'legacy'} reaches every format and dispatch without rewriting stored input`, async (t) => {
+    const f = await fixture(t);
+    const receipt = await pair(f);
+    const api = client(f, await approve(f, receipt));
+    const input = await allFormats(f);
+    if (videoModel) input.videoModel = videoModel;
+    const repository = new OrderRepository(f.database);
+    repository.create(input);
+    const original = f.database
+      .prepare('SELECT body,body_hash FROM production_orders WHERE id=?')
+      .get(input.id);
+    const reserved = await checkout(
+      api,
+      1,
+      'fixture',
+      join(f.config.materialsDirectory, 'checkout'),
+    );
+    assert.equal(reserved.order.videoModel, videoModel);
+    assert.equal(
+      Object.hasOwn(reserved.order, 'videoModel'),
+      videoModel !== undefined,
+    );
+    const body = await publication(reserved.order, reserved.leaseId);
+    const planned = reserved.order.products[0]!.groups.find(
+      (group) => group.format === 'clone',
+    )!;
+    for (const variation of body.products[0]!.variations)
+      if (variation.format === 'clone')
+        variation.cloneVideo = {
+          materialId: planned.videoReferenceId!,
+          analysis: 'Synthetic analysis.',
+          directions: {
+            hook: 'Show hands.',
+            body: 'Show product.',
+            cta: 'Keep scene.',
+          },
+        };
+    const prepared = await api<ProductionOrder>(
+      `/manage/orders/${input.id}/prepare`,
+      body,
+    );
+    const takes = prepared.preparation!.manifests.flatMap(
+      (manifest) => manifest.tasks,
+    );
+    assert.equal(takes.length, 24);
+    for (const take of takes) {
+      assert.equal(take.videoModel, videoModel ?? 'abra_i2v_8s');
+      assert.equal(take.imageModel, 'GEM_PIX_2');
+    }
+    assert.equal(
+      f.database.prepare('SELECT COUNT(*) AS n FROM dispatch_commands').get()!
+        .n,
+      0,
+    );
+    await api(`/manage/orders/${input.id}/approve`, {
+      approve: true,
+      clientId: receipt.clientId,
+    });
+    for (const row of f.database
+      .prepare('SELECT body FROM dispatch_commands')
+      .all())
+      for (const take of dispatchCommandSchema.parse(
+        JSON.parse(String(row.body)),
+      ).manifest.tasks)
+        assert.equal(take.videoModel, videoModel ?? 'abra_i2v_8s');
+    assert.deepEqual(
+      f.database
+        .prepare('SELECT body,body_hash FROM production_orders WHERE id=?')
+        .get(input.id),
+      original,
+    );
+    const reopened = new DatabaseSync(f.config.databasePath);
+    try {
+      assert.deepEqual(
+        new OrderRepository(reopened).get(input.id).preparation,
+        prepared.preparation,
+      );
+    } finally {
+      reopened.close();
+    }
+    assert.equal(repository.create(input).id, input.id);
+    assert.throws(
+      () =>
+        repository.create({
+          ...input,
+          videoModel:
+            videoModel === 'veo_3_1_i2v_lite'
+              ? 'abra_i2v_8s'
+              : 'veo_3_1_i2v_lite',
+        }),
+      /outras configurações/,
+    );
+    for (const invalid of [
+      null,
+      'abra_i2v_4s',
+      'veo_3_1_i2v_lite_low_priority',
+      'unknown',
+    ])
+      assert.throws(() =>
+        repository.create({
+          ...input,
+          id: crypto.randomUUID(),
+          videoModel: invalid,
+        }),
+      );
+  });
+
 test('preserved clone transcripts remain identical across takes and variations and cannot replace the selected mode', async (t) => {
   const f = await fixture(t);
   const receipt = await pair(f);

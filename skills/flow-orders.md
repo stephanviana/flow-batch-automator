@@ -46,7 +46,8 @@ Aplique as instruções dos formatos presentes no contexto. Para consultar outro
 arquivo durante a preparação, use `flow_library_read` com a revisão da reserva.
 Nos grupos `clone`, analise o MP4 real e mantenha o `cloneVideo.materialId` salvo.
 Respeite cloneMode: preserve-copy exige transcrição conferida e copy idêntica;
-adapt-format cria nova copy conforme a estrutura. Não troque o modo salvo no pedido. As regras editoriais vêm da biblioteca local.
+adapt-format cria nova copy conforme a estrutura. Não troque o modo nem o
+modelo de vídeo salvo no pedido. As regras editoriais vêm da biblioteca local.
 
 Edite os campos criativos vazios de `preparacao.json`, respeitando os IDs,
 formatos e a quantidade exata. Crie prompts próprios e falas conforme o modo salvo; não copie o texto

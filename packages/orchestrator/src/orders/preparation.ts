@@ -93,6 +93,7 @@ async function compileProduct(
         id,
         product: product.name,
         reference,
+        videoModel: order.videoModel,
         variations: entries,
       },
       templates,

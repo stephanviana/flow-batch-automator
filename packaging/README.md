@@ -117,5 +117,6 @@ atualizar, importar instruções e publicar sem execução não autorizam geraç
 A aplicação usa a sessão do Flow no navegador;
 cookies e tokens Google não são exportados para o servidor.
 
+Nos pedidos, escolha Omni 1.1 Flash (padrão) ou Veo 3.1 Lite para todos os vídeos.
 Clonagem permite adaptar a copy ou preservar exatamente a transcrição original,
 variando cenário/avatar. Os contratos validam os textos, sem transcrever o MP4.
