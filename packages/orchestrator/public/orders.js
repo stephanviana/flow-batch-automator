@@ -107,9 +107,6 @@ function renderSavedOrders() {
       }),
     );
   }
-  const first = orders[0];
-  document.querySelector('#chat-instruction').textContent =
-    `No chat: “Prepare o pedido ${first?.number ?? 1}”.`;
   if (!orders.length)
     element(list, 'p', 'Nenhum pedido salvo. O próximo pedido começa em #1.');
 }

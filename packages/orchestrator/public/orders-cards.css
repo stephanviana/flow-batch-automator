@@ -259,17 +259,7 @@
   padding-left: 20px;
   color: var(--muted);
 }
-.chat-hint {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 0;
-  padding: 12px 20px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: linear-gradient(110deg, #1a2832, #16212a);
-  font-size: 14px;
-}
+
 @media (min-width: 961px) and (max-width: 1300px) {
   .order-title {
     align-items: start;
