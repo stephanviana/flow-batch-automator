@@ -256,3 +256,16 @@ summary {
     padding: 16px;
   }
 }
+
+select {
+  color-scheme: dark;
+  background: var(--surface-inset);
+}
+select option,
+select optgroup {
+  background-color: var(--surface-raised);
+  color: var(--text);
+}
+select option:disabled {
+  color: var(--muted);
+}
