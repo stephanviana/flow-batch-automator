@@ -283,6 +283,13 @@ quiser incorporar mudanças; `npm root --global` localiza o pacote instalado.
 | `seller.md`            | Full Vendedora            |
 | `clone.md`             | Clonagem                  |
 
+A seção `[copy]` de `base.md` contém o playbook de criação das falas novas.
+Ele define o diagnóstico do produto, a cadência, a alternância das aberturas e
+os limites de 20 a 26 palavras e 130 a 165 caracteres por take de 8 segundos.
+Em POV + Vendedora, use POV no gancho e Vendedora no Body e no CTA. Na clonagem,
+`adapt-format` aplica o playbook à estrutura do vídeo analisado, e
+`preserve-copy` mantém a transcrição conferida.
+
 `base.md` começa com `<!-- flow-base:1 -->`. Use `# [common]`, `# [copy]`,
 `# [image]` e `# [animation]`, com títulos livres após os identificadores.
 Preencha ao menos uma seção editorial e os formatos usados no pedido.
