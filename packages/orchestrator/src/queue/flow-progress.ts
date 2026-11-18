@@ -1,6 +1,6 @@
 import {
   flowCheckpointStages,
-  flowOutputPath,
+  matchesFlowOutputPath,
   type QueueCheckpoint,
   type TaskSummary,
 } from '@flow-batch/protocol';
@@ -125,8 +125,11 @@ export class FlowProgress {
       video.mediaId !== result.videoMediaId ||
       download?.stage !== 'download_started' ||
       download.downloadId !== result.downloadId ||
-      result.outputFile !==
-        flowOutputPath(record.summary.id, record.input.flow.output)
+      !matchesFlowOutputPath(
+        record.summary.id,
+        record.input.flow.output,
+        result.outputFile,
+      )
     )
       throw new HttpError(
         409,

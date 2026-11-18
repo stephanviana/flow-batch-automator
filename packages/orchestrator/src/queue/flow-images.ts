@@ -37,6 +37,7 @@ export class FlowImages {
       source.flow.imageModel !== input.flow.imageModel ||
       source.flow.aspect !== input.flow.aspect ||
       source.flow.output?.directory !== input.flow.output?.directory ||
+      source.flow.output?.root !== input.flow.output?.root ||
       source.original.imagePrompt !== input.original.imagePrompt ||
       source.flow.reference.sha256 !== input.flow.reference.sha256 ||
       source.flow.reference.mime !== input.flow.reference.mime ||

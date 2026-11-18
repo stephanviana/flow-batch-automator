@@ -178,13 +178,33 @@ export class QueueRepository {
     clientIds: string[],
     flowClientIds: string[] = [],
     modernFlowClientIds: string[] = [],
+    videoFolderClientIds: string[] = [],
   ): TaskRecord | undefined {
     if (!clientIds.length || this.blocked()) return undefined;
+    const placeholders = (ids: string[]): string =>
+      ids.map(() => '?').join(',');
+    const include = (ids: string[]): string =>
+      ids.length ? ` OR q.client_id IN (${placeholders(ids)})` : '';
     const row = this.database.connection
       .prepare(
-        `SELECT q.id FROM queue_tasks q JOIN queue_controls c ON c.client_id=q.client_id JOIN clients a ON a.id=q.client_id WHERE q.state='queued' AND c.running=1 AND a.authorized_at IS NOT NULL AND a.revoked_at IS NULL AND q.client_id IN (${clientIds.map(() => '?').join(',')}) AND (json_extract(q.input,'$.executor')='simulation'${flowClientIds.length ? ` OR q.client_id IN (${flowClientIds.map(() => '?').join(',')})` : ''}) AND ((json_extract(q.input,'$.flow.imageSourceTaskKey') IS NULL AND json_extract(q.input,'$.flow.output') IS NULL)${modernFlowClientIds.length ? ` OR q.client_id IN (${modernFlowClientIds.map(() => '?').join(',')})` : ''}) ORDER BY q.sequence LIMIT 1`,
+        `SELECT q.id FROM queue_tasks q
+         JOIN queue_controls c ON c.client_id=q.client_id
+         JOIN clients a ON a.id=q.client_id
+         WHERE q.state='queued' AND c.running=1
+           AND a.authorized_at IS NOT NULL AND a.revoked_at IS NULL
+           AND q.client_id IN (${placeholders(clientIds)})
+           AND (json_extract(q.input,'$.executor')='simulation'${include(flowClientIds)})
+           AND ((json_extract(q.input,'$.flow.imageSourceTaskKey') IS NULL
+                 AND json_extract(q.input,'$.flow.output') IS NULL)${include(modernFlowClientIds)})
+           AND (json_extract(q.input,'$.flow.output.root') IS NULL${include(videoFolderClientIds)})
+         ORDER BY q.sequence LIMIT 1`,
       )
-      .get(...clientIds, ...flowClientIds, ...modernFlowClientIds);
+      .get(
+        ...clientIds,
+        ...flowClientIds,
+        ...modernFlowClientIds,
+        ...videoFolderClientIds,
+      );
     return row ? this.database.task(String(row.id)) : undefined;
   }
 

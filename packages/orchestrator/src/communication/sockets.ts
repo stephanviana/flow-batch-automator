@@ -25,6 +25,7 @@ interface Session {
   queueCapable: boolean;
   flowCapable: boolean;
   modernFlowCapable: boolean;
+  videoFoldersCapable: boolean;
 }
 
 export class ConnectionHub implements QueueTransport {
@@ -51,12 +52,14 @@ export class ConnectionHub implements QueueTransport {
     connectionId: string;
     flowCapable: boolean;
     modernFlowCapable: boolean;
+    videoFoldersCapable: boolean;
   }[] {
     const connections: {
       clientId: string;
       connectionId: string;
       flowCapable: boolean;
       modernFlowCapable: boolean;
+      videoFoldersCapable: boolean;
     }[] = [];
     for (const session of this.sessions.values()) {
       if (
@@ -72,6 +75,7 @@ export class ConnectionHub implements QueueTransport {
           connectionId: session.id,
           flowCapable: session.flowCapable,
           modernFlowCapable: session.modernFlowCapable,
+          videoFoldersCapable: session.videoFoldersCapable,
         });
       } catch {
         continue;
@@ -88,6 +92,9 @@ export class ConnectionHub implements QueueTransport {
       (message.type === 'flow-execute' &&
         (message.flow.imageSourceTaskKey || message.flow.output) &&
         !session.modernFlowCapable) ||
+      (message.type === 'flow-execute' &&
+        message.flow.output?.root === 'Flow' &&
+        !session.videoFoldersCapable) ||
       session.socket.readyState !== WebSocket.OPEN
     )
       return false;
@@ -195,6 +202,7 @@ export class ConnectionHub implements QueueTransport {
       queueCapable: false,
       flowCapable: false,
       modernFlowCapable: false,
+      videoFoldersCapable: false,
     };
     this.sessions.set(session.id, session);
     const deadline = setTimeout((): void => {
@@ -242,13 +250,11 @@ export class ConnectionHub implements QueueTransport {
         if (previous.clientId === client.id)
           previous.socket.close(4000, 'Replaced by reconnect');
       session.clientId = client.id;
-      session.queueCapable =
-        message.protocolVersion === 3 ||
-        message.protocolVersion === 4 ||
-        message.protocolVersion === 5;
-      session.flowCapable =
-        message.protocolVersion === 4 || message.protocolVersion === 5;
-      session.modernFlowCapable = message.protocolVersion === 5;
+      const version = message.protocolVersion ?? 0;
+      session.queueCapable = version >= 3;
+      session.flowCapable = version >= 4;
+      session.modernFlowCapable = version >= 5;
+      session.videoFoldersCapable = version >= 6;
       this.send(session, { type: 'authenticated' });
       this.queue?.connected();
       return;

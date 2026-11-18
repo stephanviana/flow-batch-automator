@@ -337,7 +337,7 @@ ou `~/.flow-batch/biblioteca`. Não configure a pasta interna do npm como ativa.
 Leitura/salvamento MCP sem `path` resolve o arquivo principal do layout ativo:
 `base.md`, `biblioteca.md` ou as rotas legadas. Informe `revision` para ler uma
 captura. CLI e MCP usam `flow-orders/5`; atualize e reabra o conector junto do
-servidor. Isso é distinto do protocolo v5 da extensão. Edições só afetam novas
+servidor. Isso é distinto da versão da conexão da extensão. Edições só afetam novas
 reservas; capturas, materiais e preparações anteriores permanecem intactos.
 A base pode servir a futuros canais; novos canais e formatos exigem suporte
 no contrato e no motor. Não há módulo orgânico/DTC/ODR implementado.
@@ -551,9 +551,15 @@ Os formatos disponíveis são quatro formatos de fábrica, POV + Vendedora, Full
 POV, Full Vendedora e clonagem. Todas as variações têm gancho, Body e CTA.
 Full POV e Full Vendedora usam uma imagem gerada no gancho e reutilizada nos
 outros takes. Os demais usam duas imagens, com CTA reutilizando o Body.
-Os três MP4s ficam separados na mesma pasta da variação: `01-Gancho.mp4`,
-`02-Body.mp4`, `03-CTA.mp4`. Padrão técnico: Nano Banana Pro e Omni 1.1 Flash
-Frames, 8 s/720p, 9:16. Materiais: MP4 até 64 MB; imagens e documentos até 8 MB.
+Nos novos despachos, os três MP4s de cada vídeo ficam juntos em
+`Flow/Videos/<produto>--<formato>--<identificador>/`, dentro dos downloads do
+Chrome. Cada pasta contém `01-Gancho.mp4`, `02-Body.mp4` e `03-CTA.mp4`. As pastas
+dos vídeos ficam diretamente em `Flow/Videos`, sem o nível de lote. A extensão e
+o orquestrador precisam do protocolo v6 para esse destino. Takes já registrados
+mantêm o destino gravado.
+
+O padrão técnico usa Nano Banana Pro e Omni 1.1 Flash Frames, 8 s/720p, 9:16.
+Os limites de materiais são 64 MB para MP4 e 8 MB para imagens e documentos.
 
 O compilador seleciona um template próprio para o gancho de esteira inclinada
 quando o pacote o fornece. A direção de correia, deslocamento e queda pertence

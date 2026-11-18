@@ -194,6 +194,44 @@ test('reuse requires a prior matching source and rejected imports roll back the 
   }
 });
 
+test('each new video folder fences image reuse and dispatch waits for protocol v6', async (t) => {
+  const f = await reuseFixture(t);
+  f.body.flow.output = {
+    root: 'Flow',
+    directory: 'Videos/caneca--pov--id1',
+    filename: '02-Body.mp4',
+  };
+  f.cta.flow.output = { ...f.body.flow.output, filename: '03-CTA.mp4' };
+  for (const wrongOutput of [
+    { ...f.cta.flow.output, directory: 'Videos/caneca--pov--id2' },
+    { directory: f.cta.flow.output.directory, filename: '03-CTA.mp4' },
+  ]) {
+    assert.throws(
+      () =>
+        f.repository.enqueue(f.clientId, randomUUID(), [
+          f.body,
+          { ...f.cta, flow: { ...f.cta.flow, output: wrongOutput } },
+        ]),
+      /Source image/,
+    );
+  }
+  const [body] = f.repository.enqueue(f.clientId, randomUUID(), [
+    f.body,
+    f.cta,
+  ]);
+  f.repository.control(f.clientId, true);
+  const connected = [f.clientId];
+  assert.equal(
+    f.repository.candidate(connected, connected, connected),
+    undefined,
+  );
+  assert.equal(
+    f.repository.candidate(connected, connected, connected, connected)?.summary
+      .id,
+    body?.id,
+  );
+});
+
 test('persisted Body image supplies the exact CTA frame and four fenced checkpoints complete its shared-folder download', async (t) => {
   const f = await reuseFixture(t);
   const [body, cta] = f.repository.enqueue(f.clientId, randomUUID(), [

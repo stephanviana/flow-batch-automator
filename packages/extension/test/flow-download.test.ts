@@ -11,6 +11,7 @@ interface DownloadState {
   exists: boolean;
   mime: string;
   fileSize: number;
+  filename?: string;
 }
 function fixture(
   t: TestContext,
@@ -31,6 +32,7 @@ function fixture(
           options: chrome.downloads.DownloadOptions,
         ): Promise<number> => {
           assert.equal(options.filename, expectedFilename);
+          assert.equal(options.conflictAction, 'uniquify');
           return 17;
         },
         search,
@@ -123,6 +125,33 @@ test('grouped download uses the approved variation folder without changing Chrom
       downloadId: 17,
       outputFile: expected,
     },
+  );
+});
+
+test('new variation downloads report the name Chrome saved on Windows after a conflict', async (t) => {
+  const output = {
+    root: 'Flow' as const,
+    directory: 'Videos/Caneca-POV-id',
+    filename: '03-CTA.mp4',
+  };
+  const expected = 'Flow/Videos/Caneca-POV-id/03-CTA.mp4';
+  const actual = 'Flow/Videos/Caneca-POV-id/03-CTA (1).mp4';
+  const f = fixture(
+    t,
+    async () => [
+      {
+        state: 'complete',
+        exists: true,
+        mime: 'video/mp4',
+        fileSize: 1716,
+        filename: `C:/Downloads/${actual}`.replaceAll('/', '\\'),
+      },
+    ],
+    expected,
+  );
+  assert.deepEqual(
+    await downloadVideo(videoUrl, taskId, f.signal, async () => {}, output),
+    { downloadId: 17, outputFile: actual },
   );
 });
 

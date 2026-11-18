@@ -1,4 +1,8 @@
-import { flowOutputPath, type FlowOutput } from '@flow-batch/protocol';
+import {
+  flowOutputPath,
+  matchesFlowOutputPath,
+  type FlowOutput,
+} from '@flow-batch/protocol';
 
 export class FlowDownloadError extends Error {}
 
@@ -30,16 +34,16 @@ export async function downloadVideo(
     conflictAction: 'uniquify',
   });
   await started(downloadId);
-  await new Promise<void>((resolve, reject) => {
+  const savedFile = await new Promise<string>((resolve, reject) => {
     let settled = false;
-    const finish = (error?: Error): void => {
+    const finish = (result: string | Error): void => {
       if (settled) return;
       settled = true;
       clearTimeout(timeout);
       chrome.downloads.onChanged.removeListener(changed);
       signal.removeEventListener('abort', aborted);
-      if (error) reject(error);
-      else resolve();
+      if (result instanceof Error) reject(result);
+      else resolve(result);
     };
     const inspect = async (): Promise<void> => {
       if (settled) return;
@@ -63,7 +67,23 @@ export async function downloadVideo(
                 'O Chrome não confirmou um arquivo de vídeo válido.',
               ),
             );
-          else finish();
+          else {
+            const actual =
+              output?.root === 'Flow'
+                ? download.filename
+                    .replaceAll('\\', '/')
+                    .split('/')
+                    .slice(-4)
+                    .join('/')
+                : outputFile;
+            finish(
+              matchesFlowOutputPath(taskId, output, actual)
+                ? actual
+                : new FlowDownloadError(
+                    'O Chrome salvou o vídeo fora do destino esperado.',
+                  ),
+            );
+          }
         }
       } catch {
         finish(
@@ -97,5 +117,5 @@ export async function downloadVideo(
     if (signal.aborted) aborted();
     else void inspect();
   });
-  return { downloadId, outputFile };
+  return { downloadId, outputFile: savedFile };
 }

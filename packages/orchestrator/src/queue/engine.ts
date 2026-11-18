@@ -73,6 +73,9 @@ export class QueueEngine implements QueueEvents {
       connections
         .filter((connection) => connection.modernFlowCapable)
         .map((connection) => connection.clientId),
+      connections
+        .filter((connection) => connection.videoFoldersCapable)
+        .map((connection) => connection.clientId),
     );
     if (!candidate) return;
     if (candidate.summary.nextAttemptAt > now) {

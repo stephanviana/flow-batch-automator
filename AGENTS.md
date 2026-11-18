@@ -79,9 +79,11 @@ e `sourceImage` resolvido pelo servidor. Sempre apontar ao take gerador original
 sem encadear uma reutilização em outra. Nunca gerar imagem de fallback. Validar
 dono, lote, projeto, variação e materiais visuais. Take com reutilização: zero
 imagens, um vídeo, quatro checkpoints iniciados por `image_reused`; take gerador:
-uma imagem, um vídeo e cinco checkpoints. Protocolo v5 obrigatório para
-reutilização e saídas agrupadas. MP4s separados na mesma pasta da variação:
-`01-Gancho.mp4`, `02-Body.mp4`, `03-CTA.mp4`.
+uma imagem, um vídeo e cinco checkpoints. A reutilização e as saídas agrupadas
+exigem protocolo v5 ou posterior. Novos despachos usam o protocolo v6 para
+salvar `01-Gancho.mp4`, `02-Body.mp4` e `03-CTA.mp4` juntos em
+`Flow/Videos/<produto>--<formato>--<identificador>/`, sem pasta de lote.
+Takes já registrados mantêm o destino gravado.
 
 Novos takes usam Nano Banana Pro e Omni 1.1 Flash Frames, frame inicial, 8 s/720p,
 9:16. Nano Banana 2.1 e os parâmetros suportados podem ser usados quando pedidos.

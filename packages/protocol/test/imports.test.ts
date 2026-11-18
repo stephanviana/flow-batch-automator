@@ -7,6 +7,8 @@ import {
   importImageCount,
   flowOutputSchema,
   flowOutputFileSchema,
+  flowOutputPath,
+  matchesFlowOutputPath,
 } from '../src/index.js';
 
 function manifest(): Record<string, unknown> {
@@ -194,4 +196,39 @@ test('grouped outputs allow portable relative folders and reject traversal and W
       flowOutputSchema.safeParse({ ...output, filename }).success,
       false,
     );
+});
+
+test('new video folders accept Chrome collision suffixes only for the approved file and folder', () => {
+  const taskId = randomUUID();
+  const output = flowOutputSchema.parse({
+    root: 'Flow',
+    directory: 'Videos/caneca--pov-vendedora--76da0327-ee645fd7',
+    filename: '01-Gancho.mp4',
+  });
+  const preferred =
+    'Flow/Videos/caneca--pov-vendedora--76da0327-ee645fd7/01-Gancho.mp4';
+  const collision = preferred.replace('.mp4', ' (2).mp4');
+  assert.equal(flowOutputPath(taskId, output), preferred);
+  assert.equal(flowOutputFileSchema.safeParse(collision).success, true);
+  assert.equal(matchesFlowOutputPath(taskId, output, collision), true);
+  for (const actual of [
+    collision.replace('caneca', 'blusa'),
+    collision.replace('01-Gancho', '02-Body'),
+  ])
+    assert.equal(matchesFlowOutputPath(taskId, output, actual), false);
+  for (const directory of [
+    'Videos',
+    'Videos/../Caneca',
+    'Videos/CON',
+    'Lote/Caneca',
+    'Videos/Caneca/a',
+  ])
+    assert.equal(
+      flowOutputSchema.safeParse({ ...output, directory }).success,
+      false,
+    );
+  assert.equal(
+    flowOutputFileSchema.safeParse('Flow/Videos/Caneca/CON (2).mp4').success,
+    false,
+  );
 });

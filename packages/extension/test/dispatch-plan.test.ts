@@ -150,11 +150,13 @@ test('aggregate UTF-8 payload limit is enforced before any enqueue and mixed pro
   );
 });
 
-test('reused CTA binds the Body task key, zero image budget and a shared output folder with distinct filenames', async () => {
+test('each video keeps its own folder under Flow/Videos and reused CTA binds the Body in that folder', async () => {
   const parsed = manifest(),
     destination = batch();
   const body = {
     ...parsed.tasks[0]!,
+    product: 'Caneca Térmica / 500 ml',
+    video: 'pov · pov 1',
     output: { groupId: randomUUID(), filename: '02-Body.mp4' },
   };
   parsed.tasks = [
@@ -183,7 +185,26 @@ test('reused CTA binds the Body task key, zero image budget and a shared output 
   assert.equal(source.flow.output?.directory, cta.flow.output?.directory);
   assert.equal(source.flow.output?.filename, '02-Body.mp4');
   assert.equal(cta.flow.output?.filename, '03-CTA.mp4');
-  assert.ok(cta.flow.output?.directory.includes(destination.id));
+  assert.equal(cta.flow.output?.root, 'Flow');
+  assert.equal(
+    cta.flow.output?.directory,
+    `Videos/caneca-termica-500-ml--pov-vendedora--${destination.id.slice(0, 8)}-${body.output.groupId.replaceAll('-', '')}`,
+  );
+  const second = buildImportPlan(
+    {
+      ...parsed,
+      tasks: [{ ...body, output: { ...body.output, groupId: randomUUID() } }],
+    },
+    destination,
+    [reference(randomUUID())],
+    [randomUUID()],
+  ).tasks[0];
+  assert.ok(second?.executor === 'google-flow');
+  assert.match(
+    second.flow.output!.directory,
+    /^Videos\/caneca-termica-500-ml--pov-vendedora--/,
+  );
+  assert.notEqual(second.flow.output?.directory, cta.flow.output?.directory);
   const legacy = buildImportPlan(
     manifest(),
     destination,

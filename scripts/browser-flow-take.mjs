@@ -307,9 +307,23 @@ export async function validateFlowTake({
     );
     assert.equal(downloads.length, 3);
     const folders = new Set();
+    const formatName = {
+      factory: 'fabrica-padrao',
+      pov: 'pov-vendedora',
+      'full-pov': 'full-pov',
+      seller: 'full-vendedora',
+    }[format];
+    const variationId = expectedTasks[0].output.groupId.replaceAll('-', '');
     for (const download of downloads) {
       assert.ok(download.filename.includes('/.cache/browser-'));
-      folders.add(download.filename.replace(/[^/]+$/, ''));
+      const folder = download.filename.replace(/[^/]+$/, '');
+      assert.match(
+        folder,
+        new RegExp(
+          `/Flow/Videos/produto-fixture--${formatName}--[a-f0-9]{8}-${variationId}/$`,
+        ),
+      );
+      folders.add(folder);
       assert.deepEqual(await readFile(download.filename), media.video);
     }
     assert.equal(folders.size, 1);

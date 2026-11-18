@@ -103,7 +103,7 @@ export const clientMessageSchema = z.discriminatedUnion('type', [
     challengeId: z.uuid(),
     signature: z.string().regex(/^[A-Za-z0-9_-]{86}$/),
     protocolVersion: z
-      .union([z.literal(3), z.literal(4), z.literal(5)])
+      .union([z.literal(3), z.literal(4), z.literal(5), z.literal(6)])
       .optional(),
   }),
   z.strictObject({ type: z.literal('ping') }),
