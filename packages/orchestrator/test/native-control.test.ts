@@ -3,12 +3,15 @@ import { test } from 'node:test';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import fs from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
 import {
   listenNativeControl,
   requestNativeControl,
 } from '../src/local-cli/native-control.js';
 import {
   nativeAddress,
+  readNativeRecord,
   type NativeRecord,
   type NativeStatus,
 } from '../src/local-cli/native-state.js';
@@ -16,6 +19,30 @@ import {
   installationRuntime,
   installationSchema,
 } from '../src/local-cli/config.js';
+
+test('native shutdown tolerates a control record disappearing during the read while preserving other filesystem errors', async (t) => {
+  const root = await fs.mkdtemp(join(tmpdir(), 'flow-native-record-'));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  await fs.writeFile(join(root, 'native.json'), '{}');
+  for (const code of ['ENOENT', 'EACCES']) {
+    let readAttempted = false;
+    const mockedRead = t.mock.method(fs, 'readFile', async () => {
+      readAttempted = true;
+      throw Object.assign(new Error('Synthetic control record read failure'), {
+        code,
+      });
+    });
+    syncBuiltinESMExports();
+    try {
+      if (code === 'ENOENT') assert.equal(await readNativeRecord(root), null);
+      else await assert.rejects(readNativeRecord(root), { code });
+      assert.equal(readAttempted, true);
+    } finally {
+      mockedRead.mock.restore();
+      syncBuiltinESMExports();
+    }
+  }
+});
 
 test('Windows defaults to native while legacy and Linux installations preserve Docker', () => {
   assert.equal(installationRuntime('win32', null), 'native');

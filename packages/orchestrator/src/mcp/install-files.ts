@@ -14,7 +14,7 @@ export async function regularFile(path: string): Promise<Buffer | null> {
     const metadata = await lstat(path);
     if (!metadata.isFile() || metadata.isSymbolicLink())
       throw new Error(`Use um arquivo regular, sem link simbólico: ${path}`);
-    return readFile(path);
+    return await readFile(path);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
     throw error;
