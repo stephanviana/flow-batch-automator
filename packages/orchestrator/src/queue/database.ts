@@ -11,6 +11,7 @@ import {
   type TaskDetail,
 } from '@flow-batch/protocol';
 import { HttpError } from '../security/errors.js';
+import { FlowRevisionStore } from './flow-revisions.js';
 
 export interface TaskRecord {
   summary: TaskSummary;
@@ -119,6 +120,7 @@ export class QueueDatabase {
       .all(id)
       .map((row) => ({ ...row, error: json(row.error) }));
     return taskDetailSchema.parse({
+      revisions: new FlowRevisionStore(this).list(id),
       task: record.summary,
       input: record.input,
       attempts,

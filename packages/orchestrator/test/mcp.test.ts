@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Client } from '@modelcontextprotocol/client';
@@ -119,6 +120,36 @@ test('official MCP client supports review, hashless execution and combined publi
   });
   const tools = await client.listTools();
   assert.ok(tools.tools.some((tool) => tool.name === 'flow_checkout'));
+  for (const name of [
+    'flow_review_take',
+    'flow_prepare_take_revision',
+    'flow_approve_take_revision',
+  ])
+    assert.ok(tools.tools.some((tool) => tool.name === name));
+  const unauthorizedRevision = await client.callTool({
+    name: 'flow_prepare_take_revision',
+    arguments: {
+      taskId: randomUUID(),
+      requestId: randomUUID(),
+      expectedRevision: 0,
+      content: {
+        copy: 'Fala revisada.',
+        videoPrompt: 'A presenter says: Fala revisada.',
+        reason: 'Revisão sintética.',
+      },
+      execute: true,
+    },
+  });
+  assert.equal(unauthorizedRevision.isError, true);
+  assert.match(
+    JSON.stringify(unauthorizedRevision.content),
+    /pedido de revisão e geração/,
+  );
+  assert.equal(
+    f.database.prepare('SELECT COUNT(*) AS n FROM queue_flow_revisions').get()!
+      .n,
+    0,
+  );
   const reservation = await client.callTool({
     name: 'flow_checkout',
     arguments: { number: order.number },

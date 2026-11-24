@@ -116,6 +116,29 @@ export function taskRow(task: TaskSummary, send: Send): HTMLLIElement {
   return row;
 }
 
+function appendRevisionRequest(parent: HTMLElement, task: TaskSummary): void {
+  const control = document.createElement('button');
+  control.type = 'button';
+  control.textContent = 'Solicitar revisão no chat';
+  control.addEventListener('click', (): void => {
+    const message = `Revise o conteúdo e gere novamente o vídeo do take ${task.id} após a falha ${task.lastError?.code ?? 'registrada'}. Autorizo uma nova tentativa de um vídeo usando a imagem já existente e os parâmetros registrados. Use flow_review_take para ler o contexto integral e flow_prepare_take_revision com execute=true e userAuthorized=true.`;
+    void navigator.clipboard
+      .writeText(message)
+      .then(() => {
+        control.textContent = 'Copiado. Envie a solicitação no chat.';
+      })
+      .catch(() => {
+        const text = document.createElement('textarea');
+        text.value = message;
+        text.readOnly = true;
+        text.setAttribute('aria-label', 'Solicitação para enviar no chat');
+        parent.append(text);
+        text.select();
+      });
+  });
+  parent.append(control);
+}
+
 function appendTaskActions(
   row: HTMLElement,
   task: TaskSummary,
@@ -153,6 +176,8 @@ function appendTaskActions(
       send,
     );
   if (task.state === 'uncertain') appendTaskReview(actions, task, send);
+  if (task.executor === 'google-flow' && task.state === 'failed')
+    appendRevisionRequest(actions, task);
   if (
     task.executor === 'simulation' &&
     task.state === 'failed' &&

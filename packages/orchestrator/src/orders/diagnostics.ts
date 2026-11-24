@@ -7,6 +7,7 @@ import { DispatchRecovery, type DispatchReview } from './dispatch-recovery.js';
 import type { OrderRepository, ProductionOrder } from './repository.js';
 
 interface TaskDiagnostic {
+  revisions: TaskDetail['revisions'];
   task: TaskSummary;
   projectId: string | null;
   events: TaskDetail['events'];
@@ -96,6 +97,7 @@ function taskDiagnostic(
       : undefined;
   const blocked = record ? new FlowRetries(queue).reason(record) : undefined;
   return {
+    revisions: detail.revisions,
     task: detail.task,
     projectId: flow?.projectId ?? null,
     retry:

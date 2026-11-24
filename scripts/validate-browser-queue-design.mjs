@@ -87,12 +87,15 @@ try {
   });
   await page.addInitScript((fixture) => {
     globalThis.queueDesignFixture = fixture;
+    globalThis.queueDesignRequests = [];
     Object.defineProperty(globalThis, 'chrome', {
       configurable: true,
       value: {
         runtime: {
-          sendMessage: async () =>
-            globalThis.structuredClone(globalThis.queueDesignFixture),
+          sendMessage: async (message) => {
+            globalThis.queueDesignRequests.push(message);
+            return globalThis.structuredClone(globalThis.queueDesignFixture);
+          },
         },
         storage: { local: { get: async () => ({}) } },
       },
@@ -102,7 +105,7 @@ try {
   await page.getByRole('tab', { name: 'Fila e gerações', exact: true }).click();
   await page
     .locator('#queue-activity-title')
-    .filter({ hasText: 'Gerando vídeo no Flow' })
+    .filter({ hasText: 'Aguardando vídeo do Flow' })
     .waitFor();
   assert.equal(
     await page.locator('#queue-activity-product').textContent(),
@@ -190,17 +193,20 @@ try {
       reply({ ...current, revision: ++revision }, running),
     );
     await page.waitForFunction(
-      ({ state, step }) => {
+      ({ state, step, revision }) => {
         const card = document.querySelector('#queue-tasks > li');
         const detail = document.querySelector(
           '#queue-activity-detail',
         ).textContent;
         return (
-          card?.dataset.state === state && (!step || detail.includes(step))
+          card?.dataset.state === state &&
+          card.dataset.revision === String(revision) &&
+          (!step || detail.includes(step))
         );
       },
       {
         state: current.state,
+        revision,
         step: current.state === 'download_pending' ? 'Etapa 4 de 4' : '',
       },
     );
@@ -237,13 +243,56 @@ try {
     path: resolve(directory, 'queue-review.png'),
     fullPage: true,
   });
+  await show({
+    ...task,
+    state: 'failed',
+    lastError: {
+      code: 'flow_unsafe_generation',
+      message: 'O Flow recusou o conteúdo na verificação de segurança.',
+      retryable: false,
+      notSubmitted: false,
+    },
+  });
+  assert.equal(
+    await page
+      .locator('#queue-steps [aria-current="step"] .step-status')
+      .textContent(),
+    'Recusada pelo Flow',
+  );
+  assert.equal(
+    await page
+      .getByRole('button', { name: 'Tentar novamente', exact: true })
+      .count(),
+    0,
+  );
+  await page
+    .getByRole('button', { name: 'Solicitar revisão no chat', exact: true })
+    .waitFor();
   await show({ ...task, state: 'failed' });
   assert.equal(
     await page
       .locator('#queue-steps [aria-current="step"] .step-status')
       .textContent(),
-    'Interrompida',
+    'Falha',
   );
+  const retry = page.getByRole('button', {
+    name: 'Tentar novamente',
+    exact: true,
+  });
+  assert.equal(await retry.count(), 0);
+  await page
+    .getByRole('button', { name: 'Solicitar revisão no chat', exact: true })
+    .waitFor();
+  assert.deepEqual(
+    await page.evaluate(() =>
+      globalThis.queueDesignRequests.filter(
+        (request) => request.type === 'queue-retry-flow',
+      ),
+    ),
+    [],
+  );
+  await show({ ...task, state: 'uncertain', step: 'video_ready' });
+  assert.equal(await retry.count(), 0);
   await show({ ...task, state: 'completed' });
   assert.equal(
     await page.locator('#queue-steps [data-status="done"]').count(),

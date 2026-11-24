@@ -88,13 +88,24 @@ function renderHistory(inspection: TaskDetail | null, history: Element): void {
   const details = document.querySelector<HTMLDetailsElement>('#task-history');
   if (details) details.hidden = !inspection;
   const nextHistoryStamp = JSON.stringify(
-    inspection ? { id: inspection.task.id, events: inspection.events } : null,
+    inspection
+      ? {
+          id: inspection.task.id,
+          events: inspection.events,
+          revisions: inspection.revisions,
+        }
+      : null,
   );
   if (historyStamp === nextHistoryStamp) return;
   historyStamp = nextHistoryStamp;
   history.replaceChildren();
   if (inspection) {
     if (details) details.open = true;
+    for (const revision of inspection.revisions) {
+      const line = document.createElement('li');
+      line.textContent = `${revision.approvedAt === null ? 'Versão preparada · aguarda autorização no chat' : `Versão autorizada · tentativa ${revision.attemptNumber}`} · ${revision.content.reason} · ${revision.content.copy}`;
+      history.append(line);
+    }
     for (const event of inspection.events) {
       const line = document.createElement('li');
       line.textContent = `${new Date(event.at).toLocaleTimeString()} · ${taskStateLabels[event.state]}${event.error ? ` · ${event.error.message} (${event.error.code})` : ''} · ${event.reason}`;

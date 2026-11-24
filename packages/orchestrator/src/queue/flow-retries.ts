@@ -3,6 +3,7 @@ import type { FlowRetryAction } from '@flow-batch/protocol';
 import type { QueueDatabase, TaskRecord } from './database.js';
 import { FlowImages } from './flow-images.js';
 import { HttpError } from '../security/errors.js';
+import { FlowRevisionStore } from './flow-revisions.js';
 
 export type RetryOrigin = 'orders' | 'extension';
 
@@ -77,7 +78,7 @@ export class FlowRetries {
     return true;
   }
 
-  reason(record: TaskRecord): string | undefined {
+  reason(record: TaskRecord, revised = false): string | undefined {
     const { input, summary } = record;
     if (
       input.executor !== 'google-flow' ||
@@ -95,7 +96,7 @@ export class FlowRetries {
       return 'O vídeo já foi localizado no Flow. Confira o projeto e os downloads.';
     const restriction = orderRetryRestriction(this.database, summary.id);
     if (restriction) return restriction;
-    if (summary.lastError?.code === 'flow_unsafe_generation')
+    if (!revised && summary.lastError?.code === 'flow_unsafe_generation')
       return 'O Flow recusou o conteúdo. Solicite uma revisão no chat antes de autorizar uma nova versão.';
     const authorized = this.database.connection
       .prepare(
@@ -120,8 +121,11 @@ export class FlowRetries {
     action: FlowRetryAction,
     now: number,
     origin: RetryOrigin,
+    revisionId?: string,
   ): void {
-    const reason = this.reason(record);
+    const revisions = new FlowRevisionStore(this.database);
+    if (revisionId) revisions.assertPending(record, revisionId);
+    const reason = this.reason(record, Boolean(revisionId));
     if (reason) throw new HttpError(409, reason);
     const { id, state, attemptCount } = record.summary;
     const sql = this.database.connection;
@@ -149,6 +153,15 @@ export class FlowRetries {
        SELECT id,?,input_hash,?,?,? FROM queue_tasks WHERE id=?`,
       )
       .run(attemptCount + 1, action.requestId, now, origin, id);
+    sql
+      .prepare(
+        'UPDATE queue_flow_retry_authorizations SET revision_id=? WHERE task_id=? AND attempt_number=?',
+      )
+      .run(
+        revisionId ?? revisions.previousId(record) ?? null,
+        id,
+        attemptCount + 1,
+      );
     sql
       .prepare(
         'UPDATE queue_tasks SET max_attempts=?,next_attempt_at=? WHERE id=?',

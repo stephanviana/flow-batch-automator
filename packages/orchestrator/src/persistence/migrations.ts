@@ -138,6 +138,17 @@ export const migrations: readonly Migration[] = [
     CREATE INDEX order_auto_retry_active ON order_auto_retry_authorizations(order_id,expires_at) WHERE revoked_at IS NULL;
     ALTER TABLE queue_flow_retry_authorizations ADD COLUMN policy_id TEXT REFERENCES order_auto_retry_authorizations(id);`,
   },
+  {
+    version: 14,
+    sql: `CREATE TABLE queue_flow_revisions (
+      id TEXT PRIMARY KEY, task_id TEXT NOT NULL REFERENCES queue_tasks(id),
+      base_attempt_id TEXT NOT NULL REFERENCES queue_attempts(id), task_revision INTEGER NOT NULL,
+      input_hash TEXT NOT NULL, content TEXT NOT NULL, content_hash TEXT NOT NULL,
+      source_image TEXT NOT NULL, created_at INTEGER NOT NULL
+    ) STRICT;
+    CREATE INDEX flow_revisions_task ON queue_flow_revisions(task_id,created_at);
+    ALTER TABLE queue_flow_retry_authorizations ADD COLUMN revision_id TEXT REFERENCES queue_flow_revisions(id);`,
+  },
 ];
 
 export function migrate(

@@ -4,7 +4,10 @@ import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { chromium } from 'playwright';
-import { usesSingleImage } from '../packages/protocol/dist/index.js';
+import {
+  usesSingleImage,
+  taskSummarySchema,
+} from '../packages/protocol/dist/index.js';
 import { createApp } from '../packages/orchestrator/dist/app.js';
 import { loadConfig } from '../packages/orchestrator/dist/config.js';
 import { localClient } from './orders.mjs';
@@ -243,6 +246,7 @@ async function verifyReviewState() {
   const route = '**/manage/orders';
   await page.route(route, (request) => request.fulfill({ json: fixture }));
   const diagnosisRoute = `**/manage/orders/${fixture.orders[0].number}/diagnostics`;
+  let reviewTasks = [];
   await page.route(diagnosisRoute, (request) => {
     assert.equal(request.request().method(), 'GET');
     return request.fulfill({
@@ -274,7 +278,7 @@ async function verifyReviewState() {
             },
           },
         ],
-        tasks: [],
+        tasks: reviewTasks,
       },
     });
   });
@@ -308,6 +312,61 @@ async function verifyReviewState() {
         .count(),
       1,
     );
+    reviewTasks = [
+      {
+        task: taskSummarySchema.parse({
+          id: randomUUID(),
+          taskKey: randomUUID(),
+          executor: 'google-flow',
+          product: 'Produto de teste',
+          video: 'seller · seller 1',
+          take: '03-CTA',
+          format: '9:16',
+          state: 'failed',
+          step: 'video_submitted',
+          attemptCount: 1,
+          maxAttempts: 1,
+          revision: 1,
+          createdAt: 1,
+          updatedAt: 2,
+          nextAttemptAt: 1,
+          generationId: null,
+          safeToRetry: false,
+          result: null,
+          lastError: {
+            code: 'flow_video_lookup_failed',
+            message: 'Falha sintética.',
+            retryable: false,
+            notSubmitted: false,
+          },
+        }),
+        projectId: randomUUID(),
+        events: [],
+        checkpoints: [],
+        revisions: [],
+        retry: { images: 0, videos: 1 },
+        retryBlockedReason: null,
+      },
+    ];
+    await page
+      .getByRole('button', { name: 'Atualizar diagnóstico', exact: true })
+      .click();
+    await page
+      .getByRole('button', { name: 'Solicitar revisão no chat', exact: true })
+      .waitFor();
+    assert.equal(
+      await page
+        .getByRole('button', { name: 'Autorizar nova tentativa', exact: true })
+        .count(),
+      0,
+    );
+    assert.equal(
+      await page
+        .getByRole('button', { name: 'Tentar novamente', exact: true })
+        .count(),
+      0,
+    );
+    assert.equal(await page.locator('.diagnostic-retry').count(), 0);
     for (const width of [320, 390, 1536]) {
       await page.setViewportSize({ width, height: 1024 });
       assert.equal(

@@ -117,6 +117,17 @@ atualizar, importar instruções e publicar sem execução não autorizam geraç
 A aplicação usa a sessão do Flow no navegador;
 cookies e tokens Google não são exportados para o servidor.
 
+Quando um take falhar, use **Solicitar revisão no chat** na extensão ou no
+diagnóstico do pedido e envie a solicitação copiada ao agente. O pedido no chat
+autoriza revisar e gerar uma única nova tentativa de vídeo com a imagem existente,
+com zero imagens e um vídeo. O agente consulta `flow_review_take` e usa
+`flow_prepare_take_revision` com `execute=true` e `userAuthorized=true`.
+Para apenas revisar ou apresentar para aprovação, a versão fica preparada sem
+geração. O histórico preserva os textos e as autorizações de cada tentativa.
+Uma recusa de segurança exige revisão do conteúdo; resultados incertos exigem
+conferir o Flow antes de decidir. A fila aguarda 15 segundos após um download
+confirmado antes de iniciar o próximo take.
+
 ## Chrome, diagnóstico e remoção
 
 Carregue a pasta de `--extension` em `chrome://extensions`, com modo de

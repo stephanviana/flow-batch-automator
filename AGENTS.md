@@ -355,12 +355,26 @@ mudanças apenas documentais não exigem criar testes de código.
   `image_reused` com o próprio take como origem. Use o último checkpoint
   `image_generated` válido do próprio take e pare se a imagem não puder ser
   confirmada no Flow. Aguarde 15 s entre o download confirmado de um
-  take e o início do próximo take real. Preserve entrada, tentativas e autorizações anteriores.
-  Repetição automática exige autorização prévia do pedido, limite de
+  take e o início do próximo take real. Preserve entrada, tentativas e autorizações
+  anteriores. Repetição automática exige autorização prévia do pedido, limite de
   uma tentativa extra por take e falha comprovadamente anterior ao envio. Não gerar novamente quando o vídeo
   já foi localizado e não retomar grupo encerrado ou identidade revogada.
   Recusa `flow_unsafe_generation` permite seguir os próximos takes independentes
   e exige revisão do conteúdo para repetir o take recusado.
+  As interfaces usam “Solicitar revisão no chat” para uma nova tentativa manual
+  de um take real.
+  `flow_review_take` entrega a captura da preparação e o histórico;
+  `flow_prepare_take_revision` salva uma versão imutável de copy e prompt de
+  vídeo ligada à tentativa anterior e à imagem confirmada. O pedido direto de
+  revisão do take no chat já autoriza revisar e gerar uma única nova tentativa
+  com a imagem existente, com zero imagens e um vídeo. Use
+  `flow_prepare_take_revision` com `execute=true` e `userAuthorized=true`,
+  sem confirmação adicional. “Apenas revisar”, “preparar”, “para aprovação” ou “não execute”
+  exige `execute=false`; `flow_approve_take_revision` executa a versão preparada
+  quando o usuário pedir. Uma nova falha exige nova decisão no chat.
+  Preserve a entrada original e
+  resolva os textos por tentativa no despacho e no diagnóstico. Falas de
+  `preserve-copy` continuam idênticas à referência conferida.
   Conclusão exige download confirmado pelo Chrome e evidência correspondente;
   não aceitar conclusão manual simulada de uma tarefa real.
 - Repetição automática de simulações somente para falha comprovadamente anterior ao envio,

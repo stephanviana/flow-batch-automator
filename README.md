@@ -522,6 +522,9 @@ de geração localizado de um arquivo de vídeo disponível; um registro recebid
 ou pendente ainda não confirma que o MP4 está pronto.
 Até localizar o vídeo, a extensão mostra **Aguardando confirmação do Flow**;
 o identificador de envio não comprova que a geração começou.
+Se o Flow confirmar que um take falhou ou não foi enviado, use **Solicitar revisão
+no chat** no diagnóstico do pedido ou na extensão. A solicitação vale para um
+take e registra uma tentativa separada no histórico após a revisão.
 Com o protocolo v8, a extensão recarrega a mesma aba do projeto e espera a sessão
 ficar pronta antes de enviar a nova tentativa. Se uma tentativa anterior já
 registrou a geração da imagem, a nova tentativa usa essa imagem como frame
@@ -529,6 +532,9 @@ inicial e solicita apenas o vídeo. Takes que compartilham imagem continuam
 usando a imagem do take de origem. A extensão localiza a imagem pelo cartão do
 projeto ou pela consulta de mídia. Se a imagem registrada estiver ausente ou a
 identificação for ambígua, a tentativa para antes de pedir o vídeo.
+O pedido de revisão e geração no chat também permite processar a fila se ela estiver pausada.
+Se o vídeo já foi localizado, confira o projeto e os downloads. Se o take depende
+de uma imagem de outro take, conclua primeiro a geração de origem.
 No cartão do pedido, **Autorizar tentativa automática** permite uma tentativa
 extra por take durante 24 horas, para falhas comprovadas antes do envio. O painel
 mostra o orçamento adicional e permite desativá-lo. Resultados incertos após
@@ -537,6 +543,20 @@ Quando o acompanhamento do Flow devolve `PUBLIC_ERROR_UNSAFE_GENERATION`, a
 extensão mostra a recusa na verificação de segurança e encerra o take com falha.
 O conteúdo precisa de revisão antes de uma nova tentativa autorizada.
 Em uma recusa confirmada, a fila segue com os próximos takes independentes.
+**Solicitar revisão no chat**, na extensão ou no diagnóstico do pedido, copia
+uma solicitação identificando o take. Ao enviá-la no chat, você autoriza revisar
+o conteúdo e gerar uma única nova tentativa de vídeo com a imagem existente.
+O agente usa `flow_review_take` para consultar a captura de instruções da preparação,
+os materiais, os textos utilizados e a imagem vinculada. A chamada
+`flow_prepare_take_revision` com `execute=true` e `userAuthorized=true`
+salva a versão revisada e enfileira a tentativa na mesma operação. O custo é de
+zero imagens e um vídeo. O agente informa as alterações e o resultado no chat.
+Para “apenas revisar”, “preparar”, “para aprovação” ou “não execute”, usa `execute=false`.
+Nesse caso, `flow_approve_take_revision` executa a versão quando você solicitar.
+O histórico vincula a versão à tentativa que a utilizou e preserva a entrada
+original, os materiais, os parâmetros e os vídeos concluídos. Grupos
+`preserve-copy` mantêm sua fala conferida e admitem revisão da direção de animação.
+Uma nova recusa exige outra revisão do conteúdo.
 A consulta **Verificar resultado no Flow** também lê esse acompanhamento para
 identificar a recusa em tentativas anteriores.
 Após aceitar o envio do vídeo, se o Flow recusar temporariamente a consulta ao

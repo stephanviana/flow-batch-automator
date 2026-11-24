@@ -1,7 +1,8 @@
+import { authorizeFixtureRetry } from './browser-flow-retry.mjs';
+import { createFlowRpcFixture } from './browser-flow-rpc.mjs';
 import assert from 'node:assert/strict';
-import { randomUUID, createHash } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { URLSearchParams } from 'node:url';
 import { localClient, checkout } from './orders.mjs';
 import {
   usesSingleImage,
@@ -22,144 +23,23 @@ export async function validateFlowTake({
   base = 'http://127.0.0.1:4319',
 }) {
   const singleImage = usesSingleImage(format);
-  let projectId = randomUUID();
-  let imageId = randomUUID();
-  const referenceId = randomUUID(),
-    operationId = randomUUID(),
-    videoId = randomUUID();
+  const retryScenario = format === 'factory';
   const referenceBytes = await readFile(
     new URL('./fixtures/reference.png', import.meta.url),
   );
-  let expectedTasks = [];
-  let imageCount = 0,
-    videoCount = 0,
-    uploadCount = 0,
-    mediaCount = 0;
-  const captchaTokens = new Set();
-  let mode = 'success';
-  const expectedVideoModel = videoModel;
-  let expectedImageModel = 'GEM_PIX_2';
-  let projectsCreated = 0;
-  await browser.route('https://flow.google.com/**', async (route) => {
-    const request = route.request();
-    const url = new URL(request.url());
-    if (!url.pathname.endsWith('/batchexecute')) {
-      await route.fulfill({
-        contentType: 'text/html',
-        body: `<html lang="pt-BR"><body><script>
-        globalThis.WIZ_global_data={SNlM0e:'fixture-at-token',FdrFJe:'fixture-session',cfb2h:'fixture-build'};
-        globalThis.__fixtureCaptchaCounter=0;
-        globalThis.grecaptcha={enterprise:{execute:async(_key,options)=>{
-          if(globalThis.__fixtureCaptchaFailure)throw new Error('fixture');
-          return 'fixture-captcha-'+options.action+'-'+${JSON.stringify(randomUUID())}+'-'+(++globalThis.__fixtureCaptchaCounter);
-        }}};
-        const original=globalThis.grecaptcha.enterprise.execute;
-        globalThis.grecaptcha.enterprise.execute=(key,options)=>original(key,Object.assign({},options,{action:'extension_hijack_detected'}));
-      </script>Flow fixture</body></html>`,
-      });
-      return;
-    }
-    const rpcId = url.searchParams.get('rpcids');
-    const body = new URLSearchParams(request.postData());
-    assert.equal(body.get('at'), 'fixture-at-token');
-    const envelope = JSON.parse(body.get('f.req'));
-    assert.equal(envelope[0][0][0], rpcId);
-    const payload = JSON.parse(envelope[0][0][1]);
-    if (['maseQ', 'ogiZ0b', 'eb1hJf'].includes(rpcId)) {
-      const context =
-        rpcId === 'maseQ'
-          ? payload[0]
-          : rpcId === 'ogiZ0b'
-            ? payload[3]
-            : payload[1];
-      assert.equal(context[5], projectId);
-      const token = context[10][0];
-      const action =
-        rpcId === 'eb1hJf' ? 'VIDEO_GENERATION' : 'IMAGE_GENERATION';
-      assert.ok(token.startsWith(`fixture-captcha-${action}-`));
-      assert.equal(captchaTokens.has(token), false);
-      captchaTokens.add(token);
-    }
-    let result;
-    if (rpcId === 'jHPbke') {
-      projectId = randomUUID();
-      projectsCreated++;
-      result = [projectId, [payload[1][1][0]]];
-    } else if (rpcId === 'maseQ') {
-      uploadCount++;
-      assert.equal(payload[1], referenceBytes.toString('base64'));
-      assert.equal(payload[2], 'image/png');
-      result = [[referenceId, projectId]];
-    } else if (rpcId === 'ogiZ0b') {
-      imageCount++;
-      imageId = randomUUID();
-      const item = payload[1][0];
-      assert.equal(item[2][0][0], referenceId);
-      assert.equal(item[4], 2);
-      assert.equal(item[5], expectedImageModel);
-      assert.equal(
-        item[8][0][0][0],
-        expectedTasks[videoCount].original.imagePrompt,
-      );
-      assert.equal(item[7][10][0], payload[3][10][0]);
-      result = [
-        [
-          `https://flow-content.google/image/${imageId}?fixture-cdn-token=image`,
-        ],
-      ];
-    } else if (rpcId === 'eb1hJf') {
-      videoCount++;
-      const item = payload[0][0];
-      assert.equal(
-        item[0][2][0][0][0],
-        expectedTasks[videoCount - 1].original.videoPrompt,
-      );
-      assert.equal(item[1], expectedVideoModel);
-      assert.equal(item.length, expectedVideoModel.endsWith('_360p') ? 10 : 6);
-      if (expectedVideoModel.endsWith('_360p'))
-        assert.deepEqual(item.slice(6), [null, null, null, [4]]);
-      assert.equal(item[2], 1);
-      assert.equal(item[4][1], imageId);
-      result = [null, 50, [[operationId, projectId, randomUUID(), 'BUSY']]];
-    } else if (rpcId === 'jwpduf') {
-      assert.equal(payload[2][0][0], operationId);
-      result = [null, 50, [[operationId, projectId, randomUUID(), 'BUSY']]];
-    } else if (rpcId === 'Zzl0ze') {
-      assert.equal(payload[0], `projects/${projectId}`);
-      result = [
-        [
-          operationId,
-          'folder',
-          null,
-          ['Video', [1, 0], true, null, videoId, operationId, true],
-          projectId,
-        ],
-      ];
-    } else if (rpcId === 'as29s') {
-      mediaCount++;
-      assert.equal(payload[0], videoId);
-      result = [
-        [
-          mediaCount === 1
-            ? `https://flow-content.google/image/${videoId}`
-            : `https://flow-content.google/video/${videoId}?fixture-cdn-token=video${mode === 'html-download' ? '&html=1' : ''}`,
-        ],
-      ];
-    } else assert.fail(`Unexpected fixture RPC ${rpcId}`);
-    const response = JSON.stringify([
-      ['wrb.fr', rpcId, JSON.stringify(result)],
-    ]);
-    await route.fulfill({
-      contentType: 'application/json',
-      body: `)]}'\n\n${response.length}\n${response}\n`,
-    });
-  });
+  const fixture = await createFlowRpcFixture(
+    browser,
+    videoModel,
+    retryScenario,
+    referenceBytes,
+    format === 'seller',
+  );
   const flow = await browser.newPage();
   const orders = await browser.newPage();
   const panelUrl = panel.url();
   let api = await localClient(base);
   try {
-    await flow.goto(`https://flow.google.com/project/${projectId}`);
+    await flow.goto(`https://flow.google.com/project/${fixture.projectId}`);
     await orders.goto(`${base}/orders`);
     const videoPicker = orders.getByLabel('Modelo de vídeo no Flow', {
       exact: true,
@@ -193,9 +73,9 @@ export async function validateFlowTake({
     const { order, variationPlan } = await api('/manage/orders/1');
     assert.equal(order.state, 'awaiting-preparation');
     assert.equal(order.videoModel, videoModel);
-    assert.equal(imageCount, 0);
-    assert.equal(videoCount, 0);
-    assert.equal(projectsCreated, 0);
+    assert.equal(fixture.imageCount, 0);
+    assert.equal(fixture.videoCount, 0);
+    assert.equal(fixture.projectsCreated, 0);
     const checkoutDirectory = resolve(directory, 'agent-checkout');
     await checkout(api, order.number, 'browser-fixture', checkoutDirectory);
     const { leaseId } = JSON.parse(
@@ -250,17 +130,18 @@ export async function validateFlowTake({
       ],
     });
     assert.equal(prepared.state, 'prepared');
-    assert.equal(imageCount, 0);
-    assert.equal(videoCount, 0);
-    expectedTasks = prepared.preparation.manifests[0].tasks;
-    for (const task of expectedTasks) assert.equal(task.videoModel, videoModel);
+    assert.equal(fixture.imageCount, 0);
+    assert.equal(fixture.videoCount, 0);
+    fixture.expectedTasks = prepared.preparation.manifests[0].tasks;
+    for (const task of fixture.expectedTasks)
+      assert.equal(task.videoModel, videoModel);
     assert.equal(
-      expectedTasks[1].reuseImageFrom,
-      singleImage ? expectedTasks[0].id : undefined,
+      fixture.expectedTasks[1].reuseImageFrom,
+      singleImage ? fixture.expectedTasks[0].id : undefined,
     );
     assert.equal(
-      expectedTasks[2].reuseImageFrom,
-      expectedTasks[singleImage ? 0 : 1].id,
+      fixture.expectedTasks[2].reuseImageFrom,
+      fixture.expectedTasks[singleImage ? 0 : 1].id,
     );
     await orders
       .getByRole('button', { name: 'Atualizar', exact: true })
@@ -286,14 +167,91 @@ export async function validateFlowTake({
       approve: true,
       clientId,
     });
+    if (retryScenario) {
+      await panel.goto(panelUrl);
+      await panel
+        .getByRole('tab', { name: 'Fila e gerações', exact: true })
+        .click();
+      await eventually(() => fixture.videoRequests === 1, 40000);
+      await panel
+        .getByRole('button', { name: 'Pausar fila', exact: true })
+        .click();
+      await panel
+        .getByRole('button', { name: 'Processar fila', exact: true })
+        .waitFor();
+      fixture.reportFailure();
+      await eventually(async () => {
+        const { tasks } = await api('/manage/orders/1/diagnostics');
+        return tasks[0]?.task.state === 'failed';
+      }, 40000);
+      assert.equal(fixture.videoRequests, 1);
+      assert.equal(fixture.videoCount, 0);
+      const task = panel
+        .locator('[data-task-id]')
+        .filter({
+          has: panel.getByRole('button', {
+            name: 'Verificar resultado no Flow',
+            exact: true,
+          }),
+        })
+        .first();
+      await task
+        .getByRole('button', {
+          name: 'Verificar resultado no Flow',
+          exact: true,
+        })
+        .click();
+      await eventually(async () =>
+        (
+          await panel
+            .locator('#flow-check-result')
+            .textContent()
+            .catch(() => '')
+        ).includes('PUBLIC_ERROR_UNSAFE_GENERATION'),
+      );
+      assert.match(
+        await panel.locator('#flow-check-result').textContent(),
+        /Imagem de origem na listagem: localizada/,
+      );
+      assert.match(
+        await panel.locator('#flow-check-result').textContent(),
+        /Consulta direta da imagem: acessível/,
+      );
+      assert.equal(
+        fixture.videoRequests,
+        1,
+        'Checking an existing operation never generates another video',
+      );
+      assert.equal(
+        fixture.imageCount,
+        1,
+        'Checking an existing operation never generates another image',
+      );
+      await panel.goto('about:blank');
+      fixture.captureRetryReload();
+      await authorizeFixtureRetry(browser, base, (content) => {
+        fixture.expectedTasks[0].original = {
+          ...fixture.expectedTasks[0].original,
+          copy: content.copy,
+          videoPrompt: content.videoPrompt,
+        };
+        fixture.recover();
+      });
+    }
     await eventually(
       async () => (await api('/manage/orders/1')).order.state === 'completed',
       120000,
     );
-    assert.equal(projectsCreated, 1);
-    assert.equal(imageCount, singleImage ? 1 : 2);
-    assert.equal(uploadCount, singleImage ? 1 : 2);
-    assert.equal(videoCount, 3);
+    assert.equal(fixture.projectsCreated, 1);
+    if (retryScenario)
+      assert.equal(fixture.projectLoads, fixture.loadsBeforeRetry + 1);
+    const expectedImageCount = singleImage ? 1 : 2;
+    assert.equal(fixture.imageCount, expectedImageCount);
+    assert.equal(fixture.uploadCount, expectedImageCount);
+    assert.equal(fixture.videoCount, 3);
+    assert.equal(fixture.videoRequests, 3 + Number(retryScenario));
+    assert.equal(fixture.refusedProjectReads, Number(retryScenario));
+    assert.equal(fixture.refusedLinkReads, Number(retryScenario));
     assert.equal(
       browser
         .pages()
@@ -313,7 +271,10 @@ export async function validateFlowTake({
       'full-pov': 'full-pov',
       seller: 'full-vendedora',
     }[format];
-    const variationId = expectedTasks[0].output.groupId.replaceAll('-', '');
+    const variationId = fixture.expectedTasks[0].output.groupId.replaceAll(
+      '-',
+      '',
+    );
     for (const download of downloads) {
       assert.ok(download.filename.includes('/.cache/browser-'));
       const folder = download.filename.replace(/[^/]+$/, '');
@@ -377,12 +338,13 @@ export async function validateFlowTake({
       (await panel.locator('.task-output').allTextContents()).sort(),
       ['MP4: 01-Gancho.mp4', 'MP4: 02-Body.mp4', 'MP4: 03-CTA.mp4'],
     );
-    assert.equal(imageCount, singleImage ? 1 : 2);
-    assert.equal(videoCount, 3);
+    assert.equal(fixture.imageCount, expectedImageCount);
+    assert.equal(fixture.videoCount, 3);
     console.log(
       `Chrome isolado (${format}): pedido pelo painel, checkout, preparação, autorização, ${singleImage ? 'uma imagem compartilhada pelos três takes' : 'duas imagens com CTA reutilizado'}, três MP4s, painel fechado, reinício e limpeza passaram com fixtures locais.`,
     );
   } finally {
+    fixture.reportFailure();
     await orders.close().catch(() => {});
     media.releaseDownload();
     await flow.close().catch(() => {});

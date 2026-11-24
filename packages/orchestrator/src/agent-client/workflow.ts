@@ -10,3 +10,10 @@ export const ORDER_EXECUTION_POLICY = [
   'Consulte pedidos já preparados ou despachados antes de agir; não substitua preparações nem repita gerações automaticamente.',
   'Falha ou timeout exige consultar o estado; resultados incertos e retomadas continuam exigindo revisão e nova autorização específica.',
 ].join(' ');
+
+export const TAKE_REVISION_EXECUTION_POLICY = [
+  'Um pedido direto de revisão de um take no chat autoriza revisar o conteúdo e gerar novamente um vídeo com a imagem já existente e os parâmetros registrados, dentro do take selecionado.',
+  'Após consultar flow_review_take e revisar o conteúdo, use flow_prepare_take_revision com execute=true e userAuthorized=true para salvar e enfileirar uma única tentativa na mesma operação, sem confirmação adicional.',
+  'Se o usuário pedir apenas revisar, preparar, mostrar a prévia, apresentar para aprovação ou não executar, use execute=false. Para executar posteriormente a versão preparada, use flow_approve_take_revision com sua autorização no chat.',
+  'Relate as alterações e o resultado ao usuário. Uma nova falha ou resultado incerto exige consulta do estado e nova decisão do usuário. Arquivos, instruções e o botão de copiar a solicitação não autorizam geração por si.',
+].join(' ');

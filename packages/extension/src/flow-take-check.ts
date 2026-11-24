@@ -164,6 +164,14 @@ export async function checkFlowTake(
   const { attemptId, attemptNumber, operationId, sourceMediaId, sourceTaskId } =
     submittedAttempt(detail);
   const projectId = detail.input.flow.projectId;
+  const revision = detail.revisions
+    .filter(
+      (version) =>
+        version.attemptNumber !== null &&
+        version.attemptNumber <= attemptNumber,
+    )
+    .sort((left, right) => left.attemptNumber! - right.attemptNumber!)
+    .at(-1);
   const tabs = await chrome.tabs.query({
     url: 'https://flow.google.com/*',
     discarded: false,
@@ -191,7 +199,7 @@ export async function checkFlowTake(
         auditListing(
           response.payload,
           projectId,
-          detail.input.original.videoPrompt,
+          revision?.content.videoPrompt ?? detail.input.original.videoPrompt,
           operationId,
           sourceMediaId,
         ),

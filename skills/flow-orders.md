@@ -95,3 +95,28 @@ após autorização explícita no chat para essa retomada exata. A operação pr
 os demais grupos, admite somente falha anterior à criação do projeto sem takes
 registrados e não permite repetição de resultados incertos. Uma revisão não
 retoma o grupo nem autoriza consumo por si mesma.
+
+## Revisar um take recusado pelo Flow
+
+Quando receber uma solicitação identificando um take com falha, use
+`flow_review_take` com seu `taskId`. O pedido direto de revisão no chat autoriza
+revisar e gerar uma nova tentativa do vídeo com a imagem existente, dentro do
+take selecionado e dos parâmetros registrados. Leia integralmente a captura de instruções,
+os materiais, a imagem vinculada e os textos efetivamente usados. Confira a
+continuidade com os outros takes da variação e os fatos do produto.
+
+Use `flow_prepare_take_revision` com `requestId` novo, `expectedRevision` do
+contexto, `content` contendo `copy`, `videoPrompt` completo e `reason`,
+e `execute=true`, `userAuthorized=true`. A operação salva a versão e autoriza
+uma tentativa de zero imagens e um vídeo. `startQueue=true` permite processar
+a fila se estiver pausada.
+O prompt deve conter a fala exata. Em `preserve-copy`, mantenha a fala conferida
+e revise somente a direção de animação. A revisão mantém a imagem e os
+parâmetros registrados. Informe o texto revisado, o motivo das alterações e
+o resultado ao usuário.
+
+Quando o usuário pedir apenas revisar, preparar, apresentar para aprovação ou não executar,
+use `execute=false`. Depois do pedido para executar essa versão, use
+`flow_approve_take_revision` com `taskId`, `revisionId` e `userAuthorized=true`.
+Uma nova recusa ou resultado incerto exige consultar o estado e obter nova
+decisão do usuário.

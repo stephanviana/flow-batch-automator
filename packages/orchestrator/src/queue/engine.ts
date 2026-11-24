@@ -8,6 +8,7 @@ import type { QueueTransport, QueueEvents } from './ports.js';
 import type { QueueRepository } from './repository.js';
 import type { QueueMutations } from './mutations.js';
 import { FlowImages } from './flow-images.js';
+import { FlowRevisionStore } from './flow-revisions.js';
 
 export class QueueEngine implements QueueEvents {
   private timer: ReturnType<typeof setTimeout> | undefined;
@@ -136,7 +137,9 @@ export class QueueEngine implements QueueEvents {
                   imageGenerations: sourceImage ? 0 : 1,
                 },
               },
-              original: task.input.original,
+              original: new FlowRevisionStore(
+                this.repository.database,
+              ).original(task),
               ...(sourceImage ? { sourceImage } : {}),
             }
           : {

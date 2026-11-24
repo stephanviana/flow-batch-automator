@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { flowTakeRevisionSchema } from './flow-revisions.js';
 import {
   flowSettingsSchema,
   flowResultSchema,
@@ -228,6 +229,7 @@ export const taskEventSchema = z.strictObject({
   error: queueErrorSchema.nullable(),
 });
 export const taskDetailSchema = z.strictObject({
+  revisions: z.array(flowTakeRevisionSchema).default([]),
   task: taskSummarySchema,
   input: taskInputSchema,
   attempts: z.array(

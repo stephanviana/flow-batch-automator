@@ -1,5 +1,7 @@
-import { McpServer, type CallToolResult } from '@modelcontextprotocol/server';
+import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
+import { result } from './result.js';
+import { registerTakeRevisionTools } from './take-revisions.js';
 import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import {
@@ -13,30 +15,12 @@ import {
 } from '../agent-client/workspace.js';
 import { requireContract, type AgentApi } from '../agent-client/http.js';
 import type { ProductionOrder } from '../orders/repository.js';
-import { ORDER_EXECUTION_POLICY } from '../agent-client/workflow.js';
+import {
+  ORDER_EXECUTION_POLICY,
+  TAKE_REVISION_EXECUTION_POLICY,
+} from '../agent-client/workflow.js';
 import { orderExecution } from '../agent-client/execution.js';
 
-async function result(
-  operation: () => Promise<unknown>,
-): Promise<CallToolResult> {
-  try {
-    return {
-      content: [
-        { type: 'text', text: JSON.stringify(await operation(), null, 2) },
-      ],
-    };
-  } catch (error) {
-    return {
-      isError: true,
-      content: [
-        {
-          type: 'text',
-          text: error instanceof Error ? error.message : 'Operação recusada.',
-        },
-      ],
-    };
-  }
-}
 const number = z.number().int().positive();
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
 export function createMcpServer(api: AgentApi, workspace: string): McpServer {
@@ -45,7 +29,9 @@ export function createMcpServer(api: AgentApi, workspace: string): McpServer {
     {
       instructions:
         'Operação local de TikTok Shop. Use flow_checkout para obter o pedido, todos os documentos aplicáveis e os materiais reais. Crie falas e prompts nos arquivos retornados e publique. O servidor compila os vídeos sem chamar IA. Não leia código do aplicativo. ' +
-        ORDER_EXECUTION_POLICY,
+        ORDER_EXECUTION_POLICY +
+        ' ' +
+        TAKE_REVISION_EXECUTION_POLICY,
     },
   );
   server.registerTool(
@@ -319,5 +305,6 @@ export function createMcpServer(api: AgentApi, workspace: string): McpServer {
       ],
     }),
   );
+  registerTakeRevisionTools(server, api);
   return server;
 }

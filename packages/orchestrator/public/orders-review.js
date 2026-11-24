@@ -1,4 +1,7 @@
-import { dispatchReviewActions } from './orders-review-actions.js';
+import {
+  dispatchReviewActions,
+  takeRevisionAction,
+} from './orders-review-actions.js';
 import { element } from './orders-elements.js';
 
 const states = {
@@ -46,6 +49,9 @@ const reasons = {
   'connection-lost': 'Conexão com a extensão interrompida',
   'attempt-timeout': 'Prazo de resposta esgotado',
   'dispatch-outcome-unknown': 'O envio não foi confirmado',
+  'operator-flow-failure-confirmed':
+    'Falha confirmada pelo operador após conferir o Flow',
+  'operator-flow-retry-authorized': 'Nova tentativa autorizada pelo operador',
 };
 
 function dispatchReview(parent, dispatch, orderNumber, context) {
@@ -108,7 +114,8 @@ function dispatchReview(parent, dispatch, orderNumber, context) {
 }
 
 function taskReview(parent, diagnostic) {
-  const { task, events, checkpoints, projectId } = diagnostic;
+  const { task, events, checkpoints, projectId, retryBlockedReason } =
+    diagnostic;
   const details = element(parent, 'details', '', 'diagnostic-task');
   element(
     details,
@@ -122,20 +129,21 @@ function taskReview(parent, diagnostic) {
       `${task.lastError.message} (${task.lastError.code})`,
       'error',
     );
-  if (task.state === 'uncertain') {
-    details.open = true;
+  details.open = task.state === 'uncertain' || task.state === 'failed';
+  if (task.state === 'uncertain')
     element(
       details,
       'p',
-      'Confira o projeto e os downloads. Na extensão, use Encerrar tentativa para liberar a fila após conferir o resultado; essa ação não reenvia a geração.',
+      'Confira o projeto e os downloads para verificar o resultado antes de decidir.',
     );
-  }
   if (projectId) {
     const link = element(details, 'a', 'Conferir projeto no Flow');
     link.href = `https://flow.google.com/project/${encodeURIComponent(projectId)}`;
     link.target = 'flow-batch-review';
     link.rel = 'noopener';
   }
+  if (retryBlockedReason) element(details, 'p', retryBlockedReason, 'hint');
+  takeRevisionAction(details, task, diagnostic.revisions ?? []);
   element(
     details,
     'p',
@@ -191,12 +199,14 @@ function renderDiagnostic(parent, diagnostic, context) {
 
 export function orderReview(parent, order, context) {
   const { api, report } = context;
+  const requiresReview =
+    ['blocked', 'uncertain'].includes(order.state) ||
+    (order.state === 'failed' &&
+      order.dispatches.some((dispatch) => !dispatch.closure));
   const button = element(
     parent,
     'button',
-    ['blocked', 'uncertain'].includes(order.state)
-      ? 'Revisar pedido'
-      : 'Ver diagnóstico',
+    requiresReview ? 'Revisar pedido' : 'Ver diagnóstico',
     'secondary',
   );
   button.type = 'button';

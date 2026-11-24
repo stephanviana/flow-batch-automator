@@ -81,3 +81,45 @@ export function dispatchReviewActions(parent, dispatch, number, context) {
         'Revise os takes pendentes antes de encerrar este grupo.',
     );
 }
+
+export function takeRevisionAction(parent, task, revisions) {
+  if (
+    task.executor !== 'google-flow' ||
+    (task.state !== 'failed' && !revisions.length)
+  )
+    return;
+  const section = element(parent, 'section', '', 'diagnostic-revision');
+  if (task.state === 'failed') {
+    element(
+      section,
+      'p',
+      'Os próximos takes independentes podem continuar. Ao enviar a solicitação no chat, você autoriza revisar este take e gerar novamente um vídeo com a imagem existente.',
+    );
+    copyRequest(
+      section,
+      'Solicitar revisão no chat',
+      `Revise o conteúdo e gere novamente o vídeo do take ${task.id} após a falha ${task.lastError?.code ?? 'registrada'}. Autorizo uma nova tentativa de um vídeo usando a imagem já existente e os parâmetros registrados. Use flow_review_take para ler o contexto integral e flow_prepare_take_revision com execute=true e userAuthorized=true.`,
+    );
+  }
+  for (const revision of revisions) {
+    const preview = element(section, 'details');
+    element(
+      preview,
+      'summary',
+      revision.approvedAt === null
+        ? revision.taskRevision === task.revision
+          ? 'Versão preparada · aguarda autorização no chat'
+          : 'Versão anterior · consulte o diagnóstico atual'
+        : `Versão autorizada · tentativa ${revision.attemptNumber}`,
+    );
+    element(preview, 'p', revision.content.reason);
+    element(preview, 'p', revision.content.copy);
+    element(preview, 'pre', revision.content.videoPrompt);
+    element(
+      preview,
+      'p',
+      `Versão ${revision.id}. A geração usa a imagem existente e um vídeo.`,
+      'hint',
+    );
+  }
+}

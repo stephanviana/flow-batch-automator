@@ -1,4 +1,5 @@
 import { registerOrderDiagnostics } from './http/order-diagnostics.js';
+import { registerTakeRevisions } from './http/take-revisions.js';
 import { registerDispatchRecovery } from './http/dispatch-recovery.js';
 import Fastify, { LogController, type FastifyInstance } from 'fastify';
 import { QUEUE_BODY_LIMIT } from '@flow-batch/protocol';
@@ -79,6 +80,7 @@ export function createApp(config: AppConfig): FastifyInstance {
   const bindings = new LibraryBindings(database, library);
   registerManagement(app, clients, hub, publicAssets, sessions);
   registerOrders(app, sessions, orders, materials, clients, bindings);
+  registerTakeRevisions(app, sessions, orders, library, queueEngine);
   registerLibrary(app, sessions, library);
   registerDispatchRecovery(app, sessions, orders, clients);
   registerOrderDiagnostics(
