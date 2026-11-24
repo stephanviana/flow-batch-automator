@@ -6,6 +6,11 @@ import { HttpError } from '../security/errors.js';
 import { FlowRevisionStore } from './flow-revisions.js';
 
 export type RetryOrigin = 'orders' | 'extension';
+interface AutomaticRetryPolicy {
+  id: string;
+  approvedAt: number;
+}
+const AUTOMATIC_RETRY_DELAY_MS = 15_000;
 
 export function orderRetryRestriction(
   database: QueueDatabase,
@@ -29,13 +34,50 @@ export class FlowRetries {
   constructor(private readonly database: QueueDatabase) {}
 
   scheduleAutomatic(record: TaskRecord, now: number): boolean {
+    const failed = this.database.task(record.summary.id, record.clientId);
+    const { summary } = failed;
     if (
-      record.input.executor !== 'google-flow' ||
-      record.summary.attemptCount !== 1
+      failed.input.executor !== 'google-flow' ||
+      summary.state !== 'failed' ||
+      summary.attemptCount !== 1 ||
+      !summary.safeToRetry ||
+      !summary.lastError?.notSubmitted ||
+      !summary.lastError.retryable ||
+      this.reason(failed)
     )
       return false;
-    const sql = this.database.connection;
-    const policy = sql
+    const policy = this.automaticPolicy(failed, now);
+    if (!policy) return false;
+    this.schedule(
+      failed,
+      {
+        action: 'retry_flow',
+        requestId: randomUUID(),
+        taskId: summary.id,
+        expectedRevision: summary.revision,
+        confirmedFailure: true,
+        approve: true,
+        startQueue: false,
+      },
+      now,
+      'orders',
+    );
+    this.database.connection
+      .prepare(
+        'UPDATE queue_flow_retry_authorizations SET policy_id=?,approved_at=? WHERE task_id=? AND attempt_number=2',
+      )
+      .run(policy.id, policy.approvedAt, summary.id);
+    this.database.connection
+      .prepare('UPDATE queue_tasks SET next_attempt_at=? WHERE id=?')
+      .run(now + AUTOMATIC_RETRY_DELAY_MS, summary.id);
+    return true;
+  }
+
+  private automaticPolicy(
+    record: TaskRecord,
+    now: number,
+  ): AutomaticRetryPolicy | undefined {
+    const policy = this.database.connection
       .prepare(
         `SELECT p.id,p.authorized_at FROM order_auto_retry_authorizations p
        JOIN order_dispatches d ON d.order_id=p.order_id
@@ -49,33 +91,9 @@ export class FlowRetries {
        ORDER BY p.authorized_at DESC LIMIT 1`,
       )
       .get(record.summary.id, now);
-    if (!policy) return false;
-    const requestId = randomUUID();
-    const failed = this.database.task(record.summary.id, record.clientId);
-    if (this.reason(failed)) return false;
-    this.schedule(
-      failed,
-      {
-        action: 'retry_flow',
-        requestId,
-        taskId: failed.summary.id,
-        expectedRevision: failed.summary.revision,
-        confirmedFailure: true,
-        approve: true,
-        startQueue: false,
-      },
-      now,
-      'orders',
-    );
-    sql
-      .prepare(
-        'UPDATE queue_flow_retry_authorizations SET policy_id=?,approved_at=? WHERE task_id=? AND attempt_number=2',
-      )
-      .run(String(policy.id), Number(policy.authorized_at), failed.summary.id);
-    sql
-      .prepare('UPDATE queue_tasks SET next_attempt_at=? WHERE id=?')
-      .run(now + 15000, failed.summary.id);
-    return true;
+    return policy
+      ? { id: String(policy.id), approvedAt: Number(policy.authorized_at) }
+      : undefined;
   }
 
   reason(record: TaskRecord, revised = false): string | undefined {
@@ -173,7 +191,11 @@ export class FlowRetries {
         .run(record.clientId);
   }
 
-  approvalAt(record: TaskRecord, number: number): number | undefined {
+  approvalAt(
+    record: TaskRecord,
+    number: number,
+    now = Date.now(),
+  ): number | undefined {
     if (record.input.executor !== 'google-flow') return undefined;
     if (number === 1) return record.input.flow.approval.approvedAt;
     const authorization = this.database.connection
@@ -184,7 +206,7 @@ export class FlowRetries {
        WHERE r.task_id=? AND r.attempt_number=?
          AND (r.policy_id IS NULL OR (p.revoked_at IS NULL AND p.expires_at>?))`,
       )
-      .get(record.summary.id, number, Date.now());
+      .get(record.summary.id, number, now);
     return typeof authorization?.approved_at === 'number'
       ? authorization.approved_at
       : undefined;

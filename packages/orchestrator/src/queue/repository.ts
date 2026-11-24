@@ -252,6 +252,7 @@ export class QueueRepository {
       const flowApprovalAt = new FlowRetries(this.database).approvalAt(
         record,
         number,
+        now,
       );
       if (
         record.input.executor === 'google-flow' &&
