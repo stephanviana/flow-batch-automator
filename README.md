@@ -209,7 +209,7 @@ pnpm publish:npm --dry-run
 ```
 
 O arquivo auditado fica em
-`dist/npm/nahpets01-org-flow-batch-automator-0.6.3.tgz`.
+`dist/npm/nahpets01-org-flow-batch-automator-0.6.6.tgz`.
 `pnpm package:local` continua disponível como alias de `package:npm`; a geração
 local não publica no registro. Também é possível instalar esse arquivo diretamente
 com `npm install --global --ignore-scripts /CAMINHO/ARQUIVO.tgz`; a primeira
