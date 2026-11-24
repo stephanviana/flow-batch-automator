@@ -9,6 +9,7 @@ import {
 } from '@flow-batch/protocol';
 import { queueFixture, taskInput } from './queue-support.js';
 import { flowInput } from './flow-support.js';
+import { QueueRepository } from '../src/queue/repository.js';
 
 test('real queue requires v4 capability, records original materials and allows one attempt only', async (t) => {
   const f = await queueFixture(t);
@@ -160,6 +161,28 @@ test('real completion requires ordered, fenced checkpoints and matching download
     f.queueDatabase.detail(task.id, f.clientId).checkpoints.length,
     5,
   );
+  const finishedAt = f.queueDatabase.task(task.id).summary.updatedAt;
+  const [next, simulation] = f.repository.enqueue(
+    f.clientId,
+    randomUUID(),
+    [flowInput(), taskInput()],
+    finishedAt,
+  );
+  assert.ok(next && simulation);
+  const reopened = new QueueRepository(f.queueDatabase);
+  assert.equal(
+    reopened.nextDispatchAt(f.queueDatabase.task(next.id)),
+    finishedAt + 15_000,
+  );
+  assert.equal(
+    reopened.nextDispatchAt(f.queueDatabase.task(simulation.id)),
+    finishedAt,
+  );
+  assert.equal(
+    reopened.claim(next.id, connectionId, finishedAt + 14_999),
+    undefined,
+  );
+  assert.ok(reopened.claim(next.id, connectionId, finishedAt + 15_000));
 });
 
 test('unknown Flow outcome pauses dispatch until review, and a new authorization funds exactly one attempt', async (t) => {

@@ -354,7 +354,8 @@ mudanças apenas documentais não exigem criar testes de código.
   tentativa anterior, a autorização usa zero imagens e um vídeo, via
   `image_reused` com o próprio take como origem. Use o último checkpoint
   `image_generated` válido do próprio take e pare se a imagem não puder ser
-  confirmada no Flow. Preserve entrada, tentativas e autorizações anteriores.
+  confirmada no Flow. Aguarde 15 s entre o download confirmado de um
+  take e o início do próximo take real. Preserve entrada, tentativas e autorizações anteriores.
   Recusa `flow_unsafe_generation` permite seguir os próximos takes independentes
   e exige revisão do conteúdo para repetir o take recusado.
   Conclusão exige download confirmado pelo Chrome e evidência correspondente;

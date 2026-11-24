@@ -14,6 +14,7 @@ import { BatchStore } from '../src/persistence/batches.js';
 import { FlowImages } from '../src/queue/flow-images.js';
 import { QueueEngine } from '../src/queue/engine.js';
 import type { QueueTransport } from '../src/queue/ports.js';
+import { FLOW_TAKE_INTERVAL_MS } from '../src/queue/repository.js';
 
 async function reuseFixture(t: TestContext): Promise<
   Awaited<ReturnType<typeof queueFixture>> & {
@@ -57,21 +58,28 @@ function complete(
   imageId: string = randomUUID(),
 ): string {
   const connectionId = randomUUID();
-  const active = f.repository.claim(taskId, connectionId);
+  const record = f.queueDatabase.task(taskId);
+  const now = f.repository.nextDispatchAt(record);
+  const active = f.repository.claim(taskId, connectionId, now);
   assert.ok(active?.activeAttemptId);
   const base = { taskId, attemptId: active.activeAttemptId };
   const progress = (
     state: 'submitted' | 'generating' | 'download_pending',
   ): void => {
-    f.mutations.progress(f.clientId, connectionId, {
-      ...base,
-      type: 'queue-progress',
-      state,
-      generationId: `flow-${base.attemptId}`,
-    });
+    f.mutations.progress(
+      f.clientId,
+      connectionId,
+      {
+        ...base,
+        type: 'queue-progress',
+        state,
+        generationId: `flow-${base.attemptId}`,
+      },
+      now,
+    );
   };
   const checkpoint = (event: QueueCheckpoint): void => {
-    f.mutations.checkpoint(f.clientId, connectionId, event);
+    f.mutations.checkpoint(f.clientId, connectionId, event, now);
   };
   progress('submitted');
   if (!sourceTaskId)
@@ -154,13 +162,18 @@ function complete(
       }),
     /evidence/,
   );
-  f.mutations.progress(f.clientId, connectionId, {
-    ...base,
-    type: 'queue-progress',
-    state: 'completed',
-    generationId: `flow-${base.attemptId}`,
-    result,
-  });
+  f.mutations.progress(
+    f.clientId,
+    connectionId,
+    {
+      ...base,
+      type: 'queue-progress',
+      state: 'completed',
+      generationId: `flow-${base.attemptId}`,
+      result,
+    },
+    now,
+  );
   return imageId;
 }
 
@@ -315,10 +328,12 @@ test('Body and CTA both reuse the direct Hook image with four checkpoints each',
 test('engine transmits the persisted source ID and never dispatches CTA after a cancelled Body', async (t) => {
   for (const success of [true, false]) {
     const f = await reuseFixture(t);
-    const [body, cta] = f.repository.enqueue(f.clientId, randomUUID(), [
-      f.body,
-      f.cta,
-    ]);
+    const [body, cta] = f.repository.enqueue(
+      f.clientId,
+      randomUUID(),
+      [f.body, f.cta],
+      Date.now() - FLOW_TAKE_INTERVAL_MS,
+    );
     assert.ok(body && cta);
     f.repository.control(f.clientId, true);
     let imageId: string | undefined;

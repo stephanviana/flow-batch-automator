@@ -81,8 +81,9 @@ export class QueueEngine implements QueueEvents {
         .map((connection) => connection.clientId),
     );
     if (!candidate) return;
-    if (candidate.summary.nextAttemptAt > now) {
-      this.wake(candidate.summary.nextAttemptAt - now);
+    const dispatchAt = this.repository.nextDispatchAt(candidate);
+    if (dispatchAt > now) {
+      this.wake(dispatchAt - now);
       return;
     }
     const session = connections.find(

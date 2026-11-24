@@ -500,6 +500,8 @@ incerto permanecem visíveis. Histórico, vídeos e autorizações são preserva
 A fila destaca o produto e o take atual em um card com etapas verticais de
 referência, imagem, vídeo e MP4, status e tempo na etapa em andamento. Falhas e
 resultados incertos interrompem o indicador de processamento e pedem revisão.
+Após confirmar o download de um take real, a fila aguarda 15 segundos antes de
+iniciar o próximo take do Flow.
 O dashboard acompanha o projeto atualmente aberto na aba do Flow. Ao voltar à
 página inicial ou fechar a aba, retira o projeto anterior e orienta a iniciar uma
 nova produção. Essa atualização consulta apenas a localização da aba; a leitura

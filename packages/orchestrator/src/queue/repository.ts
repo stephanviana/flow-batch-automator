@@ -18,6 +18,8 @@ export function queueHash(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
 }
 
+export const FLOW_TAKE_INTERVAL_MS = 15000;
+
 export class QueueRepository {
   constructor(readonly database: QueueDatabase) {}
 
@@ -175,6 +177,20 @@ export class QueueRepository {
     return row ? this.database.task(String(row.id)) : undefined;
   }
 
+  nextDispatchAt(record: TaskRecord): number {
+    const scheduled = record.summary.nextAttemptAt;
+    if (record.input.executor !== 'google-flow') return scheduled;
+    const completed = this.database.connection
+      .prepare(
+        `SELECT MAX(updated_at) AS finished_at FROM queue_tasks
+                WHERE state='completed' AND json_extract(input,'$.executor')='google-flow'`,
+      )
+      .get()?.finished_at;
+    return typeof completed === 'number'
+      ? Math.max(scheduled, completed + FLOW_TAKE_INTERVAL_MS)
+      : scheduled;
+  }
+
   candidate(
     clientIds: string[],
     flowClientIds: string[] = [],
@@ -222,7 +238,7 @@ export class QueueRepository {
       const record = this.database.task(id);
       if (
         record.summary.state !== 'queued' ||
-        record.summary.nextAttemptAt > now ||
+        this.nextDispatchAt(record) > now ||
         record.summary.attemptCount >= record.summary.maxAttempts
       )
         return undefined;
