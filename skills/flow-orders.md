@@ -1,6 +1,6 @@
 ---
 name: flow-orders
-description: Consultar e preparar um ou vários pedidos do painel Flow Batch Automator para TikTok Shop, criando copys e prompts a partir dos materiais importados e despachando somente após autorização específica no chat.
+description: Consultar e preparar pedidos de vídeos verticais no Flow Batch Automator, criando falas e prompts a partir dos materiais e das instruções locais e executando conforme a autorização do usuário no chat.
 ---
 
 Prefira as ferramentas do MCP local. Use `flow_list_orders`, `flow_show_order`,

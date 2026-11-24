@@ -1,6 +1,6 @@
 ---
 name: flow-clone-video
-description: Preparar grupos de clonagem pelo MCP usando o vídeo real e as instruções externas capturadas na reserva.
+description: Preparar grupos de clonagem pelo MCP usando o vídeo real e as instruções locais capturadas na reserva.
 ---
 
 Consulte `flow_list_orders` e `flow_show_order` para selecionar os pedidos.

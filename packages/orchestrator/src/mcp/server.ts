@@ -28,7 +28,7 @@ export function createMcpServer(api: AgentApi, workspace: string): McpServer {
     { name: 'flow-batch', version: '0.6.0' },
     {
       instructions:
-        'Operação local de TikTok Shop. Use flow_checkout para obter o pedido, todos os documentos aplicáveis e os materiais reais. Crie falas e prompts nos arquivos retornados e publique. O servidor compila os vídeos sem chamar IA. Não leia código do aplicativo. ' +
+        'Operação local de vídeos verticais. Use flow_checkout para obter o pedido, todos os documentos aplicáveis e os materiais reais. Crie falas e prompts nos arquivos retornados e publique. O servidor valida a preparação e compila os prompts de animação. Não leia código do aplicativo. ' +
         ORDER_EXECUTION_POLICY +
         ' ' +
         TAKE_REVISION_EXECUTION_POLICY,
