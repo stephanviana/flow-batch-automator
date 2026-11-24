@@ -26,6 +26,7 @@ export async function createFlowRpcFixture(
     imageFileId = randomUUID(),
     videoFileId = randomUUID();
   let expectedTasks = [];
+  const generatedImages = new Map();
   let imageCount = 0,
     videoCount = 0,
     videoRequests = 0,
@@ -98,6 +99,7 @@ export async function createFlowRpcFixture(
     } else if (rpcId === 'ogiZ0b') {
       imageCount++;
       imageId = randomUUID();
+      generatedImages.set(expectedTasks[videoCount].id, imageId);
       imageWorkflowId = randomUUID();
       const item = payload[1][0];
       assert.equal(item[2][0][0], referenceId);
@@ -144,7 +146,10 @@ export async function createFlowRpcFixture(
         item[4][1],
         historicalFrame && !expectedTasks[videoCount].reuseImageFrom
           ? imageFileId
-          : imageId,
+          : generatedImages.get(
+              expectedTasks[videoCount].reuseImageFrom ??
+                expectedTasks[videoCount].id,
+            ),
       );
       if (!failFirstAttempt) videoCount++;
       if (historicalFrame && videoCount === 2) {
@@ -219,6 +224,16 @@ export async function createFlowRpcFixture(
         ],
       ];
       if (failFirstAttempt) result = result.slice(0, 1);
+      if (!retryScenario && !historicalFrame)
+        for (const priorId of generatedImages.values())
+          if (priorId !== imageId)
+            result.push([
+              priorId,
+              'folder',
+              null,
+              ['Imagem anterior', [1, 0], false, null, priorId, priorId, true],
+              projectId,
+            ]);
       if (retryScenario)
         result = [
           [
@@ -249,8 +264,12 @@ export async function createFlowRpcFixture(
           imageWorkflowId,
           imageFileId,
         );
-      } else if (!retryScenario && !historicalFrame && payload[0] === imageId) {
-        result = [[`https://flow-content.google/image/${imageId}`]];
+      } else if (
+        !retryScenario &&
+        !historicalFrame &&
+        [...generatedImages.values()].includes(payload[0])
+      ) {
+        result = [[`https://flow-content.google/image/${payload[0]}`]];
       } else {
         if (failFirstAttempt) {
           await route.fulfill({

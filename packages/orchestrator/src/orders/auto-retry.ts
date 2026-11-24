@@ -1,5 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
-import { usesSingleImage } from '@flow-batch/protocol';
+import { importImageCount, usesSingleImage } from '@flow-batch/protocol';
 import { HttpError } from '../security/errors.js';
 import type { ProductionOrder } from './repository.js';
 
@@ -25,16 +25,27 @@ export function autoRetrySummary(
     available: order.archivedAt === null && !closedStates.includes(order.state),
     expiresAt:
       typeof policy?.expires_at === 'number' ? policy.expires_at : null,
-    images: order.products.reduce(
-      (sum, product) =>
-        sum +
-        product.groups.reduce(
-          (count, group) =>
-            count + group.count * (usesSingleImage(group.format) ? 1 : 2),
+    images: order.preparation
+      ? order.preparation.manifests.reduce(
+          (sum, manifest) => sum + importImageCount(manifest),
+          0,
+        )
+      : order.products.reduce(
+          (sum, product) =>
+            sum +
+            product.groups.reduce(
+              (count, group) =>
+                count +
+                group.count *
+                  (group.format === 'clone'
+                    ? 3
+                    : usesSingleImage(group.format)
+                      ? 1
+                      : 2),
+              0,
+            ),
           0,
         ),
-      0,
-    ),
     videos: order.products.reduce(
       (sum, product) =>
         sum +

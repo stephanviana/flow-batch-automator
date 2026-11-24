@@ -1,4 +1,4 @@
-import { type Preparation, usesSingleImage } from './preparations.js';
+import { type Preparation, variationImagePlan } from './preparations.js';
 import type { ImportManifest } from './imports.js';
 import { stableImportId } from './import-identity.js';
 
@@ -55,17 +55,10 @@ export async function compileVariation(
       ]),
     ),
   );
-  const singleImage = usesSingleImage(variation.format);
+  const images = variationImagePlan(variation);
   const seconds = /^abra_i2v_(\d+)s/.exec(preparation.videoModel)?.[1] ?? '8';
   return stages.map(([stage, label], index) => {
-    const sourceIndex =
-      index === 0
-        ? undefined
-        : singleImage
-          ? 0
-          : stage === 'cta'
-            ? 1
-            : undefined;
+    const { image, sourceIndex } = images[index]!;
     const role = animationRole(variation.format, stage);
     const template =
       templates.get(role) ??
@@ -83,11 +76,7 @@ export async function compileVariation(
         : { reuseImageFrom: ids[sourceIndex]! }),
       output: { groupId: variation.id, filename: `${label}.mp4` },
       original: {
-        imagePrompt: JSON.stringify(
-          index === 0 || singleImage
-            ? variation.hookImage
-            : variation.presenterImage!,
-        ),
+        imagePrompt: JSON.stringify(image),
         videoPrompt: renderAnimation(
           template,
           variation.copy[stage],

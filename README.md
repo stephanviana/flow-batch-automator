@@ -601,7 +601,20 @@ reserva; alterações não mudam preparações em andamento.
 Os formatos disponíveis são quatro formatos de fábrica, POV + Vendedora, Full
 POV, Full Vendedora e clonagem. Todas as variações têm gancho, Body e CTA.
 Full POV e Full Vendedora usam uma imagem gerada no gancho e reutilizada nos
-outros takes. Os demais usam duas imagens, com CTA reutilizando o Body.
+outros takes. Fábrica e POV + Vendedora usam duas imagens, com CTA reutilizando
+o Body. Na clonagem, o agente identifica as cenas do MP4 e registra sua análise
+em `cloneVideo.analysis`. O campo `cloneVideo.scenePlan` define `scenes` com
+IDs e imagens e associa `takes.hook`, `.body` e `.cta` a esses IDs. Uma cena
+repetida reutiliza diretamente a imagem do primeiro take que a gerou; cenas
+distintas recebem imagens próprias, inclusive no CTA. Isso admite uma, duas ou
+três imagens, sem amarrar o CTA ao Body. O checkout entrega o mapa vazio, sem
+presumir a composição. Não combinar esse plano com `hookImage`, `presenterImage`
+ou `imageStrategy`. Preparações anteriores mantêm os contratos legados.
+A foto principal continua sendo a referência do produto, inclusive quando é um
+print de anúncio; o vídeo orienta a estrutura e a composição. Preparações e takes
+já registrados preservam seus manifestos e vínculos. A atualização do software
+não sincroniza bibliotecas locais existentes; os critérios estão na edição
+versionada de `instrucoes/formatos/clone.md`.
 Nos novos despachos, os três MP4s de cada vídeo ficam juntos em
 `Flow/Videos/<produto>--<formato>--<identificador>/`, dentro dos downloads do
 Chrome. Cada pasta contém `01-Gancho.mp4`, `02-Body.mp4` e `03-CTA.mp4`. As pastas
@@ -672,6 +685,9 @@ docker compose config --quiet
 pnpm test:browser:formats
 pnpm test:browser:library
 pnpm test:browser:cloning
+pnpm test:browser:orders --format=clone
+pnpm test:browser:orders --format=clone --clone-scenes=abc
+pnpm test:browser:orders --format=clone --clone-scenes=aba
 pnpm test:browser:orders-design
 pnpm test:browser:queue-design
 pnpm test:browser:connect

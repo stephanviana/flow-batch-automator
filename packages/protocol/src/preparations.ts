@@ -5,17 +5,19 @@ import {
   DEFAULT_ORDER_VIDEO_MODEL,
 } from './flow-models.js';
 import { importTakeSchema } from './imports.js';
+import {
+  creativeImageSchema,
+  cloneImageStrategySchema,
+  cloneScenePlanSchema,
+  validateVariationImages,
+} from './preparation-images.js';
+export * from './preparation-images.js';
 
 const nonblankText = z
   .string()
   .min(1)
   .max(4096)
   .refine((value) => value.trim().length > 0);
-export const creativeImageSchema = z.strictObject({
-  prompt: nonblankText,
-  negative_prompt: nonblankText,
-  aspect_ratio: z.literal('9:16'),
-});
 export const preparationFormatSchema = z.enum([
   'factory',
   'factory-group',
@@ -27,9 +29,6 @@ export const preparationFormatSchema = z.enum([
   'clone',
 ]);
 export type PreparationFormat = z.infer<typeof preparationFormatSchema>;
-export function usesSingleImage(format: PreparationFormat): boolean {
-  return format === 'full-pov' || format === 'seller';
-}
 export const preparationFormatLabels: Record<PreparationFormat, string> = {
   factory: 'Fábrica Padrão',
   'factory-group': 'Fábrica Grupo',
@@ -55,6 +54,16 @@ export const takeCopySchema = z.strictObject({
 export const cloneVideoSchema = z.strictObject({
   materialId: z.uuid(),
   mode: cloneModeSchema.optional(),
+  imageStrategy: cloneImageStrategySchema
+    .optional()
+    .describe(
+      'Compatibilidade com preparações anteriores. Para novas clonagens, use scenePlan conforme as cenas observadas no MP4.',
+    ),
+  scenePlan: cloneScenePlanSchema
+    .optional()
+    .describe(
+      'Identifique as composições observadas no MP4 em analysis, defina uma imagem por cena usada e associe hook, body e cta a seus IDs. Cenas iguais reutilizam a mesma imagem; cenas distintas geram imagens próprias. Não preencher hookImage, presenterImage ou imageStrategy junto deste plano.',
+    ),
   transcript: takeCopySchema.optional(),
   analysis: nonblankText,
   directions: z.strictObject({
@@ -78,22 +87,12 @@ export const preparationSchema = z
             id: z.uuid(),
             name: z.string().trim().min(1).max(80),
             format: preparationFormatSchema,
-            hookImage: creativeImageSchema,
+            hookImage: creativeImageSchema.optional(),
             presenterImage: creativeImageSchema.optional(),
             cloneVideo: cloneVideoSchema.optional(),
             copy: takeCopySchema,
           })
-          .refine(
-            (variation) =>
-              usesSingleImage(variation.format)
-                ? variation.presenterImage === undefined
-                : variation.presenterImage !== undefined,
-            {
-              message:
-                'Full POV e Full Vendedora usam somente hookImage; os demais formatos exigem presenterImage.',
-              path: ['presenterImage'],
-            },
-          )
+          .superRefine(validateVariationImages)
           .refine(
             (variation) =>
               (variation.format === 'clone') ===

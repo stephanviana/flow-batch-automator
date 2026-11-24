@@ -29,7 +29,10 @@ export function registerLibrary(
       formats: preparationFormatSchema.options.map((format) => ({
         format,
         label: preparationFormatLabels[format],
-        images: usesSingleImage(format) ? 1 : 2,
+        images: format === 'clone' ? 3 : usesSingleImage(format) ? 1 : 2,
+        ...(format === 'clone'
+          ? { scenePlan: { minImages: 1, maxImages: 3 } }
+          : {}),
         videos: 3,
       })),
       publicationSchema: z.toJSONSchema(orderSubmissionSchema),

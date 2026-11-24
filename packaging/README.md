@@ -70,6 +70,14 @@ arquivam substituídos também exigem autorização. Não importe `base.md` isol
 `library validate` confere todos os formatos. O conector usa `flow-orders/5`;
 reabra os clientes ao atualizar. Nenhuma instrução autoriza créditos por si só.
 
+Na clonagem, o agente analisa as cenas do MP4 e preenche `cloneVideo.scenePlan`:
+`scenes` define IDs e imagens; `takes.hook`, `.body` e `.cta` associam cada take
+à sua cena. Cenas repetidas reutilizam a imagem do primeiro take gerador;
+cenas distintas recebem imagens próprias. O checkout entrega o mapa vazio.
+Não combinar com `hookImage`, `presenterImage` ou `imageStrategy`. Preparações
+anteriores mantêm seus contratos e vínculos registrados. A foto principal
+continua sendo a referência do produto; o vídeo orienta estrutura e composição.
+
 No modo Docker, `up` constrói as imagens localmente, sincroniza a extensão e espera o servidor.
 O npm instala as bibliotecas declaradas em `dependencies`, com versões diretas
 exatas. O primeiro build Docker usa `runtime/package-lock.json` com `npm ci` para

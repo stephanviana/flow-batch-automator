@@ -68,10 +68,18 @@ workspace anterior e seu histórico SQLite durante esta mudança. Essa limpeza
 pontual não autoriza exclusões futuras. Não alterar a pasta global de downloads.
 
 Cada variação tem três vídeos (gancho, Body, CTA). Fábrica, POV + Vendedora
-(`pov`) e clonagem usam duas imagens: gancho e Body; o CTA reutiliza a imagem
+(`pov`) usam duas imagens: gancho e Body; o CTA reutiliza a imagem
 confirmada do Body. Full POV (`full-pov`) e Full Vendedora (`seller`) usam uma
 imagem, gerada no gancho e reutilizada diretamente no Body e CTA. Nos formatos
-Full, preparar somente `hookImage`, sem `presenterImage`. Takes e preparações
+Full, preparar somente `hookImage`, sem `presenterImage`. Na clonagem, o agente
+identifica as cenas do MP4 e preenche `cloneVideo.scenePlan`: `scenes` define
+IDs e imagens, e `takes.hook`, `.body` e `.cta` associam cada take à sua cena.
+Uma cena repetida reutiliza diretamente a imagem do primeiro take gerador;
+cenas distintas recebem imagens próprias, inclusive no CTA. Não combinar com
+`hookImage`, `presenterImage` ou `imageStrategy`. O checkout entrega o mapa vazio
+e o agente justifica a associação em `analysis`. Preparações anteriores mantêm
+seus contratos, incluindo o par legado e `imageStrategy` quando presente.
+A foto principal mantém a identidade do produto. Takes e preparações
 já registrados preservam seus manifestos, materiais e autorizações.
 
 A reutilização usa `reuseImageFrom` no manifesto, `imageSourceTaskKey` na entrada
@@ -302,6 +310,11 @@ mudanças apenas documentais não exigem criar testes de código.
 - `pnpm test:browser:orders` / `pnpm test:browser:reuse` /
   `pnpm test:browser:formats`: pedidos pelo painel,
   preparação, despacho, reutilização e downloads em Chrome for Testing com fixtures.
+- `pnpm test:browser:orders --format=clone`: clonagem com uma imagem compartilhada
+  e três downloads; `--clone-scenes=abc` valida três cenas distintas;
+  `--clone-scenes=aba` valida retorno do CTA à imagem do Gancho. Também aceita
+  `aab` e `abb` para as demais combinações de duas cenas.
+  Usa Chrome isolado, referências sintéticas e RPCs interceptadas, sem créditos.
 - `pnpm test:browser:queue-design`: assets compilados da extensão em Chrome com
   snapshots sintéticos, layout de 280 a 640 px, etapas, tempo, pausa e revisão.
   Não inicia servidor nem despacha pedidos.

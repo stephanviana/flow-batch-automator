@@ -28,9 +28,14 @@ a referência visual. Para toda fala nova, siga o playbook em
 
 Prepare cada imagem como JSON com `prompt`, `negative_prompt` e `aspect_ratio`,
 preservando a identidade, escala e apoio físico do produto. Fábrica, POV +
-Vendedora e clonagem usam `hookImage` e `presenterImage`; o CTA reutiliza a
+Vendedora usam `hookImage` e `presenterImage`; o CTA reutiliza a
 imagem confirmada do Body. Full POV e Full Vendedora usam apenas `hookImage`,
 reutilizada diretamente no Body e no CTA, sem `presenterImage` ou fallback.
+Na clonagem, analise as cenas do vídeo e preencha `cloneVideo.scenePlan` com uma
+imagem por cena usada e a associação de Gancho, Body e CTA. Cenas iguais
+compartilham a imagem do primeiro take gerador; cenas distintas recebem imagens
+próprias. Não preencher `hookImage` ou `presenterImage` junto do plano. Justifique
+em `analysis` e siga `formatos/clone.md`, preservando o produto da foto principal.
 No POV, a voz do gancho vem de fora da câmera; no Full POV, mãos e voz fora da
 câmera permanecem nos três takes. Cada vídeo começa na imagem compartilhada,
 sem depender do último frame do vídeo anterior.
@@ -389,7 +394,7 @@ como substituto de reutilização. As falas dos três takes continuam distintas.
 
 Cada artefato contém somente as três chaves do contrato de imagem. O par de
 imagens dos formatos mistos representa duas bases visuais para três vídeos.
-Na clonagem, seguir o par definido em [clonagem.md](clonagem.md).
+Na clonagem, seguir o plano de cenas por take em [formatos/clone.md](formatos/clone.md).
 
 
 # Produto, unidade comercial e realismo
@@ -1003,9 +1008,11 @@ O negative prompt deve ser um texto em inglês contendo os principais erros a ev
 
 Estes templates recebem a fala final da etapa de copy.
 A referência desta etapa é a **imagem gerada para o take**, usada como frame
-inicial. Nos formatos com duas imagens, o CTA usa a imagem gerada no Body.
+inicial. Nos formatos padrão mistos, o CTA usa a imagem gerada no Body.
 No Full POV e Full Vendedora, Body e CTA usam diretamente a imagem gerada no
-gancho. Os vídeos têm falas próprias; cada take começa na sua imagem vinculada,
+gancho. Na clonagem, cada take usa a cena associada em `cloneVideo.scenePlan`,
+com imagem própria ou reutilizada conforme a análise. Os vídeos têm falas
+próprias; cada take começa na sua imagem vinculada,
 sem prolongar automaticamente o último frame do vídeo anterior. A foto original do produto continua na etapa anterior de imagem.
 
 O padrão atual é Omni 1.1 Flash Frames, somente frame inicial, 8 s/720p. Não
@@ -1149,9 +1156,10 @@ Visual exclusions: overlays, motion graphics, animated graphics, embellishments,
 ## Clonagem — direção adaptada do vídeo de referência
 
 No formato `clone`, o agente assiste ao vídeo selecionado no grupo e preenche
-`cloneVideo.analysis` e `cloneVideo.directions` para cada take. O compilador usa
-as direções como texto, sem invocar IA. Elas devem preservar os objetos e o apoio
-da imagem gerada; Body e CTA começam com exatamente a mesma imagem. A fala fica
+`cloneVideo.analysis`, `cloneVideo.scenePlan` e `cloneVideo.directions` para cada
+take. O compilador usa as direções como texto, sem invocar IA. Elas devem
+preservar os objetos e o apoio da imagem da cena associada ao take; composições
+repetidas usam a mesma imagem e composições distintas usam imagens próprias. A fala fica
 somente em `copy`, e as direções identificam quem fala, enquadramento e gestos.
 
 ```text

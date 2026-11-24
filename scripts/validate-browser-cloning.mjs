@@ -6,6 +6,7 @@ import {
 } from './test-support/reference-images-browser.mjs';
 import { preparationFormatLabels } from '../packages/protocol/dist/index.js';
 import { installInstructions } from './test-support/instruction-package.mjs';
+import { completeCloningPreparation } from './test-support/cloning-preparation.mjs';
 import assert from 'node:assert/strict';
 import { Buffer } from 'node:buffer';
 import { randomUUID, createHash } from 'node:crypto';
@@ -297,38 +298,6 @@ async function verifyImageOnlyOrder(api) {
   ]);
   assert.equal(order.products[0].groups[0].format, 'factory');
 }
-function completePreparation(preparation) {
-  for (const product of preparation.products)
-    for (const variation of product.variations) {
-      variation.hookImage = {
-        prompt: 'Foto sintética do produto nas mãos.',
-        negative_prompt: 'Sem texto.',
-        aspect_ratio: '9:16',
-      };
-      variation.presenterImage = {
-        prompt: 'Produto sintético apoiado no balcão.',
-        negative_prompt: 'Sem bandeja.',
-        aspect_ratio: '9:16',
-      };
-      variation.copy = {
-        hook: 'Conheça $& e $$ deste produto.',
-        body: 'Veja os detalhes.',
-        cta: 'Confira no carrinho.',
-      };
-      if (variation.cloneVideo) {
-        if (variation.cloneVideo.mode === 'preserve-copy')
-          variation.cloneVideo.transcript = { ...variation.copy };
-        variation.cloneVideo.analysis =
-          'Quadro azul sintético observado na referência; adaptação de teste, sem execução paga.';
-        variation.cloneVideo.directions = {
-          hook: 'Keep only hands visible, with off-camera voice.',
-          body: 'Keep the product on the counter.',
-          cta: 'Use the same initial frame and speak naturally.',
-        };
-      }
-    }
-  return preparation;
-}
 async function verifyCheckoutAndPublish(api, order, secondaryImage) {
   const folder = resolve(directory, 'checkout');
   await checkout(api, order.number, 'agent-fixture', folder);
@@ -360,6 +329,12 @@ async function verifyCheckoutAndPublish(api, order, secondaryImage) {
   assert.equal(cloned.cloneVideo.materialId, videoId);
   assert.equal(cloned.cloneVideo.analysis, '');
   assert.equal(cloned.cloneVideo.mode, 'preserve-copy');
+  assert.deepEqual(cloned.cloneVideo.scenePlan, {
+    scenes: [],
+    takes: { hook: '', body: '', cta: '' },
+  });
+  assert.equal(cloned.hookImage, undefined);
+  assert.equal(cloned.presenterImage, undefined);
   assert.deepEqual(cloned.cloneVideo.transcript, {
     hook: '',
     body: '',
@@ -371,7 +346,7 @@ async function verifyCheckoutAndPublish(api, order, secondaryImage) {
     createHash('sha256').update(bytes).digest('hex'),
     order.materials.find((material) => material.id === videoId).sha256,
   );
-  completePreparation(preparation);
+  completeCloningPreparation(preparation);
   const wrong = globalThis.structuredClone(preparation);
   wrong.products[0].variations.find(
     (variation) => variation.format === 'clone',
@@ -402,7 +377,9 @@ async function verifyCheckoutAndPublish(api, order, secondaryImage) {
     .flatMap((manifest) => manifest.tasks)
     .filter((take) => take.video.startsWith('clone'));
   assert.equal(takes.length, 3);
-  assert.equal(takes[2].reuseImageFrom, takes[1].id);
+  assert.equal(takes[1].reuseImageFrom, takes[0].id);
+  assert.equal(takes[2].reuseImageFrom, takes[0].id);
+  assert.equal(takes.filter((take) => !take.reuseImageFrom).length, 1);
   assert.ok(
     takes[0].original.videoPrompt.includes(cloned.cloneVideo.directions.hook),
   );

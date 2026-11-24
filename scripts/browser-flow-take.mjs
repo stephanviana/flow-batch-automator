@@ -9,6 +9,7 @@ import {
   DEFAULT_ORDER_VIDEO_MODEL,
 } from '../packages/protocol/dist/index.js';
 import { resolve } from 'node:path';
+import { cloneScenePlan } from './test-support/clone-scenes.mjs';
 
 export async function validateFlowTake({
   browser,
@@ -19,10 +20,14 @@ export async function validateFlowTake({
   media,
   directory,
   format = 'factory',
+  cloneScenes = 'aaa',
   videoModel = DEFAULT_ORDER_VIDEO_MODEL,
   base = 'http://127.0.0.1:4319',
 }) {
-  const singleImage = usesSingleImage(format);
+  const scenePattern =
+    format === 'clone' ? cloneScenes : usesSingleImage(format) ? 'aaa' : 'abb';
+  const expectedImageCount = new Set(scenePattern).size;
+  const singleImage = expectedImageCount === 1;
   const retryScenario = format === 'factory';
   const referenceBytes = await readFile(
     new URL('./fixtures/reference.png', import.meta.url),
@@ -61,7 +66,16 @@ export async function validateFlowTake({
       buffer: referenceBytes,
     });
     await orders.getByLabel('Variações', { exact: true }).fill('1');
-    await orders.getByLabel('Formato', { exact: true }).selectOption(format);
+    if (format === 'clone') {
+      await orders
+        .getByRole('radio', { name: 'Clonar um vídeo', exact: true })
+        .check();
+      await orders
+        .locator('.additional-materials input[type="file"]')
+        .setInputFiles('scripts/fixtures/blue.mp4');
+    } else {
+      await orders.getByLabel('Formato', { exact: true }).selectOption(format);
+    }
     await orders
       .getByRole('button', { name: 'Salvar pedido', exact: true })
       .click();
@@ -93,7 +107,7 @@ export async function validateFlowTake({
     );
     assert.equal(
       'presenterImage' in checkoutPlan.products[0].variations[0],
-      !singleImage,
+      format === 'clone' ? false : !singleImage,
     );
     const prepared = await api(`/manage/orders/${order.id}/prepare`, {
       leaseId,
@@ -105,12 +119,31 @@ export async function validateFlowTake({
               id: variation.id,
               name: variation.name,
               format: variation.format,
-              hookImage: {
-                prompt: 'Produto de teste na fábrica',
-                negative_prompt: 'Sem texto',
-                aspect_ratio: '9:16',
-              },
-              ...(!singleImage
+              ...(format === 'clone'
+                ? {
+                    cloneVideo: {
+                      materialId: variation.videoReferenceId,
+                      scenePlan: cloneScenePlan(cloneScenes),
+                      analysis:
+                        'Fixture de composição contínua ou transição entre duas bases visuais, sem análise criativa ou geração real.',
+                      directions: {
+                        hook: 'Show the product.',
+                        body: 'Demonstrate the product.',
+                        cta: 'Use the same frame as the source.',
+                      },
+                    },
+                  }
+                : {}),
+              ...(format !== 'clone'
+                ? {
+                    hookImage: {
+                      prompt: 'Produto de teste na fábrica',
+                      negative_prompt: 'Sem texto',
+                      aspect_ratio: '9:16',
+                    },
+                  }
+                : {}),
+              ...(format !== 'clone' && !singleImage
                 ? {
                     presenterImage: {
                       prompt: 'Produto de teste no balcão',
@@ -135,14 +168,13 @@ export async function validateFlowTake({
     fixture.expectedTasks = prepared.preparation.manifests[0].tasks;
     for (const task of fixture.expectedTasks)
       assert.equal(task.videoModel, videoModel);
-    assert.equal(
-      fixture.expectedTasks[1].reuseImageFrom,
-      singleImage ? fixture.expectedTasks[0].id : undefined,
-    );
-    assert.equal(
-      fixture.expectedTasks[2].reuseImageFrom,
-      fixture.expectedTasks[singleImage ? 0 : 1].id,
-    );
+    for (const [index, take] of fixture.expectedTasks.entries()) {
+      const first = scenePattern.indexOf(scenePattern[index]);
+      assert.equal(
+        take.reuseImageFrom,
+        first < index ? fixture.expectedTasks[first].id : undefined,
+      );
+    }
     await orders
       .getByRole('button', { name: 'Atualizar', exact: true })
       .click();
@@ -245,7 +277,6 @@ export async function validateFlowTake({
     assert.equal(fixture.projectsCreated, 1);
     if (retryScenario)
       assert.equal(fixture.projectLoads, fixture.loadsBeforeRetry + 1);
-    const expectedImageCount = singleImage ? 1 : 2;
     assert.equal(fixture.imageCount, expectedImageCount);
     assert.equal(fixture.uploadCount, expectedImageCount);
     assert.equal(fixture.videoCount, 3);
@@ -270,6 +301,7 @@ export async function validateFlowTake({
       pov: 'pov-vendedora',
       'full-pov': 'full-pov',
       seller: 'full-vendedora',
+      clone: 'clonar-formato-de-video',
     }[format];
     const variationId = fixture.expectedTasks[0].output.groupId.replaceAll(
       '-',
@@ -306,14 +338,15 @@ export async function validateFlowTake({
     api = await localClient(base);
     assert.equal((await api('/manage/orders/1')).order.state, 'completed');
     const cleanup = await api('/manage/cleanup');
-    assert.equal(cleanup.materials.length, 1);
+    const expectedMaterials = format === 'clone' ? 2 : 1;
+    assert.equal(cleanup.materials.length, expectedMaterials);
     assert.equal(
       (
         await api('/manage/cleanup', {
           ids: cleanup.materials.map((material) => material.id),
         })
       ).removed,
-      1,
+      expectedMaterials,
     );
     assert.equal(
       (await api('/manage/orders/1')).order.materials[0].available,
@@ -341,7 +374,7 @@ export async function validateFlowTake({
     assert.equal(fixture.imageCount, expectedImageCount);
     assert.equal(fixture.videoCount, 3);
     console.log(
-      `Chrome isolado (${format}): pedido pelo painel, checkout, preparação, autorização, ${singleImage ? 'uma imagem compartilhada pelos três takes' : 'duas imagens com CTA reutilizado'}, três MP4s, painel fechado, reinício e limpeza passaram com fixtures locais.`,
+      `Chrome isolado (${format}, cenas ${scenePattern}): pedido pelo painel, checkout, preparação, autorização, ${expectedImageCount} imagem(ns), três MP4s, painel fechado, reinício e limpeza passaram com fixtures locais.`,
     );
   } finally {
     fixture.reportFailure();

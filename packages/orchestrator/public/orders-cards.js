@@ -109,12 +109,13 @@ function preparationPreview(parent, order, { api, report }) {
             area,
             `${variation.name} · imagens`,
             JSON.stringify(
-              variation.presenterImage
-                ? {
-                    gancho: variation.hookImage,
-                    vendedora: variation.presenterImage,
-                  }
-                : { 'gancho, Body e CTA': variation.hookImage },
+              variation.cloneVideo?.scenePlan ??
+                (variation.presenterImage
+                  ? {
+                      gancho: variation.hookImage,
+                      vendedora: variation.presenterImage,
+                    }
+                  : { 'gancho, Body e CTA': variation.hookImage }),
               null,
               2,
             ),

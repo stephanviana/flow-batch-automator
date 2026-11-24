@@ -54,7 +54,14 @@ formatos e a quantidade exata. Crie prompts próprios e falas conforme o modo sa
 de exemplo. O servidor compila a animação com os templates capturados na reserva, divide os
 lotes conforme os limites e registra os vínculos de imagem. Em Full POV e Full
 Vendedora, preencha somente `hookImage`: Body e CTA reutilizam o gancho. Nos
-demais formatos, preencha também `presenterImage`: CTA reutiliza o Body.
+formatos mistos, preencha também `presenterImage`: CTA reutiliza o Body.
+Na clonagem, preencha `cloneVideo.scenePlan` conforme as cenas observadas e as
+instruções capturadas. `scenes` define IDs e imagens; `takes.hook`, `.body` e
+`.cta` associam cada take a uma cena. Uma cena repetida reutiliza diretamente
+sua primeira imagem; cenas distintas geram imagens próprias. Justifique em
+`analysis`. Não preencher `hookImage`, `presenterImage` ou `imageStrategy` junto
+do mapa. O checkout começa vazio; preparações anteriores mantêm seus contratos.
+Preserve `referenceId` e todos os materiais do produto.
 
 Durante trabalhos longos, renove antes do vencimento:
 `pnpm orders renew .cache/orders/12`. Se a reserva expirou, consulte o pedido;

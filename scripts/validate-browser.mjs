@@ -29,8 +29,17 @@ const directory = resolve('.cache', `browser-${randomUUID()}`);
 const requestedFormat = process.argv
   .find((argument) => argument.startsWith('--format='))
   ?.slice(9);
-if (requestedFormat && !['pov', 'full-pov', 'seller'].includes(requestedFormat))
+if (
+  requestedFormat &&
+  !['pov', 'full-pov', 'seller', 'clone'].includes(requestedFormat)
+)
   throw new Error('Unsupported browser fixture format');
+const scenesArgument = process.argv.find((argument) =>
+  argument.startsWith('--clone-scenes='),
+);
+const cloneScenes = scenesArgument?.split('=')[1] ?? 'aaa';
+if (!['aaa', 'aab', 'aba', 'abb', 'abc'].includes(cloneScenes))
+  throw new Error('Unsupported clone scene fixture');
 const reuseOnly = process.argv.includes('--reuse-only');
 const flowStatusOnly = process.argv.includes('--flow-status-only');
 const ordersOnly =
@@ -342,6 +351,7 @@ try {
       directory,
       reuseOnly,
       format: requestedFormat,
+      cloneScenes,
       videoModel: requestedVideoModel,
       base,
     });

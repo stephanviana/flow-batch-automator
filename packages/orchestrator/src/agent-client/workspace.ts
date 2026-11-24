@@ -99,6 +99,10 @@ function draftProducts(
               cloneVideo: {
                 materialId: videoReferenceId,
                 mode: cloneMode ?? DEFAULT_CLONE_MODE,
+                scenePlan: {
+                  scenes: [],
+                  takes: { hook: '', body: '', cta: '' },
+                },
                 ...(cloneMode === 'preserve-copy'
                   ? { transcript: { hook: '', body: '', cta: '' } }
                   : {}),
@@ -107,12 +111,16 @@ function draftProducts(
               },
             }
           : {}),
-        hookImage: {
-          prompt: '',
-          negative_prompt: '',
-          aspect_ratio: '9:16' as const,
-        },
-        ...(!usesSingleImage(format)
+        ...(format !== 'clone'
+          ? {
+              hookImage: {
+                prompt: '',
+                negative_prompt: '',
+                aspect_ratio: '9:16' as const,
+              },
+            }
+          : {}),
+        ...(format !== 'clone' && !usesSingleImage(format)
           ? {
               presenterImage: {
                 prompt: '',

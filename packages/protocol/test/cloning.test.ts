@@ -11,6 +11,7 @@ import {
   MATERIAL_LIMIT,
   type Preparation,
   VIDEO_MATERIAL_LIMIT,
+  importImageCount,
 } from '../src/index.js';
 
 function variation(): Preparation['variations'][number] & {
@@ -136,6 +137,70 @@ test('cloning compiles adapted directions and exact speech, with the image pair 
   assert.equal(manifest.tasks[2]!.reuseImageFrom, manifest.tasks[1]!.id);
   assert.equal(manifest.tasks.filter((task) => !task.reuseImageFrom).length, 2);
 });
+
+for (const mode of ['adapt-format', 'preserve-copy'] as const)
+  for (const imageStrategy of ['shared', 'hook-body'] as const)
+    test(`${mode} cloning uses ${imageStrategy} frames without changing the product reference`, async () => {
+      const clone = variation();
+      clone.cloneVideo.mode = mode;
+      clone.cloneVideo.imageStrategy = imageStrategy;
+      if (mode === 'preserve-copy')
+        clone.cloneVideo.transcript = { ...clone.copy };
+      if (imageStrategy === 'shared') delete clone.presenterImage;
+      const plan = {
+        version: 1,
+        id: randomUUID(),
+        product: 'Roupa de cama',
+        reference: 'foto-principal-do-produto.png',
+        variations: [clone],
+      };
+      const manifest = await compilePreparation(plan, animationTemplates);
+      const [hook, body, cta] = manifest.tasks;
+      assert.ok(hook && body && cta);
+      assert.equal(hook.reuseImageFrom, undefined);
+      assert.equal(
+        body.reuseImageFrom,
+        imageStrategy === 'shared' ? hook.id : undefined,
+      );
+      assert.equal(
+        cta.reuseImageFrom,
+        imageStrategy === 'shared' ? hook.id : body.id,
+      );
+      assert.equal(
+        importImageCount(manifest),
+        imageStrategy === 'shared' ? 1 : 2,
+      );
+      for (const take of manifest.tasks)
+        assert.equal(take.reference, plan.reference);
+      if (imageStrategy === 'shared')
+        for (const take of [body, cta])
+          assert.equal(take.original.imagePrompt, hook.original.imagePrompt);
+      assert.equal(
+        preparationSchema.safeParse({
+          ...plan,
+          variations: [
+            {
+              ...clone,
+              presenterImage:
+                imageStrategy === 'shared' ? clone.hookImage : undefined,
+            },
+          ],
+        }).success,
+        false,
+      );
+      assert.equal(
+        preparationSchema.safeParse({
+          ...plan,
+          variations: [
+            {
+              ...clone,
+              cloneVideo: { ...clone.cloneVideo, imageStrategy: 'unknown' },
+            },
+          ],
+        }).success,
+        false,
+      );
+    });
 test('video materials have their own cap while images and documents retain the 8 MB cap', () => {
   const material = {
     id: randomUUID(),
