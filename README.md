@@ -290,6 +290,14 @@ Em POV + Vendedora, use POV no gancho e Vendedora no Body e no CTA. Na clonagem,
 `adapt-format` aplica o playbook à estrutura do vídeo analisado, e
 `preserve-copy` mantém a transcrição conferida.
 
+A seção `[animation]` orienta movimentos conforme o comportamento comprovado do
+material, com apoio e contato estáveis e continuidade da forma e dos detalhes.
+Na clonagem, simplifique gestos complexos preservando a intenção demonstrativa
+da referência; registre a adaptação na análise e mantenha a fala de
+`preserve-copy` intacta. A regra vale para qualquer produto, sem proibir
+deformações naturais necessárias ao uso. Bibliotecas ativas existentes precisam
+receber essa edição explicitamente; atualizar o pacote não as sincroniza.
+
 `base.md` começa com `<!-- flow-base:1 -->`. Use `# [common]`, `# [copy]`,
 `# [image]` e `# [animation]`, com títulos livres após os identificadores.
 Preencha ao menos uma seção editorial e os formatos usados no pedido.

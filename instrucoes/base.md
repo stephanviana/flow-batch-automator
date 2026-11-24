@@ -1019,6 +1019,34 @@ O padrão atual é Omni 1.1 Flash Frames, somente frame inicial, 8 s/720p. Não
 presuma lip-sync, duração da fala ou qualidade real comprovados só porque o texto
 passou na validação. O modelo e os parâmetros persistidos no take governam o envio.
 
+## Movimento e continuidade física do produto
+
+Em qualquer material, preserve a identidade e a continuidade física do produto:
+forma, escala, espessura, textura, estampa, costuras, bordas, rótulos, componentes
+e pontos de contato devem permanecer coerentes ao longo do take. Considere o
+comportamento observado nos materiais do pedido, sem presumir rigidez,
+elasticidade, maleabilidade ou resistência não comprovadas. Uma deformação
+natural compatível com o uso não autoriza derretimento, estiramento artificial,
+mudança de estampa, fusão com as mãos ou surgimento de peças e superfícies.
+
+Escolha uma ação principal simples por take, com pequena amplitude, velocidade
+baixa e uniforme, apoio estável e contato leve. Prefira indicar um detalhe,
+tocar brevemente ou deslocar pouco um produto já sustentado. Evite acumular
+manipulação, troca de pegada, rotação e movimento de câmera. Durante o contato,
+priorize câmera estável; quando o produto estiver em repouso, uma aproximação
+suave pode dar dinamismo sem exigir sua transformação. Não basta acrescentar
+“movimentos suaves” a uma sequência complexa: simplifique a própria ação.
+
+Dobrar, torcer, esticar, comprimir, abrir, virar ou desmontar só entram quando
+essenciais à demonstração, sustentados pelas referências e compatíveis com o
+frame inicial e as regras do produto. Reduza a amplitude e mantenha visíveis o
+contato e o apoio. Se a ação depender de revelar partes não documentadas ou de
+reconstruir extensas áreas ocultas, substitua-a por um gesto simples que preserve
+sua intenção. Quando necessário e permitido pelo plano de cenas, prepare uma
+imagem já no estado demonstrativo comprovado e anime apenas a indicação desse
+detalhe. Não invente avesso, interior, mecanismo ou propriedade para viabilizar
+o movimento. Cada take deve funcionar a partir de sua própria imagem vinculada.
+
 ## REGRA CRÍTICA — DIÁLOGO NÃO É DIREÇÃO VISUAL
 
 As falas das copys servem SOMENTE para áudio, lip-sync, expressão facial e gestos naturais.
@@ -1167,6 +1195,8 @@ Animate the reference image as one continuous {{duracao_segundos}}-second live-a
 
 Adapted scene and performance direction:
 {{direcao}}
+
+Keep one simple primary product interaction with a small range of motion, slow even speed, stable support and light, consistent contact. Preserve continuous geometry, thickness, surface patterns, texture, edges, labels and components. Allow only material behavior supported by the product references. Simplify complex reference gestures while preserving their demonstrative purpose; avoid repeated regripping, large rotations, pulling, twisting or revealing undocumented hidden surfaces. Use a stable camera during contact. When the product is at rest, a subtle camera move may provide dynamism. An essential supported demonstration may use limited natural deformation, but must not change the product's identity, invent surfaces or parts, or merge the product with the hands. Start from the assigned initial frame without relying on a previous clip's ending.
 
 The speaker identified in the direction begins promptly and says exactly this line in Brazilian Portuguese, at a natural clear pace through most of the shot, ending with only a brief natural pause. Do not add, omit or repeat words, stretch syllables, rush or insert long silent gaps:
 

@@ -30,8 +30,10 @@ peça esclarecimento antes de publicar, sem inventar palavras.
 
 Todas as variações do mesmo vídeo mantêm a mesma transcrição e as mesmas falas.
 Crie novas direções visuais, cenários e avatares para as variações, preservando
-produto, enquadramento necessário à demonstração, sequência das ações e apoio
-físico. Mantenha o novo avatar e cenário consistentes nos takes de cada variação.
+produto, enquadramento necessário à demonstração, sequência das intenções
+demonstrativas e apoio físico. Simplifique os gestos conforme a seção de
+movimento abaixo, sem alterar a fala preservada. Mantenha o novo avatar e cenário
+consistentes nos takes de cada variação.
 Prepare as imagens das cenas conforme a composição observada e as
 direções de animação para o novo cenário e avatar, seguindo a estratégia abaixo. Não tente
 reproduzir a identidade ou a voz da pessoa do vídeo. A ferramenta preserva o
@@ -167,6 +169,32 @@ por exemplo, posição da equipe em grupo, estrutura da esteira ou mãos em POV.
 Elas não obrigam transformar todo vídeo em fábrica, mudar o grupo `clone` para
 um formato padrão ou gerar todo o catálogo. A referência também não dispensa
 as whitelists de roupa ou autoriza desmontar o produto para imitar uma cena.
+
+## Adaptar movimentos sem deformar o produto
+
+Nos dois modos de clonagem, aplique a seção de movimento e continuidade física
+de `[animation]` em `base.md` a qualquer produto ou material. Preserve a função,
+a ordem das intenções demonstrativas e o estilo da referência, adaptando a
+complexidade dos gestos à imagem inicial e ao produto atual. Não copie uma
+manipulação arriscada só por estar no MP4, nem trate toda deformação natural
+como erro ou torne toda demonstração imóvel.
+
+Para cada take, identifique a ação principal e o risco de perder continuidade:
+grandes deformações, trocas de pegada, rotação com ocultação, várias ações
+encadeadas ou câmera em movimento durante o contato. Escreva em
+`cloneVideo.directions` a ação já simplificada, seu apoio, amplitude, ritmo,
+contato e câmera; não mantenha o gesto complexo acrescentando apenas “suave”.
+Registre em `cloneVideo.analysis` as adaptações relevantes e sua justificativa,
+respeitando o limite do campo. Em `preserve-copy`, a fala permanece idêntica.
+
+Se um detalhe comprovado exigir outro estado visual, como produto aberto ou
+com uma parte já dobrada, considere uma imagem nesse estado no plano de cenas
+existente e uma animação de indicação mínima. Confira todos os materiais antes
+de mostrar superfícies ocultas ou mecanismos. Respeite o limite de cenas/takes,
+a reutilização direta e o início independente de cada vídeo; não force uma
+imagem compartilhada a representar estados incompatíveis. Se uma demonstração
+essencial não puder ser preservada nesses limites, explicite a limitação antes
+de publicar, sem inventar funcionamento ou alterar silenciosamente o argumento.
 
 ## Copy própria a partir da estrutura original
 
