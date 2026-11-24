@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { FlowRetryAction } from '@flow-batch/protocol';
 import type { QueueDatabase, TaskRecord } from './database.js';
 import { FlowImages } from './flow-images.js';
@@ -25,6 +26,56 @@ export function orderRetryRestriction(
 
 export class FlowRetries {
   constructor(private readonly database: QueueDatabase) {}
+
+  scheduleAutomatic(record: TaskRecord, now: number): boolean {
+    if (
+      record.input.executor !== 'google-flow' ||
+      record.summary.attemptCount !== 1
+    )
+      return false;
+    const sql = this.database.connection;
+    const policy = sql
+      .prepare(
+        `SELECT p.id,p.authorized_at FROM order_auto_retry_authorizations p
+       JOIN order_dispatches d ON d.order_id=p.order_id
+       JOIN queue_tasks q ON q.batch_id=d.batch_id
+       JOIN clients c ON c.id=q.client_id
+       JOIN production_orders o ON o.id=d.order_id
+       LEFT JOIN dispatch_closures x ON x.dispatch_id=d.dispatch_id
+       WHERE q.id=? AND p.revoked_at IS NULL AND p.expires_at>?
+         AND c.authorized_at IS NOT NULL AND c.revoked_at IS NULL
+         AND o.archived_at IS NULL AND x.dispatch_id IS NULL
+       ORDER BY p.authorized_at DESC LIMIT 1`,
+      )
+      .get(record.summary.id, now);
+    if (!policy) return false;
+    const requestId = randomUUID();
+    const failed = this.database.task(record.summary.id, record.clientId);
+    if (this.reason(failed)) return false;
+    this.schedule(
+      failed,
+      {
+        action: 'retry_flow',
+        requestId,
+        taskId: failed.summary.id,
+        expectedRevision: failed.summary.revision,
+        confirmedFailure: true,
+        approve: true,
+        startQueue: false,
+      },
+      now,
+      'orders',
+    );
+    sql
+      .prepare(
+        'UPDATE queue_flow_retry_authorizations SET policy_id=?,approved_at=? WHERE task_id=? AND attempt_number=2',
+      )
+      .run(String(policy.id), Number(policy.authorized_at), failed.summary.id);
+    sql
+      .prepare('UPDATE queue_tasks SET next_attempt_at=? WHERE id=?')
+      .run(now + 15000, failed.summary.id);
+    return true;
+  }
 
   reason(record: TaskRecord): string | undefined {
     const { input, summary } = record;
@@ -116,9 +167,11 @@ export class FlowRetries {
       .prepare(
         `SELECT r.approved_at FROM queue_flow_retry_authorizations r
        JOIN queue_tasks q ON q.id=r.task_id AND q.input_hash=r.input_hash
-       WHERE r.task_id=? AND r.attempt_number=?`,
+       LEFT JOIN order_auto_retry_authorizations p ON p.id=r.policy_id
+       WHERE r.task_id=? AND r.attempt_number=?
+         AND (r.policy_id IS NULL OR (p.revoked_at IS NULL AND p.expires_at>?))`,
       )
-      .get(record.summary.id, number);
+      .get(record.summary.id, number, Date.now());
     return typeof authorization?.approved_at === 'number'
       ? authorization.approved_at
       : undefined;

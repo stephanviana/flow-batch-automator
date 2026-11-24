@@ -122,6 +122,13 @@ export class QueueMutations {
       safeToRetry: safe,
     });
     if (
+      safe &&
+      error.retryable &&
+      record.input.executor === 'google-flow' &&
+      new FlowRetries(this.database).scheduleAutomatic(record, now)
+    )
+      return;
+    if (
       record.input.executor === 'simulation' &&
       safe &&
       error.retryable &&

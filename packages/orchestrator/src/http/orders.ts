@@ -2,6 +2,7 @@ import { OrderVisibility } from '../orders/visibility.js';
 import { Readable } from 'node:stream';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { autoRetrySummary, updateAutoRetry } from '../orders/auto-retry.js';
 import {
   orderSubmissionSchema,
   VIDEO_MATERIAL_LIMIT,
@@ -146,6 +147,22 @@ export function registerOrders(
   app.post('/manage/orders/:id/cancel', async (request) => {
     sessions.require(request);
     return repository.cancel(id(request.params));
+  });
+  app.post('/manage/orders/:id/auto-retry', async (request) => {
+    sessions.require(request);
+    const input = z
+      .strictObject({ requestId: z.uuid(), enabled: z.boolean() })
+      .parse(request.body);
+    return repository.transaction(() => {
+      const order = repository.get(id(request.params));
+      updateAutoRetry(
+        repository.database,
+        order,
+        input.requestId,
+        input.enabled,
+      );
+      return { autoRetry: autoRetrySummary(repository.database, order) };
+    });
   });
   app.post(
     '/manage/materials',

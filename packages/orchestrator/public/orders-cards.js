@@ -261,6 +261,47 @@ export function renderOrder(parent, order, context) {
     );
   if (order.preparationHash)
     generationCounts(card, order.generationCounts, closedGroups > 0);
+  if (order.autoRetry?.available) {
+    const section = element(card, 'div', '', 'order-actions');
+    const active = Boolean(order.autoRetry.expiresAt);
+    element(
+      section,
+      'p',
+      active
+        ? 'Tentativa automática autorizada por até 24 horas.'
+        : `Autorize até uma tentativa extra por take nas próximas 24 horas. Limite adicional: ${order.autoRetry.images} imagens e ${order.autoRetry.videos} vídeos.`,
+    );
+    const toggle = element(
+      section,
+      'button',
+      active
+        ? 'Desativar tentativa automática'
+        : 'Autorizar tentativa automática',
+      'secondary',
+    );
+    toggle.type = 'button';
+    toggle.addEventListener('click', () => {
+      if (
+        !active &&
+        !globalThis.confirm(
+          'Autorizar uma tentativa extra por take em caso de falha confirmada antes do envio, por até 24 horas? Isso pode consumir créditos adicionais.',
+        )
+      )
+        return;
+      void context.action(async () => {
+        toggle.disabled = true;
+        try {
+          await context.api(`/manage/orders/${order.id}/auto-retry`, {
+            requestId: crypto.randomUUID(),
+            enabled: !active,
+          });
+          await context.refresh();
+        } finally {
+          toggle.disabled = false;
+        }
+      });
+    });
+  }
   if (order.materials.some((material) => !material.available))
     element(
       card,

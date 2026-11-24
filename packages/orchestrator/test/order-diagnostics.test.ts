@@ -7,6 +7,8 @@ import { OrderRepository } from '../src/orders/repository.js';
 import { MaterialFiles } from '../src/orders/material-files.js';
 import { ClientStore } from '../src/persistence/clients.js';
 import { orderDiagnostic } from '../src/orders/diagnostics.js';
+import { autoRetrySummary, updateAutoRetry } from '../src/orders/auto-retry.js';
+import { randomUUID } from 'node:crypto';
 
 test('preparation diagnosis distinguishes no publication, active reservation, expired reservation and missing materials', async (t) => {
   const f = await fixture(t);
@@ -22,6 +24,26 @@ test('preparation diagnosis distinguishes no publication, active reservation, ex
   assert.equal(initial.preparation.published, false);
   assert.match(initial.preparation.message, /Nenhuma preparação foi publicada/);
   assert.deepEqual(initial.dispatches, []);
+  const requestId = randomUUID();
+  assert.equal(autoRetrySummary(f.database, order).expiresAt, null);
+  repository.transaction(() =>
+    updateAutoRetry(f.database, order, requestId, true, 1000),
+  );
+  assert.equal(autoRetrySummary(f.database, order, 2000).expiresAt, 86_401_000);
+  repository.transaction(() =>
+    updateAutoRetry(f.database, order, requestId, true, 2000),
+  );
+  assert.equal(
+    f.database
+      .prepare('SELECT COUNT(*) AS n FROM order_auto_retry_authorizations')
+      .get()?.n,
+    1,
+  );
+  assert.equal(autoRetrySummary(f.database, order, 86_401_000).expiresAt, null);
+  repository.transaction(() =>
+    updateAutoRetry(f.database, order, randomUUID(), false, 3000),
+  );
+  assert.equal(autoRetrySummary(f.database, order, 4000).expiresAt, null);
   repository.claim(order.id, 'fixture-agent');
   assert.match(
     orderDiagnostic(repository, clients, order.number).preparation.message,

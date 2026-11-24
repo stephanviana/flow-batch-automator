@@ -129,6 +129,15 @@ export const migrations: readonly Migration[] = [
       PRIMARY KEY(task_id,attempt_number)
     ) STRICT;`,
   },
+  {
+    version: 13,
+    sql: `CREATE TABLE order_auto_retry_authorizations (
+      id TEXT PRIMARY KEY, order_id TEXT NOT NULL REFERENCES production_orders(id),
+      authorized_at INTEGER NOT NULL, expires_at INTEGER NOT NULL, revoked_at INTEGER
+    ) STRICT;
+    CREATE INDEX order_auto_retry_active ON order_auto_retry_authorizations(order_id,expires_at) WHERE revoked_at IS NULL;
+    ALTER TABLE queue_flow_retry_authorizations ADD COLUMN policy_id TEXT REFERENCES order_auto_retry_authorizations(id);`,
+  },
 ];
 
 export function migrate(

@@ -529,6 +529,10 @@ inicial e solicita apenas o vídeo. Takes que compartilham imagem continuam
 usando a imagem do take de origem. A extensão localiza a imagem pelo cartão do
 projeto ou pela consulta de mídia. Se a imagem registrada estiver ausente ou a
 identificação for ambígua, a tentativa para antes de pedir o vídeo.
+No cartão do pedido, **Autorizar tentativa automática** permite uma tentativa
+extra por take durante 24 horas, para falhas comprovadas antes do envio. O painel
+mostra o orçamento adicional e permite desativá-lo. Resultados incertos após
+o envio continuam exigindo revisão do Flow.
 Quando o acompanhamento do Flow devolve `PUBLIC_ERROR_UNSAFE_GENERATION`, a
 extensão mostra a recusa na verificação de segurança e encerra o take com falha.
 O conteúdo precisa de revisão antes de uma nova tentativa autorizada.

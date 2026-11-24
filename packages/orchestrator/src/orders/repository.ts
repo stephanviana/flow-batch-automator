@@ -12,6 +12,7 @@ import {
 import { canClearOrder } from './visibility.js';
 import { currentOrderCycle, nextOrderNumber } from './numbering.js';
 import { MaterialStore } from './material-store.js';
+import { autoRetrySummary } from './auto-retry.js';
 import { HttpError } from '../security/errors.js';
 
 export interface PreparedOrder {
@@ -258,6 +259,7 @@ export class OrderRepository {
         return {
           ...summary,
           clearable: canClearOrder(order),
+          autoRetry: autoRetrySummary(this.database, order),
           generationCounts: {
             images:
               preparation?.manifests.reduce(
