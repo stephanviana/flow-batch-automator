@@ -18,4 +18,3 @@ into the distributed extension.
 `packages/extension/public/flowkit-hijack.js` is a copy of FlowKit
 `extension/hijack_bypass.js` from the same commit, with an attribution header.
 It is loaded in the Flow page at document start. Upstream formatting is preserved.
-No FlowKit Python dependencies or proprietary Google reCAPTCHA scripts are included.

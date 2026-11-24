@@ -5,14 +5,16 @@ camada continuam válidas dentro dela, respeitando as instruções do usuário.
 
 ## O que é este projeto
 
-Ferramenta local para a operação de TikTok Shop: o usuário monta pedidos no painel,
-o agente cria copy e prompts, a API coordena a fila e a extensão executa no Google
-Flow. FlowKit é referência técnica, não define o produto como ferramenta de YouTube.
+Aplicação local para organizar e automatizar operações de vídeos verticais.
+O usuário monta pedidos no painel, o agente conectado pelo MCP prepara falas e
+prompts, a API coordena a fila e a extensão executa no Google Flow. O objetivo,
+a linguagem e a direção criativa são definidos pelo pedido e pelas instruções
+locais. A saída são arquivos MP4 com histórico de preparação e execução.
 
-A arquitetura 0.6.0 usa painel em `/orders`, com produtos, materiais selecionados
-de qualquer pasta, formatos e quantidades por produto. Não há presets nesta
-etapa. O usuário pede ao Codex/Antigravity que prepare um ou vários números de
-pedido. Prefira o MCP local: `flow_list_orders`, `flow_checkout`, `flow_publish`
+O painel em `/orders` organiza materiais, formatos e quantidades em cadastros de
+produtos. Cada variação usa os três takes e os contratos implementados.
+O usuário pede ao agente que prepare um ou vários números de pedido.
+Prefira o MCP local: `flow_list_orders`, `flow_checkout`, `flow_publish`
 e `flow_approve`. O pedido direto “prepare o pedido N” inclui preparar e executar
 os números selecionados no chat, nos formatos e quantidades do pedido, sem outra
 confirmação nem hash de aprovação. Use `flow_publish` com `execute=true` e
@@ -24,7 +26,7 @@ A biblioteca criativa versionada está em `instrucoes/`: base.md e oito arquivos
 `formatos/*.md`. `pnpm library seed [PASTA]` inicia a edição do checkout
 na pasta escolhida apenas quando nova ou com scaffold modular vazio sem capturas.
 Conteúdo local existente, incompleto ou legado é preservado. O runtime usa
-somente LIBRARY_DIR (Compose: FLOW_LIBRARY_DIR), sem fallback no checkout/pacote.
+somente LIBRARY_DIR (Compose: FLOW_LIBRARY_DIR).
 Atualizar o software não sincroniza instruções. Preserve os textos ao formatar.
 Metadados instrucoes.json, .historico/, .rascunhos/ e temporários são locais,
 ignorados no Git; capturas não são cache descartável. biblioteca.json migra por
@@ -40,8 +42,8 @@ seleções e removidas individualmente. Todas entram nos materiais do pedido;
 `referenceId` aponta a única imagem marcada como principal para a geração no
 Flow. Não alterar esse vínculo nem os materiais de pedidos já registrados.
 
-Uma reserva valida o pacote local e captura automaticamente os arquivos usados,
-sem publicação manual da biblioteca. Reservas existentes e preparações publicadas
+Uma reserva valida a biblioteca local e captura automaticamente os arquivos
+usados, sem publicação manual da biblioteca. Reservas existentes e preparações publicadas
 preservam suas capturas e templates. Ausência de regras aponta os arquivos
 necessários, sem buscar conteúdo no código. A CLI e o MCP entregam o mesmo
 contexto e os mesmos materiais verificados. O compilador não invoca IA.
@@ -60,12 +62,10 @@ todos os takes; ausência legada resolve Omni na compilação sem regravar regis
 
 O SQLite guarda registros; os materiais importados ficam em arquivos por hash
 em armazenamento persistente administrado pelo aplicativo, com deduplicação.
-Agente e extensão acessam materiais pela API local autorizada. Não depender de
-workspace Windows, symlink, seletor de pasta vinculada, caixa `.dispatch`,
-`setup.sh` ou importação manual de manifesto para novos pedidos. O usuário
-explicitamente autorizou remover o código/configuração antigos, os materiais do
-workspace anterior e seu histórico SQLite durante esta mudança. Essa limpeza
-pontual não autoriza exclusões futuras. Não alterar a pasta global de downloads.
+Agente e extensão acessam materiais pela API local autorizada. Pedidos e
+materiais permanecem no armazenamento administrado pela aplicação.
+Exclusões de dados exigem autorização específica. Preserve a pasta global de
+downloads e os resultados já registrados.
 
 Cada variação tem três vídeos (gancho, Body, CTA). Fábrica, POV + Vendedora
 (`pov`) usam duas imagens: gancho e Body; o CTA reutiliza a imagem
@@ -102,8 +102,8 @@ composição nos três takes, sem coro ou lip-sync visível.
 Regras editoriais, duração falada, apoio físico, identidade do produto e direção
 visual vêm exclusivamente das instruções locais. Os templates são texto de
 entrada do compilador; o código não gera instruções criativas nem faz fallback
-para conteúdo embutido. Swipes podem ser fornecidos como referência em uma
-conversa de manutenção, sem pasta de swipes nem dependência de execução.
+para conteúdo embutido. Referências fornecidas para manutenção orientam a
+edição das instruções locais; cada preparação usa sua captura registrada.
 
 Projetos do Flow são preparados automaticamente por lote e retomados pelo vínculo
 persistido. Reutilizar a mesma aba, sem abrir abas adicionais por lote. Criação
@@ -131,35 +131,29 @@ ciclo atual e UUIDs preservam acesso histórico. Checkouts dos novos ciclos usam
 subpastas por UUID para não sobrescrever arquivos de pedidos anteriores.
 Mostrar etapas reais, pausa, falha e incerteza; não inventar percentual.
 
-As Fases 1–4 e o piloto anterior tiveram validações reais no Chrome Windows,
-incluindo Omni Frames 8 s/720p e download de MP4. O piloto Fábrica Padrão de três
-takes comprovou o percurso técnico, não aprovação criativa, fala exata ou lip-sync.
-Body e CTA tinham apresentadoras diferentes; a correção de reutilização foi
-verificada com fixtures e não herda validação paga do piloto. O áudio POV ainda
-não foi validado na conta real. Testes sintéticos da arquitetura nova não
-comprovam novo teste pago. Implementar/testar sem créditos está autorizado;
-qualquer geração paga continua dependendo de autorização específica no chat.
+Validações devem distinguir contratos e fixtures de gerações reais. Testes
+sintéticos verificam os cenários implementados; qualidade criativa, áudio e
+sincronização da fala dependem de validação da geração correspondente.
+Qualquer geração paga exige autorização específica no chat.
 
 ## Stack e organização
 
 - Node.js 24.22.2 LTS, TypeScript estrito, pnpm Workspaces e versões exatas no
   projeto e lockfile. Não instalar ferramentas globais no host automaticamente.
 - `packages/protocol`: contratos Zod e tipos compartilhados, sem dependências
-  Node de execução; não antecipar contratos de fases futuras.
+  Node de execução.
 - `packages/orchestrator`: Fastify, configuração Zod, persistência `node:sqlite`
   e rotas HTTP. Separe configuração, persistência, comunicação e segurança.
-  O modo de execução suportado é o Compose da raiz; não há distribuição npm,
-  instalador `flow-batch` ou runtime nativo gerenciado. O conector MCP independente
-  permanece em `src/mcp`. O registro Codex usa `smol-toml`, com backup autorizado
-  e preservação dos valores. Desenvolvimento e testes podem iniciar Node no host.
-  Um aplicativo desktop é direção futura; não antecipar framework ou contratos.
+  O modo de execução suportado é o Compose da raiz. O conector MCP fica em
+  `src/mcp`. O registro Codex usa `smol-toml`, com backup autorizado e preservação
+  dos valores. Desenvolvimento e testes podem iniciar Node no host.
 - `packages/extension`: Chrome Manifest V3, Chrome 120+, side panel e service worker
   empacotados com esbuild. Identidade em IndexedDB; storage e alarms para estado
   de conexão e recuperação. Referências de execução em IndexedDB separado, com SHA-256;
   materiais importados passam pela API local e ficam em arquivos persistentes. A integração executa RPCs no contexto da aba do Flow,
   aproveitando sua sessão; credenciais e tokens permanecem no navegador.
-- Docker Compose: orquestrador e serviço temporário `sync-extension`. Sem Redis,
-  PostgreSQL, dashboard completo ou serviços externos adicionais.
+- Docker Compose: orquestrador com volume persistente e serviço temporário
+  `sync-extension` para os arquivos da extensão.
 - `shared/styles/theme.css`: base visual compartilhada pelo orquestrador e pela
   extensão, copiada nos dois builds. Estilos específicos ficam em cada camada.
 - Antes de implementar, confira o estado real do repositório e os contratos
@@ -292,10 +286,9 @@ mudanças apenas documentais não exigem criar testes de código.
   preventivas e backups automáticos disparados por scripts ou ferramentas.
   Autorizar uma atualização, instalação ou correção não autoriza criar backups.
 - Não alterar configurações globais de Windows, WSL, Docker ou Chrome.
-- Identifique instalações anteriores antes de agir; não apague seus dados.
-  O usuário informou que removeu a instalação anterior e fixou o destino da
-  extensão em `C:\Users\stephan\flow-batch-extension`, correspondente a
-  `/mnt/c/Users/stephan/flow-batch-extension` no WSL.
+- Identifique instalações existentes antes de agir e preserve seus dados.
+  Use o destino de extensão configurado em `WIN_EXTENSION_DIR`; caminhos
+  específicos da instalação pertencem ao `.env` local.
 - Servidor em `0.0.0.0` no container e publicação somente em `127.0.0.1:4319`.
   Execute sem privilégios, com raiz somente para leitura e volume SQLite próprio.
 - SQLite com WAL, foreign keys, busy timeout, temporários em memória para a raiz
@@ -363,7 +356,7 @@ mudanças apenas documentais não exigem criar testes de código.
   Mantenha a autorização local e o tratamento de resultados incertos da fila.
   A retirada das restrições da integração não autoriza expor o servidor na rede,
   apagar dados ou alterar configurações globais.
-- Código adaptado do FlowKit deve preservar sua licença MIT e atribuição.
+- Preserve licenças e atribuições do código incorporado, conforme `THIRD_PARTY_NOTICES.md`.
 - Testes não usam perfil pessoal do Chrome. Validação Windows/Chrome real deve
   ser registrada separadamente de testes HTTP e containers.
 
