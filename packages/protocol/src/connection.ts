@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { dispatchIssueSchema } from './dispatch.js';
 import {
   flowInspectionSchema,
+  flowTakeCheckSchema,
   flowExecuteSchema,
   queueCheckpointSchema,
 } from './flow.js';
@@ -103,7 +104,14 @@ export const clientMessageSchema = z.discriminatedUnion('type', [
     challengeId: z.uuid(),
     signature: z.string().regex(/^[A-Za-z0-9_-]{86}$/),
     protocolVersion: z
-      .union([z.literal(3), z.literal(4), z.literal(5), z.literal(6)])
+      .union([
+        z.literal(3),
+        z.literal(4),
+        z.literal(5),
+        z.literal(6),
+        z.literal(7),
+        z.literal(8),
+      ])
       .optional(),
   }),
   z.strictObject({ type: z.literal('ping') }),
@@ -142,9 +150,11 @@ export const popupRequestSchema = z.strictObject({
     'queue-pause',
     'queue-clear',
     'queue-retry',
+    'queue-retry-flow',
     'queue-resolve',
     'queue-cancel',
     'queue-inspect',
+    'queue-check-flow',
     'queue-show-download',
     'queue-open-project',
   ]),
@@ -177,5 +187,6 @@ export const popupReplySchema = z.strictObject({
   inspection: taskDetailSchema.nullable(),
   operationError: z.string().nullable(),
   flow: flowInspectionSchema.nullable(),
+  flowCheck: flowTakeCheckSchema.nullable().default(null),
 });
 export type ExtensionState = z.infer<typeof extensionStateSchema>;

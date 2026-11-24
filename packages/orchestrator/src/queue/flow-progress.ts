@@ -38,13 +38,12 @@ export class FlowProgress {
           throw new HttpError(409, 'Checkpoint identity changed');
         return false;
       }
+      const source = new FlowImages(sql).forAttempt(record);
       if (
-        flowCheckpointStages(record.input.flow)[previous.length] !==
-        message.stage
+        flowCheckpointStages(Boolean(source))[previous.length] !== message.stage
       )
         throw new HttpError(409, 'Checkpoint out of order');
       if (message.stage === 'image_reused') {
-        const source = new FlowImages(sql).resolve(clientId, record.input);
         if (
           !source ||
           source.taskId !== message.sourceTaskId ||
@@ -109,14 +108,13 @@ export class FlowProgress {
     const fields = new Map(
       checkpoints.map(({ checkpoint }) => [checkpoint.stage, checkpoint]),
     );
-    const image = fields.get(
-      record.input.flow.imageSourceTaskKey ? 'image_reused' : 'image_generated',
-    );
+    const source = new FlowImages(this.database.connection).forAttempt(record);
+    const image = fields.get(source ? 'image_reused' : 'image_generated');
     const operation = fields.get('video_submitted');
     const video = fields.get('video_ready');
     const download = fields.get('download_started');
     if (
-      checkpoints.length !== flowCheckpointStages(record.input.flow).length ||
+      checkpoints.length !== flowCheckpointStages(Boolean(source)).length ||
       (image?.stage !== 'image_generated' && image?.stage !== 'image_reused') ||
       image.mediaId !== result.imageMediaId ||
       operation?.stage !== 'video_submitted' ||

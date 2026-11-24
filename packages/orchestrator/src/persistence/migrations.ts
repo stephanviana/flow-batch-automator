@@ -120,6 +120,15 @@ export const migrations: readonly Migration[] = [
       task_id TEXT PRIMARY KEY REFERENCES queue_tasks(id), revision INTEGER NOT NULL, cleared_at INTEGER NOT NULL
     ) STRICT;`,
   },
+  {
+    version: 12,
+    sql: `CREATE TABLE queue_flow_retry_authorizations (
+      task_id TEXT NOT NULL REFERENCES queue_tasks(id), attempt_number INTEGER NOT NULL CHECK(attempt_number>1),
+      input_hash TEXT NOT NULL, request_id TEXT NOT NULL, approved_at INTEGER NOT NULL,
+      origin TEXT NOT NULL CHECK(origin IN ('orders','extension')),
+      PRIMARY KEY(task_id,attempt_number)
+    ) STRICT;`,
+  },
 ];
 
 export function migrate(

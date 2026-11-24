@@ -1,39 +1,25 @@
-// Adapted from FlowKit's browser transport and response readers (MIT).
+// Adapted from FlowKit's browser transport (MIT).
 // Serialized into MAIN world: runtime helpers must remain inside this function.
-export interface FlowRpcRequest {
-  rpcId:
-    'maseQ' | 'ogiZ0b' | 'eb1hJf' | 'jwpduf' | 'Zzl0ze' | 'as29s' | 'jHPbke';
-  projectId: string;
-  payload: unknown[];
-  captchaAction?: 'IMAGE_GENERATION' | 'VIDEO_GENERATION';
-  operationId?: string | undefined;
-  mediaId?: string;
-}
-export interface FlowRpcValue {
-  projectId?: string;
-  projectTitle?: string;
-  mediaId?: string | null | undefined;
-  operationId?: string | undefined;
-  status?: string | undefined;
-  videoUrl?: string | null | undefined;
-  ready?: boolean | undefined;
-}
-export type FlowRpcReply =
-  | { ok: true; value: FlowRpcValue }
-  | { ok: false; code: string; message: string; sent: boolean };
+import type {
+  FlowRpcRequest,
+  FlowRpcTransportReply,
+} from './flow-rpc-contract.js';
+export type {
+  FlowRpcRequest,
+  FlowRpcValue,
+  FlowRpcReply,
+} from './flow-rpc-contract.js';
 
 export async function flowRpcPage(
   request: FlowRpcRequest,
-): Promise<FlowRpcReply> {
+): Promise<FlowRpcTransportReply> {
   let sent = false;
-  const fail = (code: string, message: string): FlowRpcReply => ({
+  const fail = (code: string, message: string): FlowRpcTransportReply => ({
     ok: false,
     code,
     message,
     sent,
   });
-  const validId = (value: unknown): value is string =>
-    typeof value === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(value);
   if (
     location.origin !== 'https://flow.google.com' ||
     (request.rpcId !== 'jHPbke' &&
@@ -181,12 +167,16 @@ export async function flowRpcPage(
           'x-same-domain': '1',
         },
         body: new URLSearchParams({ 'f.req': envelope, at: metadata.SNlM0e }),
-        signal: AbortSignal.timeout(120000),
+        signal: AbortSignal.timeout(request.timeoutMs ?? 120000),
       },
     );
     if (!response.ok)
       return fail(
-        'flow_http_error',
+        response.status === 408 ||
+          response.status === 429 ||
+          response.status >= 500
+          ? 'flow_http_transient'
+          : 'flow_http_error',
         `O Flow recusou a consulta (HTTP ${response.status}).`,
       );
     const text = await response.text();
@@ -217,11 +207,28 @@ export async function flowRpcPage(
           entry[1] !== request.rpcId
         )
           continue;
-        if (typeof entry[2] !== 'string')
+        if (typeof entry[2] !== 'string') {
+          const errorSlot: unknown = entry[5];
+          const errorCode: unknown = Array.isArray(errorSlot)
+            ? errorSlot[0]
+            : undefined;
+          if (request.rpcId === 'as29s' && errorCode === 5)
+            return fail(
+              'flow_operation_not_found',
+              'O Flow não encontrou a operação consultada (código 5).',
+            );
+          const suffix =
+            typeof errorCode === 'number' &&
+            Number.isInteger(errorCode) &&
+            errorCode >= 0 &&
+            errorCode <= 999
+              ? ` (código ${errorCode})`
+              : '';
           return fail(
             'flow_rpc_rejected',
-            'O Flow recusou a leitura ou geração. Confira a sessão na aba.',
+            `O Flow recusou a leitura ou geração${suffix}. Confira a sessão na aba.`,
           );
+        }
         try {
           payload = JSON.parse(entry[2]);
         } catch {
@@ -234,99 +241,7 @@ export async function flowRpcPage(
         'flow_response_invalid',
         'Resposta do Flow incompatível com o adaptador.',
       );
-    if (request.rpcId === 'jHPbke') {
-      const title: unknown = Array.isArray(payload[1])
-        ? payload[1][0]
-        : undefined;
-      if (typeof payload[0] === 'string' && /^[a-f0-9-]{36}$/i.test(payload[0]))
-        return {
-          ok: true,
-          value: {
-            projectId: payload[0],
-            ...(typeof title === 'string'
-              ? { projectTitle: title.slice(0, 160) }
-              : {}),
-          },
-        };
-      return fail(
-        'flow_response_invalid',
-        'Não foi possível confirmar o projeto criado. Confira o Flow antes de continuar.',
-      );
-    }
-    const nodes: unknown[] = [payload];
-    const strings: string[] = [];
-    let mediaId: string | null = null;
-    while (nodes.length) {
-      const node = nodes.pop();
-      if (typeof node === 'string') strings.push(node);
-      if (!Array.isArray(node)) continue;
-      for (const child of node as unknown[]) nodes.push(child);
-      const detail: unknown = node[3];
-      if (
-        request.operationId &&
-        Array.isArray(detail) &&
-        (node[0] === request.operationId ||
-          detail[5] === request.operationId) &&
-        validId(detail[4])
-      )
-        mediaId = detail[4];
-    }
-    if (request.rpcId === 'Zzl0ze')
-      return {
-        ok: true,
-        value: request.operationId ? { mediaId } : { ready: true },
-      };
-    if (request.rpcId === 'maseQ') {
-      const record: unknown = payload[0];
-      if (Array.isArray(record) && validId(record[0]))
-        return { ok: true, value: { mediaId: record[0] } };
-    }
-    if (request.rpcId === 'eb1hJf' || request.rpcId === 'jwpduf') {
-      const records: unknown = payload[2];
-      const record: unknown = Array.isArray(records)
-        ? (records[0] as unknown)
-        : null;
-      if (
-        Array.isArray(record) &&
-        validId(record[0]) &&
-        (!request.operationId || record[0] === request.operationId)
-      )
-        return {
-          ok: true,
-          value: {
-            operationId: record[0],
-            status: typeof record[3] === 'string' ? record[3] : '',
-          },
-        };
-    }
-    if (request.rpcId === 'ogiZ0b' || request.rpcId === 'as29s') {
-      for (const candidate of strings) {
-        if (!candidate.startsWith('https://flow-content.google/')) continue;
-        const url = new URL(candidate);
-        const match = url.pathname.match(/^\/(image|video)\/([a-zA-Z0-9_-]+)$/);
-        if (url.hostname !== 'flow-content.google' || !match?.[2]) continue;
-        if (request.rpcId === 'ogiZ0b' && match[1] === 'image')
-          return { ok: true, value: { mediaId: match[2] } };
-        if (
-          request.rpcId === 'as29s' &&
-          match[1] === 'video' &&
-          match[2] === request.mediaId
-        )
-          return {
-            ok: true,
-            value: { mediaId: request.mediaId, videoUrl: candidate },
-          };
-      }
-      if (request.rpcId === 'as29s')
-        return {
-          ok: true,
-          value: { mediaId: request.mediaId ?? null, videoUrl: null },
-        };
-    }
-    return fail(
-      'flow_response_invalid',
-      'Resposta do Flow incompatível com o adaptador.',
-    );
+    return { ok: true, payload };
   } catch {
     return fail(
       'flow_request_unknown',

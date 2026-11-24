@@ -10,6 +10,14 @@ export const flowInspectionSchema = z.strictObject({
 });
 export type FlowInspection = z.infer<typeof flowInspectionSchema>;
 
+export const flowTakeCheckSchema = z.strictObject({
+  taskId: z.uuid(),
+  attemptId: z.uuid(),
+  checkedAt: z.number().int().nonnegative(),
+  message: z.string().max(600),
+});
+export type FlowTakeCheck = z.infer<typeof flowTakeCheckSchema>;
+
 export const flowIdSchema = z.string().regex(/^[a-zA-Z0-9_-]{1,128}$/);
 export const flowStageSchema = z.enum([
   'reference_uploaded',
@@ -46,33 +54,32 @@ export const originalPromptsSchema = z.strictObject({
   videoPrompt: z.string().max(4096),
   copy: z.string().max(4096),
 });
-export const flowSettingsSchema = z
-  .strictObject({
-    batchId: z.uuid().optional(),
-    projectId: z.uuid(),
-    imageModel: z.enum(['GEM_PIX_2', 'BELUGA', 'HARBOR_SEAL']),
-    videoModel: flowVideoModelSchema,
-    aspect: z.enum(['9:16', '16:9']),
-    seed: z.number().int().min(1).max(1_000_000_000),
-    reference: flowReferenceSchema,
-    imageSourceTaskKey: z.uuid().optional(),
-    output: flowOutputSchema.optional(),
-    approval: z.strictObject({
-      approvedAt: z.number().int().positive(),
-      imageGenerations: z.union([z.literal(0), z.literal(1)]),
-      videoGenerations: z.literal(1),
-    }),
-  })
-  .refine(
-    (flow) =>
-      flow.approval.imageGenerations === (flow.imageSourceTaskKey ? 0 : 1),
-    'Image reuse authorizes zero new images',
-  );
+const flowSettingsBaseSchema = z.strictObject({
+  batchId: z.uuid().optional(),
+  projectId: z.uuid(),
+  imageModel: z.enum(['GEM_PIX_2', 'BELUGA', 'HARBOR_SEAL']),
+  videoModel: flowVideoModelSchema,
+  aspect: z.enum(['9:16', '16:9']),
+  seed: z.number().int().min(1).max(1_000_000_000),
+  reference: flowReferenceSchema,
+  imageSourceTaskKey: z.uuid().optional(),
+  output: flowOutputSchema.optional(),
+  approval: z.strictObject({
+    approvedAt: z.number().int().positive(),
+    imageGenerations: z.union([z.literal(0), z.literal(1)]),
+    videoGenerations: z.literal(1),
+  }),
+});
+export const flowSettingsSchema = flowSettingsBaseSchema.refine(
+  (flow) =>
+    flow.approval.imageGenerations === (flow.imageSourceTaskKey ? 0 : 1),
+  'Image reuse authorizes zero new images',
+);
 export type FlowSettings = z.infer<typeof flowSettingsSchema>;
 export function flowCheckpointStages(
-  flow: Pick<FlowSettings, 'imageSourceTaskKey'>,
+  reusesImage: boolean,
 ): readonly z.infer<typeof flowStageSchema>[] {
-  return flow.imageSourceTaskKey
+  return reusesImage
     ? ['image_reused', 'video_submitted', 'video_ready', 'download_started']
     : [
         'reference_uploaded',
@@ -113,18 +120,19 @@ export const flowExecuteSchema = z
     type: z.literal('flow-execute'),
     taskId: z.uuid(),
     attemptId: z.uuid(),
-    attemptNumber: z.literal(1),
-    flow: flowSettingsSchema,
+    attemptNumber: z.number().int().positive(),
+    flow: flowSettingsBaseSchema,
     original: originalPromptsSchema,
     sourceImage: z
       .strictObject({ taskId: z.uuid(), mediaId: flowIdSchema })
       .optional(),
   })
-  .refine(
-    (command) =>
-      Boolean(command.sourceImage) === Boolean(command.flow.imageSourceTaskKey),
-    'Reuse requires a resolved source image',
-  );
+  .refine(({ taskId, attemptNumber, flow, sourceImage }) => {
+    if (flow.approval.imageGenerations !== (sourceImage ? 0 : 1)) return false;
+    if (flow.imageSourceTaskKey)
+      return Boolean(sourceImage && sourceImage.taskId !== taskId);
+    return !sourceImage || (attemptNumber > 1 && sourceImage.taskId === taskId);
+  }, 'Image approval and resolved source must match the attempt');
 export type FlowExecute = z.infer<typeof flowExecuteSchema>;
 const checkpointBase = z.strictObject({
   type: z.literal('queue-checkpoint'),

@@ -57,15 +57,17 @@ function processing(task: TaskSummary, running: boolean): Activity {
       : [
           'Preparando e enviando referência',
           'Gerando imagem no Flow',
-          'Gerando vídeo no Flow',
+          'Aguardando vídeo do Flow',
           'Baixando MP4',
         ][step]!;
   return {
     title,
     detail: `Etapa ${step + 1} de ${activitySteps[task.executor].length}. ${
-      running
-        ? 'Em andamento; as etapas são atualizadas automaticamente.'
-        : 'O take atual continua. A fila está pausada para os próximos.'
+      task.executor === 'google-flow' && task.step === 'video_submitted'
+        ? `Pedido enviado; o Flow ainda não confirmou a geração nem o vídeo.${running ? '' : ' A fila está pausada para os próximos.'}`
+        : running
+          ? 'Em andamento; as etapas são atualizadas automaticamente.'
+          : 'O take atual continua. A fila está pausada para os próximos.'
     }`,
     tone: 'working',
     busy: true,
@@ -130,7 +132,10 @@ export function queueActivity(queue: QueueSnapshot | null): Activity {
   if (latest?.state === 'failed')
     return {
       ...idle,
-      title: 'Take não concluído',
+      title:
+        latest.lastError?.code === 'flow_unsafe_generation'
+          ? 'Conteúdo recusado pelo Flow'
+          : 'Take não concluído',
       detail:
         latest.lastError?.message ??
         'Consulte o histórico para conferir o resultado da tentativa.',

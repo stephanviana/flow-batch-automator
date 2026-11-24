@@ -73,6 +73,7 @@ async function refresh(
         : '';
     }
     renderQueue(data.queue, data.inspection, data.operationError, refresh);
+    renderFlowCheck(data.flowCheck);
     renderDispatchIssues(data.dispatchIssues, refresh);
     if (request.type === 'queue-clear' && !data.operationError)
       document.querySelector('#queue-view-feedback')!.textContent =
@@ -94,6 +95,19 @@ async function refresh(
     pendingRequests--;
     if (control) finishQueueControl(control, controlError);
   }
+}
+function renderFlowCheck(
+  check: ReturnType<typeof popupReplySchema.parse>['flowCheck'],
+): void {
+  document.querySelector('#flow-check-result')?.remove();
+  if (!check) return;
+  const row = document.querySelector(`[data-task-id="${check.taskId}"]`);
+  if (!row) return;
+  const report = document.createElement('p');
+  report.id = 'flow-check-result';
+  report.className = 'task-meta';
+  report.textContent = `${new Date(check.checkedAt).toLocaleTimeString()} · ${check.message}`;
+  row.append(report);
 }
 for (const button of document.querySelectorAll<HTMLButtonElement>(
   '[data-action]',

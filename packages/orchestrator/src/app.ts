@@ -81,7 +81,14 @@ export function createApp(config: AppConfig): FastifyInstance {
   registerOrders(app, sessions, orders, materials, clients, bindings);
   registerLibrary(app, sessions, library);
   registerDispatchRecovery(app, sessions, orders, clients);
-  registerOrderDiagnostics(app, sessions, orders, clients);
+  registerOrderDiagnostics(
+    app,
+    sessions,
+    orders,
+    clients,
+    queueMutations,
+    queueEngine,
+  );
   registerMaterialDownloads(app, signatures, clients, orders, materials);
   registerConnectionRoutes(app, clients, signatures, simulations, hub);
   registerBatchRoutes(app, signatures, clients, batches);

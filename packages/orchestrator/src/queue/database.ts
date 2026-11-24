@@ -68,11 +68,14 @@ export class QueueDatabase {
         : {}),
       executor: input.executor,
       step:
-        this.connection
-          .prepare(
-            'SELECT stage FROM queue_checkpoints WHERE task_id=? ORDER BY sequence DESC LIMIT 1',
-          )
-          .get(id)?.stage ?? null,
+        row.state === 'queued'
+          ? null
+          : (this.connection
+              .prepare(
+                `SELECT c.stage FROM queue_checkpoints c JOIN queue_attempts a ON a.id=c.attempt_id
+             WHERE c.task_id=? AND a.number=? ORDER BY c.sequence DESC LIMIT 1`,
+              )
+              .get(id, row.attempt_count as number)?.stage ?? null),
       product: input.product,
       video: input.video,
       format: input.format,

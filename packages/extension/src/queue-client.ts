@@ -90,6 +90,16 @@ export async function queueCommand(
     taskId: message.taskId,
     expectedRevision: message.expectedRevision,
   };
+  if (message.type === 'queue-retry-flow') {
+    await signedRequest(clientId, 'POST', '/api/queue/actions', {
+      ...common,
+      action: 'retry_flow',
+      confirmedFailure: true,
+      approve: true,
+      startQueue: false,
+    });
+    return;
+  }
   const action =
     message.type === 'queue-retry'
       ? { ...common, action: 'retry', acknowledgeDuplicateRisk: false }

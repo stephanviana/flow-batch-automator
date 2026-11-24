@@ -161,7 +161,18 @@ export const queueExecuteSchema = z.strictObject({
 });
 export type SimulationExecute = z.infer<typeof queueExecuteSchema>;
 export type QueueExecute = SimulationExecute | FlowExecute;
+export const flowRetryActionSchema = z.strictObject({
+  action: z.literal('retry_flow'),
+  requestId: z.uuid(),
+  taskId: z.uuid(),
+  expectedRevision: z.number().int().min(0),
+  confirmedFailure: z.literal(true),
+  approve: z.literal(true),
+  startQueue: z.boolean().default(false),
+});
+export type FlowRetryAction = z.infer<typeof flowRetryActionSchema>;
 export const queueActionSchema = z.discriminatedUnion('action', [
+  flowRetryActionSchema,
   z.strictObject({
     action: z.literal('retry'),
     requestId: z.uuid(),

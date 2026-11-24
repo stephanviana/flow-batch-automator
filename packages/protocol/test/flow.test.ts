@@ -60,10 +60,29 @@ test('Flow inputs bind approval to one image, one video, supported models and an
   assert.equal(
     flowExecuteSchema.safeParse({
       ...command,
+      attemptNumber: 2,
       sourceImage: { taskId: randomUUID(), mediaId: randomUUID() },
     }).success,
     true,
   );
+  const videoOnlyRetry = {
+    ...command,
+    attemptNumber: 2,
+    flow: { ...settings, approval: reused.approval },
+    sourceImage: { taskId: command.taskId, mediaId: randomUUID() },
+  };
+  assert.equal(flowExecuteSchema.safeParse(videoOnlyRetry).success, true);
+  for (const invalid of [
+    { ...videoOnlyRetry, attemptNumber: 1 },
+    { ...videoOnlyRetry, flow: settings },
+    { ...videoOnlyRetry, sourceImage: undefined },
+    {
+      ...videoOnlyRetry,
+      sourceImage: { ...videoOnlyRetry.sourceImage, taskId: randomUUID() },
+    },
+  ]) {
+    assert.equal(flowExecuteSchema.safeParse(invalid).success, false);
+  }
   assert.equal(
     flowSettingsSchema.safeParse({ ...settings, approval: undefined }).success,
     false,

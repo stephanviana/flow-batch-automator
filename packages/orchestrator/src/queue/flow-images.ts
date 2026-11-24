@@ -6,6 +6,7 @@ import {
   type FlowExecute,
 } from '@flow-batch/protocol';
 import { HttpError } from '../security/errors.js';
+import type { TaskRecord } from './database.js';
 
 type RealInput = Extract<TaskInput, { executor: 'google-flow' }>;
 export class FlowImages {
@@ -70,5 +71,31 @@ export class FlowImages {
     if (checkpoint.stage !== 'image_generated')
       throw new HttpError(409, 'Source image checkpoint incompatible');
     return { taskId: id, mediaId: checkpoint.mediaId };
+  }
+
+  forAttempt(
+    record: TaskRecord,
+    number = record.summary.attemptCount,
+  ): FlowExecute['sourceImage'] {
+    if (record.input.executor !== 'google-flow') return undefined;
+    if (record.input.flow.imageSourceTaskKey)
+      return this.resolve(record.clientId, record.input);
+    if (number < 2) return undefined;
+    const row = this.sql
+      .prepare(
+        `SELECT c.payload FROM queue_checkpoints c
+         JOIN queue_attempts a ON a.id=c.attempt_id AND a.task_id=c.task_id
+         JOIN queue_tasks q ON q.id=c.task_id
+         WHERE q.id=? AND q.client_id=? AND a.number<? AND c.stage='image_generated'
+         ORDER BY a.number DESC LIMIT 1`,
+      )
+      .get(record.summary.id, record.clientId, number);
+    if (!row) return undefined;
+    const checkpoint = queueCheckpointSchema.parse(
+      JSON.parse(String(row.payload)) as unknown,
+    );
+    if (checkpoint.stage !== 'image_generated')
+      throw new HttpError(409, 'Prior image checkpoint incompatible');
+    return { taskId: record.summary.id, mediaId: checkpoint.mediaId };
   }
 }

@@ -347,7 +347,16 @@ mudanças apenas documentais não exigem criar testes de código.
   despachos até revisão explícita; reconexão não autoriza reenvio.
 - Takes reais exigem autorização vinculada à entrada imutável para uma imagem e
   um vídeo, ou zero imagens e um vídeo quando reutilizam a imagem confirmada do
-  Body, com tentativa única. Persistir checkpoints dos IDs de cada etapa.
+  Body, com uma tentativa por autorização. Persistir checkpoints dos IDs de
+  cada etapa. Uma nova tentativa do take exige confirmação explícita do operador
+  após verificar a falha no Flow e protocolo v8 para recarregar a mesma aba
+  do projeto antes do envio. Se o take já possui imagem gerada registrada em
+  tentativa anterior, a autorização usa zero imagens e um vídeo, via
+  `image_reused` com o próprio take como origem. Use o último checkpoint
+  `image_generated` válido do próprio take e pare se a imagem não puder ser
+  confirmada no Flow. Preserve entrada, tentativas e autorizações anteriores.
+  Recusa `flow_unsafe_generation` permite seguir os próximos takes independentes
+  e exige revisão do conteúdo para repetir o take recusado.
   Conclusão exige download confirmado pelo Chrome e evidência correspondente;
   não aceitar conclusão manual simulada de uma tarefa real.
 - Repetição automática de simulações somente para falha comprovadamente anterior ao envio,

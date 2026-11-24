@@ -10,6 +10,7 @@ export interface QueueTransport {
     flowCapable?: boolean;
     modernFlowCapable?: boolean;
     videoFoldersCapable?: boolean;
+    flowRetryCapable?: boolean;
   }[];
   sendQueue(connectionId: string, message: QueueExecute): boolean;
   closeQueue(connectionId: string): void;

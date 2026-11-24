@@ -76,6 +76,9 @@ export class QueueEngine implements QueueEvents {
       connections
         .filter((connection) => connection.videoFoldersCapable)
         .map((connection) => connection.clientId),
+      connections
+        .filter((connection) => connection.flowRetryCapable)
+        .map((connection) => connection.clientId),
     );
     if (!candidate) return;
     if (candidate.summary.nextAttemptAt > now) {
@@ -97,7 +100,7 @@ export class QueueEngine implements QueueEvents {
       try {
         sourceImage = new FlowImages(
           this.repository.database.connection,
-        ).resolve(task.clientId, task.input);
+        ).forAttempt(task);
       } catch {
         this.mutations.progress(task.clientId, session.connectionId, {
           type: 'queue-progress',
@@ -107,7 +110,7 @@ export class QueueEngine implements QueueEvents {
           error: {
             code: 'source_image_unavailable',
             message:
-              'A imagem do Body não está confirmada. O CTA não gerou outra imagem nem enviou vídeo.',
+              'A imagem de origem não pôde ser confirmada. Confira o histórico do take.',
             retryable: false,
             notSubmitted: true,
           },
@@ -123,8 +126,15 @@ export class QueueEngine implements QueueEvents {
               type: 'flow-execute',
               taskId: task.summary.id,
               attemptId: task.activeAttemptId,
-              attemptNumber: 1,
-              flow: task.input.flow,
+              attemptNumber: task.summary.attemptCount,
+              flow: {
+                ...task.input.flow,
+                approval: {
+                  ...task.input.flow.approval,
+                  approvedAt: task.flowApprovalAt!,
+                  imageGenerations: sourceImage ? 0 : 1,
+                },
+              },
               original: task.input.original,
               ...(sourceImage ? { sourceImage } : {}),
             }

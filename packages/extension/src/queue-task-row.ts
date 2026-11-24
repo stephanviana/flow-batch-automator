@@ -31,7 +31,12 @@ function appendTaskDescription(row: HTMLElement, task: TaskSummary): void {
   content.append(title, meta, execution);
   const state = document.createElement('span');
   state.className = 'task-state';
-  state.textContent = taskStateLabels[task.state];
+  state.textContent =
+    task.executor === 'google-flow' &&
+    task.state === 'generating' &&
+    task.step === 'video_submitted'
+      ? 'Aguardando confirmação do Flow'
+      : taskStateLabels[task.state];
   row.append(content, state);
   appendTaskDetails(row, task);
 }
@@ -128,6 +133,13 @@ function appendTaskActions(
     );
   const common = { taskId: task.id, expectedRevision: task.revision };
   button(actions, 'Ver histórico', { type: 'queue-inspect', ...common }, send);
+  if (task.executor === 'google-flow' && task.step === 'video_submitted')
+    button(
+      actions,
+      'Verificar resultado no Flow',
+      { type: 'queue-check-flow', taskId: task.id },
+      send,
+    );
   if (task.state === 'queued')
     button(actions, 'Cancelar', { type: 'queue-cancel', ...common }, send);
   if (
@@ -142,6 +154,7 @@ function appendTaskActions(
     );
   if (task.state === 'uncertain') appendTaskReview(actions, task, send);
   if (
+    task.executor === 'simulation' &&
     task.state === 'failed' &&
     task.safeToRetry &&
     task.attemptCount < task.maxAttempts

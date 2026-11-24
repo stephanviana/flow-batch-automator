@@ -1,6 +1,8 @@
 import type { OrderState, TaskDetail, TaskSummary } from '@flow-batch/protocol';
 import type { ClientStore } from '../persistence/clients.js';
 import { QueueDatabase } from '../queue/database.js';
+import { FlowRetries } from '../queue/flow-retries.js';
+import { FlowImages } from '../queue/flow-images.js';
 import { DispatchRecovery, type DispatchReview } from './dispatch-recovery.js';
 import type { OrderRepository, ProductionOrder } from './repository.js';
 
@@ -9,6 +11,8 @@ interface TaskDiagnostic {
   projectId: string | null;
   events: TaskDetail['events'];
   checkpoints: { at: number; stage: string }[];
+  retry: { images: number; videos: number } | null;
+  retryBlockedReason: string | null;
 }
 export interface OrderDiagnostic {
   number: number;
@@ -73,18 +77,40 @@ export function orderDiagnostic(
           : null,
     })),
     tasks: rows.map((row) =>
-      taskDiagnostic(queue.detail(String(row.id), String(row.client_id))),
+      taskDiagnostic(queue, String(row.id), String(row.client_id)),
     ),
   };
 }
 
-function taskDiagnostic(detail: TaskDetail): TaskDiagnostic {
+function taskDiagnostic(
+  queue: QueueDatabase,
+  id: string,
+  clientId: string,
+): TaskDiagnostic {
+  const detail = queue.detail(id, clientId);
+  const flow =
+    detail.input.executor === 'google-flow' ? detail.input.flow : null;
+  const record =
+    flow && ['failed', 'uncertain'].includes(detail.task.state)
+      ? queue.task(id, clientId)
+      : undefined;
+  const blocked = record ? new FlowRetries(queue).reason(record) : undefined;
   return {
     task: detail.task,
-    projectId:
-      detail.input.executor === 'google-flow'
-        ? detail.input.flow.projectId
+    projectId: flow?.projectId ?? null,
+    retry:
+      record && !blocked
+        ? {
+            images: new FlowImages(queue.connection).forAttempt(
+              record,
+              detail.task.attemptCount + 1,
+            )
+              ? 0
+              : 1,
+            videos: 1,
+          }
         : null,
+    retryBlockedReason: blocked ?? null,
     events: detail.events,
     checkpoints: detail.checkpoints.map(({ at, checkpoint }) => ({
       at,

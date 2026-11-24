@@ -7,20 +7,23 @@ import {
 } from '@flow-batch/protocol';
 import { z } from 'zod';
 import { loadReference } from './flow-assets.js';
-import {
-  flowRpcPage,
-  type FlowRpcRequest,
-  type FlowRpcValue,
-} from './flow-rpc-page.js';
+import { type FlowRpcRequest, type FlowRpcValue } from './flow-rpc-page.js';
+import { readSourceFrame } from './flow-source-frame.js';
+import { callFlowRpc } from './flow-rpc.js';
 import { uploadRequest, imageRequest, videoRequest } from './flow-payloads.js';
 import { downloadVideo, FlowDownloadError } from './flow-download.js';
-import { openProject } from './flow-projects.js';
+import {
+  isFlowProject,
+  openProject,
+  reloadFlowProject,
+} from './flow-projects.js';
 
 export class FlowRunError extends Error {
   constructor(
     readonly code: string,
     message: string,
     readonly notSubmitted: boolean,
+    readonly confirmedFailure = false,
   ) {
     super(message);
   }
@@ -34,6 +37,13 @@ const replySchema = z.discriminatedUnion('ok', [
       status: z.string().max(80).optional(),
       videoUrl: z.url().max(8192).nullable().optional(),
       ready: z.boolean().optional(),
+      sourceFound: z.boolean().optional(),
+      sourceOperationId: flowIdSchema.optional(),
+      outcomeCode: z.number().int().min(0).max(999).optional(),
+      complaint: z
+        .enum(['media_not_found', 'unsafe_generation', 'other'])
+        .optional(),
+      imageAvailable: z.boolean().optional(),
     }),
   }),
   z.strictObject({
@@ -51,6 +61,23 @@ interface FrameEvents {
   submitted: () => void;
   generating: () => void;
   checkpoint: (event: CheckpointBody) => void;
+}
+type VideoReadRequest = FlowRpcRequest & {
+  rpcId: 'jwpduf' | 'Zzl0ze' | 'as29s';
+};
+const videoReadBackoff = [0, 5000, 10000, 20000] as const;
+
+function isTransientVideoRead(error: unknown): boolean {
+  return (
+    error instanceof FlowRunError &&
+    [
+      'flow_http_transient',
+      'flow_request_unknown',
+      'flow_rpc_rejected',
+      'flow_operation_not_found',
+      'flow_response_invalid',
+    ].includes(error.code)
+  );
 }
 
 function wait(milliseconds: number, signal: AbortSignal): Promise<void> {
@@ -72,13 +99,7 @@ async function projectTab(projectId: string, reopen: boolean): Promise<number> {
     url: 'https://flow.google.com/*',
     discarded: false,
   });
-  const matching = tabs.filter(
-    (tab) =>
-      tab.url &&
-      new URL(tab.url).pathname.match(
-        /\/project\/([a-zA-Z0-9_-]+)(?:\/|$)/,
-      )?.[1] === projectId,
-  );
+  const matching = tabs.filter((tab) => isFlowProject(tab.url, projectId));
   const selected = matching.find((tab) => tab.active) ?? matching[0];
   if (selected?.id === undefined && reopen) {
     try {
@@ -110,13 +131,7 @@ class FlowRunner {
     this.signal.throwIfAborted();
     let raw: unknown;
     try {
-      const [injected] = await chrome.scripting.executeScript({
-        target: { tabId: this.tabId },
-        world: 'MAIN',
-        func: flowRpcPage,
-        args: [request],
-      });
-      raw = injected?.result;
+      raw = await callFlowRpc(this.tabId, request);
     } catch {
       throw new FlowRunError(
         'flow_dispatch_unknown',
@@ -139,8 +154,35 @@ class FlowRunner {
         !this.sent && !reply.sent,
       );
     this.sent = true;
+    if (
+      reply.value.outcomeCode === 4 &&
+      reply.value.complaint === 'unsafe_generation'
+    )
+      throw new FlowRunError(
+        'flow_unsafe_generation',
+        'O Flow recusou este take na verificação de segurança (PUBLIC_ERROR_UNSAFE_GENERATION). Revise o conteúdo do take antes de autorizar outra tentativa.',
+        false,
+        true,
+      );
     this.signal.throwIfAborted();
     return reply.value;
+  }
+
+  async sourceFrame(projectId: string, storedId: string): Promise<string> {
+    this.signal.throwIfAborted();
+    const frame = await readSourceFrame(this.tabId, projectId, storedId).catch(
+      () => {
+        throw new FlowRunError(
+          'source_image_lookup_failed',
+          'Não foi possível consultar a imagem de origem no projeto. O vídeo ainda não foi enviado.',
+          true,
+        );
+      },
+    );
+    this.signal.throwIfAborted();
+    if (!frame.ok)
+      throw new FlowRunError('source_image_lookup_failed', frame.message, true);
+    return frame.mediaId;
   }
 
   async video(
@@ -149,44 +191,102 @@ class FlowRunner {
   ): Promise<{ mediaId: string; url: string }> {
     const deadline = Date.now() + 900000;
     for (let round = 0; Date.now() < deadline; round++) {
-      await wait(5000, this.signal);
-      let inspect = round % 3 === 0;
-      try {
-        const operation = await this.rpc({
-          rpcId: 'jwpduf',
+      await wait(
+        Math.min(5000, Math.max(0, deadline - Date.now())),
+        this.signal,
+      );
+      if (Date.now() >= deadline) break;
+      const status = await this.videoStatus(projectId, operationId, deadline);
+      if (status?.videoUrl && status.mediaId)
+        return { mediaId: status.mediaId, url: status.videoUrl };
+      if (
+        status &&
+        status.status !== 'CAE' &&
+        status.outcomeCode !== 3 &&
+        round % 3 !== 0
+      )
+        continue;
+      const media = await this.readVideoAsset(
+        {
+          rpcId: 'Zzl0ze',
           projectId,
           operationId,
-          payload: [null, null, [[operationId]]],
-        });
-        inspect ||= operation.status === 'CAE';
-      } catch (error) {
-        if (
-          error instanceof FlowRunError &&
-          ['flow_response_invalid', 'flow_rpc_rejected'].includes(error.code)
-        )
-          inspect = true;
-        else throw error;
-      }
-      if (!inspect) continue;
-      const media = await this.rpc({
-        rpcId: 'Zzl0ze',
-        projectId,
-        operationId,
-        payload: [`projects/${projectId}`, null, null, null, [1]],
-      });
+          payload: [`projects/${projectId}`, null, null, null, [1]],
+        },
+        deadline,
+      );
       if (!media.mediaId) continue;
-      const resolved = await this.rpc({
-        rpcId: 'as29s',
-        projectId,
-        mediaId: media.mediaId,
-        payload: [media.mediaId],
-      });
+      if (media.videoUrl)
+        return { mediaId: media.mediaId, url: media.videoUrl };
+      const resolved = await this.readVideoAsset(
+        {
+          rpcId: 'as29s',
+          projectId,
+          mediaId: media.mediaId,
+          operationId: media.operationId ?? operationId,
+          payload: [media.operationId ?? media.mediaId],
+        },
+        deadline,
+      );
       if (resolved.videoUrl)
         return { mediaId: media.mediaId, url: resolved.videoUrl };
     }
     throw new FlowRunError(
       'flow_video_timeout',
       'O vídeo ainda não foi localizado. Revise o projeto antes de gerar novamente.',
+      false,
+    );
+  }
+
+  private readVideo(
+    request: VideoReadRequest,
+    deadline: number,
+  ): Promise<FlowRpcValue> {
+    const remaining = Math.max(1, deadline - Date.now());
+    return this.rpc({ ...request, timeoutMs: Math.min(120000, remaining) });
+  }
+
+  private async videoStatus(
+    projectId: string,
+    operationId: string,
+    deadline: number,
+  ): Promise<FlowRpcValue | undefined> {
+    try {
+      return await this.readVideo(
+        {
+          rpcId: 'jwpduf',
+          projectId,
+          operationId,
+          payload: [null, null, [[operationId]]],
+        },
+        deadline,
+      );
+    } catch (error) {
+      if (isTransientVideoRead(error)) return undefined;
+      throw error;
+    }
+  }
+
+  private async readVideoAsset(
+    request: VideoReadRequest & { rpcId: 'Zzl0ze' | 'as29s' },
+    deadline: number,
+  ): Promise<FlowRpcValue> {
+    for (const delay of videoReadBackoff) {
+      if (Date.now() + delay >= deadline) break;
+      if (delay) await wait(delay, this.signal);
+      if (Date.now() >= deadline) break;
+      try {
+        return await this.readVideo(request, deadline);
+      } catch (error) {
+        if (!isTransientVideoRead(error)) throw error;
+      }
+    }
+    const listing = request.rpcId === 'Zzl0ze';
+    throw new FlowRunError(
+      listing ? 'flow_video_lookup_failed' : 'flow_video_url_lookup_failed',
+      listing
+        ? 'O vídeo foi enviado, mas o Flow não confirmou a leitura do projeto. Confira o vídeo no Flow antes de autorizar outra geração.'
+        : 'O Flow não confirmou o vídeo nem forneceu o link. Confira o resultado desta tentativa no projeto.',
       false,
     );
   }
@@ -198,13 +298,11 @@ async function prepareFrame(
   signal: AbortSignal,
   events: FrameEvents,
 ): Promise<string> {
-  if (command.flow.imageSourceTaskKey) {
-    if (!command.sourceImage)
-      throw new FlowRunError(
-        'source_image_missing',
-        'A imagem de origem não está confirmada. Este take não gerou outra imagem.',
-        true,
-      );
+  if (command.sourceImage) {
+    const frameId = await runner.sourceFrame(
+      command.flow.projectId,
+      command.sourceImage.mediaId,
+    );
     events.submitted();
     events.generating();
     events.checkpoint({
@@ -212,7 +310,7 @@ async function prepareFrame(
       mediaId: command.sourceImage.mediaId,
       sourceTaskId: command.sourceImage.taskId,
     });
-    return command.sourceImage.mediaId;
+    return frameId;
   }
   let base64: string;
   try {
@@ -244,10 +342,19 @@ export async function runFlowTake(
   emit: Emit,
 ): Promise<void> {
   const { flow, original, taskId, attemptId } = command;
-  const runner = new FlowRunner(
-    await projectTab(flow.projectId, Boolean(flow.batchId)),
-    signal,
-  );
+  const tabId = await projectTab(flow.projectId, Boolean(flow.batchId));
+  if (command.attemptNumber > 1) {
+    try {
+      await reloadFlowProject(tabId, flow.projectId, signal);
+    } catch {
+      throw new FlowRunError(
+        'flow_retry_reload_failed',
+        'A aba do projeto não ficou pronta após recarregar. Abra o projeto no Flow antes de autorizar outra tentativa.',
+        true,
+      );
+    }
+  }
+  const runner = new FlowRunner(tabId, signal);
   const base = {
     type: 'queue-progress' as const,
     taskId,
@@ -299,7 +406,7 @@ export async function runFlowTake(
     result: flowResultSchema.parse({
       simulated: false,
       ...download,
-      imageMediaId: imageId,
+      imageMediaId: command.sourceImage?.mediaId ?? imageId,
       videoMediaId: ready.mediaId,
       operationId,
       description: 'Vídeo gerado no Flow e download concluído pelo Chrome.',

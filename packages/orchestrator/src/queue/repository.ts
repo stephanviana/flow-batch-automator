@@ -12,6 +12,7 @@ import { HttpError } from '../security/errors.js';
 import { BatchStore } from '../persistence/batches.js';
 import { VISIBLE_QUEUE_TASK } from './visibility.js';
 import { FlowImages } from './flow-images.js';
+import { FlowRetries } from './flow-retries.js';
 
 export function queueHash(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -179,6 +180,7 @@ export class QueueRepository {
     flowClientIds: string[] = [],
     modernFlowClientIds: string[] = [],
     videoFolderClientIds: string[] = [],
+    flowRetryClientIds: string[] = [],
   ): TaskRecord | undefined {
     if (!clientIds.length || this.blocked()) return undefined;
     const placeholders = (ids: string[]): string =>
@@ -197,6 +199,7 @@ export class QueueRepository {
            AND ((json_extract(q.input,'$.flow.imageSourceTaskKey') IS NULL
                  AND json_extract(q.input,'$.flow.output') IS NULL)${include(modernFlowClientIds)})
            AND (json_extract(q.input,'$.flow.output.root') IS NULL${include(videoFolderClientIds)})
+           AND (q.attempt_count=0 OR json_extract(q.input,'$.executor')='simulation'${include(flowRetryClientIds)})
          ORDER BY q.sequence LIMIT 1`,
       )
       .get(
@@ -204,6 +207,7 @@ export class QueueRepository {
         ...flowClientIds,
         ...modernFlowClientIds,
         ...videoFolderClientIds,
+        ...flowRetryClientIds,
       );
     return row ? this.database.task(String(row.id)) : undefined;
   }
@@ -212,7 +216,7 @@ export class QueueRepository {
     id: string,
     connectionId: string,
     now = Date.now(),
-  ): TaskRecord | undefined {
+  ): (TaskRecord & { flowApprovalAt: number | undefined }) | undefined {
     return this.database.transaction(() => {
       if (this.active() || this.blocked()) return undefined;
       const record = this.database.task(id);
@@ -228,8 +232,17 @@ export class QueueRepository {
         )
         .get(record.clientId);
       if (allowed?.running !== 1) return undefined;
-      const attemptId = randomUUID();
       const number = record.summary.attemptCount + 1;
+      const flowApprovalAt = new FlowRetries(this.database).approvalAt(
+        record,
+        number,
+      );
+      if (
+        record.input.executor === 'google-flow' &&
+        flowApprovalAt === undefined
+      )
+        return undefined;
+      const attemptId = randomUUID();
       this.database.connection
         .prepare(
           "UPDATE queue_tasks SET state='dispatching',attempt_count=?,revision=revision+1,active_attempt_id=?,connection_id=?,deadline_at=?,updated_at=?,generation_id=NULL,result=NULL,last_error=NULL,safe_to_retry=0 WHERE id=?",
@@ -254,7 +267,7 @@ export class QueueRepository {
         attemptId,
         'dispatch-intent-persisted',
       );
-      return this.database.task(id);
+      return { ...this.database.task(id), flowApprovalAt };
     });
   }
 }

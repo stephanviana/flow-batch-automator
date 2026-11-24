@@ -9,6 +9,7 @@ import {
   type QueueSnapshot,
   type TaskDetail,
   type FlowInspection,
+  type FlowTakeCheck,
 } from '@flow-batch/protocol';
 import { z } from 'zod';
 import { ExtensionConnection } from './connection.js';
@@ -22,6 +23,7 @@ import { FlowInputError } from './flow-errors.js';
 import { processDispatches } from './dispatch-runner.js';
 import { openOrdersPanel } from './orders-navigation.js';
 import { registerOrdersPanelVisibility } from './orders-panel-visibility.js';
+import { checkFlowTake } from './flow-take-check.js';
 
 registerOrdersPanelVisibility();
 
@@ -30,6 +32,7 @@ let pendingCommand: Promise<unknown> = Promise.resolve();
 let inspectedTaskId: string | undefined;
 let operationError: string | null = null;
 let flow: FlowInspection | null = null;
+let flowCheck: FlowTakeCheck | null = null;
 
 async function snapshot(): Promise<{
   state: Awaited<ReturnType<typeof readState>>;
@@ -39,6 +42,7 @@ async function snapshot(): Promise<{
   inspection: TaskDetail | null;
   operationError: string | null;
   flow: FlowInspection | null;
+  flowCheck: FlowTakeCheck | null;
 }> {
   const state = await readState();
   const config = await preferences();
@@ -100,6 +104,9 @@ async function snapshot(): Promise<{
     inspection,
     operationError,
     flow: visibleFlow,
+    flowCheck: queue?.tasks.some((task) => task.id === flowCheck?.taskId)
+      ? flowCheck
+      : null,
   };
 }
 
@@ -127,6 +134,12 @@ async function command(
     });
   } else if (message.type === 'queue-inspect') {
     inspectedTaskId = message.taskId;
+  } else if (message.type === 'queue-check-flow') {
+    const config = await preferences();
+    if (!config.clientId || config.revoked || !message.taskId)
+      throw new Error('Connect first');
+    flowCheck = null;
+    flowCheck = await checkFlowTake(config.clientId, message.taskId);
   } else if (
     message.type.startsWith('queue-') ||
     message.type.startsWith('enqueue-')
@@ -172,7 +185,10 @@ chrome.runtime.onMessage.addListener(
             error instanceof FlowInputError
               ? error.message
               : error instanceof ApiError && error.status === 409
-                ? 'O registro mudou ou a ação exige revisão. Confira o lote e o histórico antes de continuar.'
+                ? ((parsed.data.type === 'queue-retry-flow'
+                    ? error.detail
+                    : undefined) ??
+                  'O registro mudou ou a ação exige revisão. Confira o lote e o histórico antes de continuar.')
                 : 'Não foi possível operar a fila. Verifique a conexão e tente novamente.';
         } else if (parsed.data.type.startsWith('flow-')) {
           flow = {

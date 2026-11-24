@@ -10,7 +10,10 @@ import {
 import { getIdentity } from './identity.js';
 
 export class ApiError extends Error {
-  constructor(public readonly status: number) {
+  constructor(
+    public readonly status: number,
+    public readonly detail?: string,
+  ) {
     super(`Local server request failed (${status})`);
   }
 }
@@ -24,7 +27,16 @@ async function request(path: string, options: RequestInit): Promise<unknown> {
     signal: AbortSignal.timeout(5000),
     headers: { 'X-Flow-Extension': chrome.runtime.id, ...options.headers },
   });
-  if (!response.ok) throw new ApiError(response.status);
+  if (!response.ok) {
+    if (path === '/api/queue/actions' && response.status === 409) {
+      const body = (await response.json().catch(() => null)) as {
+        error?: unknown;
+      } | null;
+      if (typeof body?.error === 'string' && body.error.length <= 200)
+        throw new ApiError(response.status, body.error);
+    }
+    throw new ApiError(response.status);
+  }
   return response.json() as Promise<unknown>;
 }
 

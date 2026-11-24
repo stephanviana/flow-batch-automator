@@ -511,6 +511,31 @@ enviados. Registros antigos sem causa detalhada são identificados como tal.
 **Ver histórico** mostra as etapas do take; **Encerrar tentativa** encerra um
 resultado incerto como falha, sem exigir nota ou confirmação adicional e sem
 registrá-lo como download concluído.
+Quando há um envio de vídeo registrado, **Verificar resultado no Flow** consulta
+a operação da tentativa mais recente e a listagem do projeto aberto. O resultado
+mostra se o vídeo e a imagem de origem foram localizados, além do estado e dos
+códigos retornados pelo Flow, sem gerar mídia, recarregar a aba ou alterar a fila.
+A imagem também recebe uma consulta direta. O diagnóstico distingue um registro
+de geração localizado de um arquivo de vídeo disponível; um registro recebido
+ou pendente ainda não confirma que o MP4 está pronto.
+Até localizar o vídeo, a extensão mostra **Aguardando confirmação do Flow**;
+o identificador de envio não comprova que a geração começou.
+Com o protocolo v8, a extensão recarrega a mesma aba do projeto e espera a sessão
+ficar pronta antes de enviar a nova tentativa. Se uma tentativa anterior já
+registrou a geração da imagem, a nova tentativa usa essa imagem como frame
+inicial e solicita apenas o vídeo. Takes que compartilham imagem continuam
+usando a imagem do take de origem. A extensão localiza a imagem pelo cartão do
+projeto ou pela consulta de mídia. Se a imagem registrada estiver ausente ou a
+identificação for ambígua, a tentativa para antes de pedir o vídeo.
+Quando o acompanhamento do Flow devolve `PUBLIC_ERROR_UNSAFE_GENERATION`, a
+extensão mostra a recusa na verificação de segurança e encerra o take com falha.
+O conteúdo precisa de revisão antes de uma nova tentativa autorizada.
+Em uma recusa confirmada, a fila segue com os próximos takes independentes.
+A consulta **Verificar resultado no Flow** também lê esse acompanhamento para
+identificar a recusa em tentativas anteriores.
+Após aceitar o envio do vídeo, se o Flow recusar temporariamente a consulta ao
+projeto ou ao link do MP4, a extensão repete apenas essas leituras com esperas
+progressivas. Se ainda falharem, o diagnóstico indica qual consulta falhou.
 **Conferir projeto no Flow** abre o projeto vinculado. A consulta não reenvia
 gerações; retomadas de grupos bloqueados continuam exigindo nova autorização
 explícita no chat. Depois da revisão, **Solicitar nova tentativa no chat** copia

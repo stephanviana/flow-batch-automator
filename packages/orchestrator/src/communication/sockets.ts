@@ -26,6 +26,7 @@ interface Session {
   flowCapable: boolean;
   modernFlowCapable: boolean;
   videoFoldersCapable: boolean;
+  flowRetryCapable: boolean;
 }
 
 export class ConnectionHub implements QueueTransport {
@@ -53,6 +54,7 @@ export class ConnectionHub implements QueueTransport {
     flowCapable: boolean;
     modernFlowCapable: boolean;
     videoFoldersCapable: boolean;
+    flowRetryCapable: boolean;
   }[] {
     const connections: {
       clientId: string;
@@ -60,6 +62,7 @@ export class ConnectionHub implements QueueTransport {
       flowCapable: boolean;
       modernFlowCapable: boolean;
       videoFoldersCapable: boolean;
+      flowRetryCapable: boolean;
     }[] = [];
     for (const session of this.sessions.values()) {
       if (
@@ -76,6 +79,7 @@ export class ConnectionHub implements QueueTransport {
           flowCapable: session.flowCapable,
           modernFlowCapable: session.modernFlowCapable,
           videoFoldersCapable: session.videoFoldersCapable,
+          flowRetryCapable: session.flowRetryCapable,
         });
       } catch {
         continue;
@@ -95,6 +99,9 @@ export class ConnectionHub implements QueueTransport {
       (message.type === 'flow-execute' &&
         message.flow.output?.root === 'Flow' &&
         !session.videoFoldersCapable) ||
+      (message.type === 'flow-execute' &&
+        message.attemptNumber > 1 &&
+        !session.flowRetryCapable) ||
       session.socket.readyState !== WebSocket.OPEN
     )
       return false;
@@ -203,6 +210,7 @@ export class ConnectionHub implements QueueTransport {
       flowCapable: false,
       modernFlowCapable: false,
       videoFoldersCapable: false,
+      flowRetryCapable: false,
     };
     this.sessions.set(session.id, session);
     const deadline = setTimeout((): void => {
@@ -255,6 +263,7 @@ export class ConnectionHub implements QueueTransport {
       session.flowCapable = version >= 4;
       session.modernFlowCapable = version >= 5;
       session.videoFoldersCapable = version >= 6;
+      session.flowRetryCapable = version >= 8;
       this.send(session, { type: 'authenticated' });
       this.queue?.connected();
       return;

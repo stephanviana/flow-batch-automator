@@ -1,6 +1,18 @@
-import { flowRpcPage } from './flow-rpc-page.js';
+import { callFlowRpc } from './flow-rpc.js';
 import type { FlowRpcReply } from './flow-rpc-page.js';
 import { FlowInputError } from './flow-errors.js';
+
+export function isFlowProject(
+  url: string | undefined,
+  projectId: string,
+): boolean {
+  if (!url) return false;
+  const parsed = new URL(url);
+  return (
+    parsed.origin === 'https://flow.google.com' &&
+    parsed.pathname.match(/\/project\/([^/]+)(?:\/|$)/)?.[1] === projectId
+  );
+}
 
 async function flowTab(projectId?: string): Promise<chrome.tabs.Tab> {
   const tabs = await chrome.tabs.query({
@@ -8,12 +20,7 @@ async function flowTab(projectId?: string): Promise<chrome.tabs.Tab> {
     discarded: false,
   });
   const matching = projectId
-    ? tabs.find(
-        (tab) =>
-          tab.url &&
-          new URL(tab.url).pathname.match(/\/project\/([^/]+)(?:\/|$)/)?.[1] ===
-            projectId,
-      )
+    ? tabs.find((tab) => isFlowProject(tab.url, projectId))
     : undefined;
   const tab = matching ?? tabs.find((candidate) => candidate.active) ?? tabs[0];
   if (tab?.id === undefined)
@@ -50,13 +57,25 @@ async function navigate(tabId: number, url: string): Promise<void> {
   });
 }
 
-async function readyTab(tabId: number): Promise<number> {
+interface ProjectReload {
+  projectId: string;
+  staleDocumentId: string;
+  signal: AbortSignal;
+}
+
+async function readyTab(
+  tabId: number,
+  reload?: ProjectReload,
+): Promise<number> {
   const deadline = Date.now() + 20000;
   while (Date.now() < deadline) {
+    reload?.signal.throwIfAborted();
     const tab = await chrome.tabs.get(tabId);
     if (
       tab.status === 'complete' &&
-      tab.url?.startsWith('https://flow.google.com/')
+      (reload
+        ? isFlowProject(tab.url, reload.projectId)
+        : tab.url?.startsWith('https://flow.google.com/'))
     ) {
       try {
         const [result] = await chrome.scripting.executeScript({
@@ -71,7 +90,12 @@ async function readyTab(tabId: number): Promise<number> {
               ).WIZ_global_data?.SNlM0e,
             ),
         });
-        if (result?.result) return tabId;
+        if (
+          result?.result &&
+          (!reload ||
+            (result.documentId && result.documentId !== reload.staleDocumentId))
+        )
+          return tabId;
       } catch {
         // Navigation may still be switching documents. Readiness is read-only.
       }
@@ -81,6 +105,33 @@ async function readyTab(tabId: number): Promise<number> {
   throw new FlowInputError(
     'Entre no Flow e aguarde a página carregar. Depois abra o lote novamente.',
   );
+}
+
+export async function reloadFlowProject(
+  tabId: number,
+  projectId: string,
+  signal: AbortSignal,
+): Promise<void> {
+  signal.throwIfAborted();
+  if (!isFlowProject((await chrome.tabs.get(tabId)).url, projectId))
+    throw new FlowInputError('A aba não está mais no projeto vinculado.');
+  const [previous] = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: () => true,
+  });
+  if (!previous?.documentId)
+    throw new FlowInputError(
+      'Não foi possível identificar o documento atual do Flow.',
+    );
+  signal.throwIfAborted();
+  if (!isFlowProject((await chrome.tabs.get(tabId)).url, projectId))
+    throw new FlowInputError('A aba não está mais no projeto vinculado.');
+  await chrome.tabs.reload(tabId);
+  await readyTab(tabId, {
+    projectId,
+    staleDocumentId: previous.documentId,
+    signal,
+  });
 }
 
 export async function openProject(
@@ -112,24 +163,16 @@ export async function createProject(name: string): Promise<FlowRpcReply> {
     step = 'wait_ready';
     await readyTab(tab.id);
     injected = true;
-    const [result] = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      world: 'MAIN',
-      func: flowRpcPage,
-      // FlowKit create_project_request (MIT); surface 22, no captcha.
-      args: [
-        {
-          rpcId: 'jHPbke',
-          projectId: '',
-          payload: [
-            'projects/*',
-            [null, [name.replace(/\s+/g, ' ').trim().slice(0, 160)]],
-            [null, 22],
-          ],
-        },
+    // FlowKit create_project_request (MIT); surface 22, no captcha.
+    return await callFlowRpc(tab.id, {
+      rpcId: 'jHPbke',
+      projectId: '',
+      payload: [
+        'projects/*',
+        [null, [name.replace(/\s+/g, ' ').trim().slice(0, 160)]],
+        [null, 22],
       ],
     });
-    if (result?.result) return result.result;
   } catch {
     /* Injection failure after dispatch has an unknown outcome. */
   }

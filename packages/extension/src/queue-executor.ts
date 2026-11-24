@@ -59,7 +59,11 @@ export class QueueExecutor {
         taskId: command.taskId,
         attemptId: command.attemptId,
         state:
-          command.type === 'flow-execute' && !safe ? 'uncertain' : 'failed',
+          command.type === 'flow-execute' &&
+          !safe &&
+          !(error instanceof FlowRunError && error.confirmedFailure)
+            ? 'uncertain'
+            : 'failed',
         error: {
           code:
             error instanceof FlowRunError
@@ -75,7 +79,7 @@ export class QueueExecutor {
                 : active.submitted
                   ? 'Simulated executor failed after submission'
                   : 'Could not persist the execution receipt',
-          retryable: safe && command.type !== 'flow-execute',
+          retryable: safe,
           notSubmitted: safe,
         },
       });

@@ -129,7 +129,7 @@ export class ExtensionConnection {
           clientId,
           challengeId: signed.challenge.challengeId,
           signature: signed.signature,
-          protocolVersion: 6,
+          protocolVersion: 8,
         }),
       );
     socket.onmessage = (event: MessageEvent<string>): void => {

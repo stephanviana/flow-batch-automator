@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { test } from 'node:test';
-import { type QueueCheckpoint, type QueueProgress } from '@flow-batch/protocol';
+import {
+  queueActionSchema,
+  type FlowRetryAction,
+  type QueueCheckpoint,
+  type QueueProgress,
+} from '@flow-batch/protocol';
 import { queueFixture, taskInput } from './queue-support.js';
 import { flowInput } from './flow-support.js';
 
@@ -157,7 +162,7 @@ test('real completion requires ordered, fenced checkpoints and matching download
   );
 });
 
-test('unknown Flow outcome pauses all dispatch and review cannot fabricate a real download or authorize a retry', async (t) => {
+test('unknown Flow outcome pauses dispatch until review, and a new authorization funds exactly one attempt', async (t) => {
   const f = await queueFixture(t);
   const [task, pending] = f.repository.enqueue(f.clientId, randomUUID(), [
     flowInput(),
@@ -203,7 +208,125 @@ test('unknown Flow outcome pauses all dispatch and review cannot fabricate a rea
         expectedRevision: f.queueDatabase.task(task.id).summary.revision,
         acknowledgeDuplicateRisk: true,
       }),
-    /budget/,
+    /Autorize uma nova tentativa/,
   );
   assert.equal(f.repository.snapshot(f.clientId).running, false);
+  const closed = f.queueDatabase.detail(task.id, f.clientId);
+  const retry: FlowRetryAction = {
+    action: 'retry_flow',
+    requestId: randomUUID(),
+    taskId: task.id,
+    expectedRevision: closed.task.revision,
+    confirmedFailure: true,
+    approve: true,
+    startQueue: false,
+  };
+  assert.equal(
+    queueActionSchema.safeParse({ ...retry, confirmedFailure: false }).success,
+    false,
+  );
+  assert.equal(
+    queueActionSchema.safeParse({ ...retry, approve: false }).success,
+    false,
+  );
+  const approvedAt = Date.now() + 1000;
+  const scheduled = f.mutations.action(f.clientId, retry, approvedAt, 'orders');
+  assert.equal(scheduled.state, 'queued');
+  assert.equal(scheduled.maxAttempts, 2);
+  assert.deepEqual(
+    f.mutations.action(f.clientId, retry, approvedAt + 1),
+    scheduled,
+  );
+  assert.throws(
+    () => f.mutations.action(f.clientId, { ...retry, requestId: randomUUID() }),
+    /refresh before acting/,
+  );
+  assert.equal(
+    f.repository.claim(task.id, connectionId, approvedAt),
+    undefined,
+  );
+  f.repository.control(f.clientId, true);
+  const connected = [f.clientId];
+  assert.equal(
+    f.repository.candidate(connected, connected, connected, connected)?.summary
+      .id,
+    pending.id,
+  );
+  assert.equal(
+    f.repository.candidate(
+      connected,
+      connected,
+      connected,
+      connected,
+      connected,
+    )?.summary.id,
+    task.id,
+  );
+  const second = f.repository.claim(task.id, connectionId, approvedAt);
+  assert.ok(second?.activeAttemptId);
+  assert.notEqual(second.activeAttemptId, active.activeAttemptId);
+  assert.equal(second.flowApprovalAt, approvedAt);
+  const detail = f.queueDatabase.detail(task.id, f.clientId);
+  assert.deepEqual(detail.input, closed.input);
+  assert.deepEqual(detail.attempts[0], closed.attempts[0]);
+  assert.equal(detail.attempts[1]?.number, 2);
+  assert.equal(
+    f.mutations.progress(f.clientId, connectionId, {
+      type: 'queue-progress',
+      taskId: task.id,
+      attemptId: active.activeAttemptId,
+      state: 'generating',
+      generationId: `flow-${active.activeAttemptId}`,
+    }),
+    false,
+  );
+});
+
+test('retry is refused after the Flow video was located even if the download is uncertain', async (t) => {
+  const f = await queueFixture(t);
+  const [task] = f.repository.enqueue(f.clientId, randomUUID(), [flowInput()]);
+  assert.ok(task);
+  f.repository.control(f.clientId, true);
+  const connection = randomUUID();
+  const active = f.repository.claim(task.id, connection);
+  assert.ok(active?.activeAttemptId);
+  const mediaId = randomUUID();
+  f.database
+    .prepare(
+      'INSERT INTO queue_checkpoints (task_id,attempt_id,stage,at,payload) VALUES (?,?,?,?,?)',
+    )
+    .run(
+      task.id,
+      active.activeAttemptId,
+      'video_ready',
+      Date.now(),
+      JSON.stringify({
+        type: 'queue-checkpoint',
+        taskId: task.id,
+        attemptId: active.activeAttemptId,
+        stage: 'video_ready',
+        mediaId,
+      }),
+    );
+  f.mutations.interrupt(connection);
+  const current = f.queueDatabase.task(task.id, f.clientId).summary;
+  assert.equal(current.state, 'uncertain');
+  assert.throws(
+    () =>
+      f.mutations.action(f.clientId, {
+        action: 'retry_flow',
+        requestId: randomUUID(),
+        taskId: task.id,
+        expectedRevision: current.revision,
+        approve: true,
+        confirmedFailure: true,
+        startQueue: true,
+      }),
+    /vídeo já foi localizado/,
+  );
+  assert.equal(
+    f.queueDatabase.task(task.id, f.clientId).summary.maxAttempts,
+    1,
+  );
+  assert.equal(f.repository.snapshot(f.clientId).blockedByReview, true);
 });

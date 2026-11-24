@@ -8,6 +8,11 @@ import type { QueueDatabase, TaskRecord } from './database.js';
 import { queueHash } from './repository.js';
 import { HttpError } from '../security/errors.js';
 import { FlowProgress } from './flow-progress.js';
+import {
+  FlowRetries,
+  orderRetryRestriction,
+  type RetryOrigin,
+} from './flow-retries.js';
 
 export class QueueMutations {
   constructor(private readonly database: QueueDatabase) {}
@@ -117,6 +122,7 @@ export class QueueMutations {
       safeToRetry: safe,
     });
     if (
+      record.input.executor === 'simulation' &&
       safe &&
       error.retryable &&
       record.summary.attemptCount < record.summary.maxAttempts
@@ -163,7 +169,12 @@ export class QueueMutations {
     });
   }
 
-  action(clientId: string, action: QueueAction, now = Date.now()): TaskSummary {
+  action(
+    clientId: string,
+    action: QueueAction,
+    now = Date.now(),
+    origin: RetryOrigin = 'extension',
+  ): TaskSummary {
     return this.database.transaction(() => {
       const sql = this.database.connection;
       const hash = queueHash(action);
@@ -183,7 +194,9 @@ export class QueueMutations {
       const record = this.database.task(action.taskId, clientId);
       if (record.summary.revision !== action.expectedRevision)
         throw new HttpError(409, 'Task changed; refresh before acting');
-      if (action.action === 'retry')
+      if (action.action === 'retry_flow')
+        new FlowRetries(this.database).schedule(record, action, now, origin);
+      else if (action.action === 'retry')
         this.retry(record, action.acknowledgeDuplicateRisk, now);
       else if (action.action === 'cancel')
         this.database.change(record, 'cancelled', now, 'operator-cancelled');
@@ -198,22 +211,13 @@ export class QueueMutations {
   }
 
   private retry(record: TaskRecord, acknowledged: boolean, now: number): void {
-    if (
-      this.database.connection
-        .prepare(
-          'SELECT 1 FROM queue_tasks q JOIN order_dispatches d ON d.batch_id=q.batch_id JOIN production_orders o ON o.id=d.order_id WHERE q.id=? AND o.archived_at IS NOT NULL',
-        )
-        .get(record.summary.id)
-    )
-      throw new HttpError(409, 'Este pedido foi removido da lista.');
-    if (
-      this.database.connection
-        .prepare(
-          'SELECT 1 FROM queue_tasks q JOIN order_dispatches d ON d.batch_id=q.batch_id JOIN dispatch_closures x ON x.dispatch_id=d.dispatch_id WHERE q.id=?',
-        )
-        .get(record.summary.id)
-    )
-      throw new HttpError(409, 'Este grupo foi encerrado após revisão.');
+    const restriction = orderRetryRestriction(this.database, record.summary.id);
+    if (restriction) throw new HttpError(409, restriction);
+    if (record.input.executor === 'google-flow')
+      throw new HttpError(
+        409,
+        'Autorize uma nova tentativa do Flow após revisar o take.',
+      );
     if (record.summary.state !== 'failed')
       throw new HttpError(409, 'Only failed, reviewed tasks can retry');
     if (record.summary.attemptCount >= record.summary.maxAttempts)

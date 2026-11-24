@@ -72,7 +72,10 @@ function elapsed(task: TaskSummary): string {
 }
 function currentLabel(activity: Activity): string {
   if (activity.tone === 'warning') return 'Revisão necessária';
-  if (activity.tone === 'error') return 'Interrompida';
+  if (activity.tone === 'error')
+    return activity.task?.lastError?.code === 'flow_unsafe_generation'
+      ? 'Recusada pelo Flow'
+      : 'Falha';
   return activity.busy ? 'Em andamento' : 'Aguardando';
 }
 function toneIcon(activity: Activity): Icon {

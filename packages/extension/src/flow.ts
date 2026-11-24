@@ -2,7 +2,7 @@ import {
   flowInspectionSchema,
   type FlowInspection,
 } from '@flow-batch/protocol';
-import { flowRpcPage } from './flow-rpc-page.js';
+import { callFlowRpc } from './flow-rpc.js';
 import { flowPatterns, locateFlow } from './flow-location.js';
 
 export async function openFlow(): Promise<void> {
@@ -28,19 +28,11 @@ export async function inspectFlow(): Promise<FlowInspection> {
     const { tab, inspection } = await locateFlow();
     const projectId = inspection.projectId;
     if (tab?.id === undefined || !projectId) return inspection;
-    const [injection] = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      world: 'MAIN',
-      func: flowRpcPage,
-      args: [
-        {
-          rpcId: 'Zzl0ze',
-          projectId,
-          payload: [`projects/${projectId}`, null, null, null, [1]],
-        },
-      ],
+    const reply = await callFlowRpc(tab.id, {
+      rpcId: 'Zzl0ze',
+      projectId,
+      payload: [`projects/${projectId}`, null, null, null, [1]],
     });
-    const reply = injection?.result;
     return flowInspectionSchema.parse({
       phase: reply?.ok
         ? 'ready'
