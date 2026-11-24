@@ -5,272 +5,108 @@ no Google Flow. O painel organiza produtos, materiais, formatos e quantidades;
 o agente conectado pelo MCP cria copy e prompts a partir das instruções locais;
 a extensão executa os grupos autorizados.
 
-## Distribuição pelo npm — Windows e WSL
+## Instalação pelo Docker Compose
 
-O pacote de distribuição é `@nahpets01-org/flow-batch-automator`, configurado para
-publicação pública em `https://registry.npmjs.org/`. A publicação disponibiliza
-os arquivos compilados e as dependências incluídas; o repositório de trabalho
-continua separado. O monorepo e seus workspaces permanecem `private: true` para
-impedir publicação acidental do código de desenvolvimento.
+O modo suportado de execução é Docker Compose a partir deste repositório.
+A distribuição desktop é uma direção futura. O servidor, a fila e a extensão
+continuam separados para preservar suas responsabilidades.
 
-Requisitos: Node.js 24.22.2 LTS (ou 26.12.1), npm e Chrome. No Windows, a
-aplicação executa diretamente no Node, sem Docker nem WSL. Antigravity e Codex
-devem executar no mesmo ambiente do conector MCP.
+Requisitos: Docker com Compose, Chrome 120+ e Node.js 24.22.2 LTS (ou 26.12.1)
+para o conector MCP. Os comandos de desenvolvimento e manutenção usam
+pnpm 12.15.0 e o lockfile do projeto. No Windows, execute o Compose pelo
+Linux/WSL com Docker disponível; carregue a extensão no Chrome do Windows.
 
-No PowerShell, após publicar a versão com suporte nativo:
-
-```powershell
-npm.cmd install --global @nahpets01-org/flow-batch-automator
-flow-batch.cmd setup --extension "$env:USERPROFILE\flow-batch-extension"
-flow-batch.cmd up
-flow-batch.cmd doctor
-```
-
-Os nomes `.cmd` usam os atalhos npm sem exigir mudanças na política de execução
-do PowerShell. `up` sincroniza a extensão e inicia um processo Node em segundo
-plano, sem serviço Windows, tarefa agendada ou configuração de inicialização
-automática. `down` encerra a aplicação e fecha SQLite pelo controle local
-autenticado, preservando o banco e os materiais. `status` e `logs` consultam
-somente a instalação configurada; nenhum comando encerra processos por PID.
-Depois de reiniciar o computador, execute `up` novamente.
-
-No Windows, os dados ficam em `%USERPROFILE%\.flow-batch\data`, as instruções
-em `%USERPROFILE%\.flow-batch\biblioteca` e a configuração em
-`%USERPROFILE%\.flow-batch\installation.json`. `FLOW_BATCH_HOME` escolhe outra
-pasta; `setup --data PASTA` permite outro destino para SQLite e materiais. As
-pastas ficam fora do prefixo npm e sobrevivem à reinstalação do pacote.
-
-No Linux/WSL, instalações novas e configurações antigas continuam usando
-Docker Compose por padrão. Para executar diretamente no Node também nesse
-ambiente, acrescente `--runtime native` ao `setup`. `--runtime docker` seleciona
-Compose no Linux/WSL. A escolha fica salva e não muda automaticamente.
-
-Após a primeira publicação no registro, instale fora do repositório:
-
-```sh
-npm install --global @nahpets01-org/flow-batch-automator
-flow-batch setup --extension /mnt/c/Users/SEU_USUARIO/flow-batch-extension
-flow-batch up
-flow-batch doctor
-```
-
-`setup` instala a edição de instruções incluída no pacote em
-`~/.flow-batch/biblioteca`, ou no destino de `--library PASTA`. Só preenche uma
-pasta nova ou o scaffold modular vazio da ferramenta, sem capturas. Conteúdo
-próprio, arquivos removidos e bibliotecas incompletas/legadas são preservados.
-O caminho escolhido permanece salvo quando `--library` é omitido depois.
-Registra o MCP no Antigravity e no Codex com Node e caminhos absolutos do ambiente
-local, preserva outros servidores e cria backups dos arquivos alterados.
-`--clients codex` ou `--clients antigravity` escolhe apenas um cliente;
-`--codex-config ARQUIVO` e `--antigravity-config ARQUIVO` escolhem configurações
-específicas. O Codex respeita `CODEX_HOME` na primeira configuração. A seleção de
-clientes e seus destinos persistem. A atualização de TOML preserva valores e tipos,
-mas reserializa o documento; comentários e formatação ficam no backup.
-Reabra os clientes para carregar o MCP. A instalação npm não executa configuração
-automática nem encerra clientes.
-
-A edição criativa acompanha o pacote; a biblioteca ativa, pedidos, materiais,
-SQLite, credenciais e configurações individuais ficam fora do prefixo npm. A configuração local usa `~/.flow-batch` por padrão;
-`FLOW_BATCH_HOME` escolhe outra pasta e `--workspace PASTA` escolhe a pasta
-operacional. A extensão atual usa a porta 4319, publicada só em `127.0.0.1`.
-No modo Docker, `up` constrói imagens localmente, sincroniza a extensão e espera
-o servidor saudável. No modo nativo, usa as dependências instaladas pelo npm,
-sem construir imagens. A instalação npm baixa as dependências declaradas. O primeiro build
-Docker instala a árvore de produção fixada dentro da imagem Linux com
-`npm ci --omit=dev`, além da
-imagem base Node fixada por digest. Os módulos instalados no host não são copiados
-para o container.
-Carregue ou recarregue a extensão no Chrome e confirme em
-<http://127.0.0.1:4319/connect>.
-
-Para atualizar:
-
-```sh
-flow-batch down
-npm install --global @nahpets01-org/flow-batch-automator@latest
-flow-batch setup
-flow-batch up
-flow-batch status
-flow-batch logs
-```
-
-No modo nativo, execute `down` antes de atualizar o pacote; depois, `setup` e
-`up`. Encerre também antes de mudar runtime, porta, biblioteca, extensão ou pasta
-de dados. No Windows, os comandos dessa seção também estão disponíveis com `.cmd`.
-Não copie `installation.json` entre Windows e WSL: seus caminhos e conectores
-pertencem ao ambiente original. Transporte a biblioteca pelo Markdown e faça
-backup separado do banco e dos materiais, com a aplicação parada.
-
-No modo Docker, `flow-batch down` preserva o volume. O projeto padrão é `flow-batch-local`, com
-volume `flow-batch-local_sqlite_data`. Para adotar uma instalação existente,
-confira seu projeto e volume reais antes de configurar `--project NOME --volume
-NOME`. O Compose da raiz normalmente usa `flow-batch-automator` e
-`flow-batch-automator_sqlite_data`. Pare o Compose anterior sem remover volumes
-e selecione explicitamente esses nomes no `setup`, junto às mesmas pastas de
-biblioteca e extensão. A CLI não escolhe ou apaga bancos antigos automaticamente.
-Mudar para `--runtime native` não extrai nem migra um volume Docker: pare a
-instalação anterior e preserve seus dados antes de configurar a nova. Uma porta
-ocupada ou um controlador já ativo bloqueia a abertura de outra instância.
-
-`flow-batch mcp` inicia o stdio. `flow-batch mcp install codex` ou `antigravity`
-atualiza só o conector; `--config ARQUIVO` escolhe uma configuração específica.
-Instalar ou atualizar não autoriza créditos. O pedido direto no chat para
-preparar um pedido inclui sua execução; use “apenas prepare” para revisar antes.
-
-A distribuição `0.6.3` entrega o servidor compilado em `dist/main.mjs` e os assets
-em `dist/public/`, com dependências npm normais e versões exatas. O pacote não
-inclui `node_modules` nem `runtime/app.tar.gz`. O conector MCP independente segue
-incluído para preservar sua instalação fora do prefixo npm e o download pela API.
-Esta mudança prepara uma nova versão; `0.6.0`, `0.6.1` e `0.6.2` publicadas mantêm seu conteúdo.
-
-## Configuração, primeira execução e remoção
-
-`flow-batch --help` lista os comandos. Em `setup`, `--extension PASTA` é
-obrigatório na primeira configuração. `--library` e `--workspace` escolhem a
-biblioteca e o trabalho do agente; `--runtime native|docker` escolhe o runtime;
-`--data` escolhe os dados nativos, sem migrar volume Docker. `--clients codex`
-ou `antigravity` limita os clientes; `--codex-config`/`--antigravity-config`
-escolhem seus arquivos. `--project` e `--volume` identificam o Compose.
-Opções omitidas preservam valores salvos. Não existe opção de porta em setup.
-Os caminhos pertencem ao ambiente que executa o comando, Windows ou Linux/WSL.
-
-Depois de `up` e `doctor`, abra `chrome://extensions` no Chrome 120+, ative o
-modo do desenvolvedor e carregue sem compactação a pasta de `--extension`.
-Confirme a identidade em <http://127.0.0.1:4319/connect> e abra `/orders`.
-Entre no Google Flow nessa conta e mantenha a sessão disponível. Reabra os
-clientes MCP no ambiente onde foram configurados. Valide a biblioteca com
-`flow-batch library validate`; instalar e validar não iniciam gerações.
-A pasta inicial da extensão precisa estar vazia ou identificada como Flow Batch.
-
-Para diagnosticar, use `status`, `logs`, `doctor` e `library validate`.
-No Docker, confirme o daemon e `docker compose version`. Se a extensão não
-conectar, confira `/connect`, o servidor e a recarga da extensão. Se o MCP não
-aparecer, confira o registro e reabra o cliente. Uma geração incerta requer a
-revisão descrita adiante, sem reenvio automático.
-
-Atualize com `down`, atualização do pacote, `setup` e `up`; recarregue extensão
-e clientes MCP. Setup pode produzir backups das configurações que substituir:
-obtenha autorização para esses backups antes de executá-lo. As instruções
-instaladas não são sobrescritas. Trocar runtime ou ambiente não migra banco,
-materiais e capturas. Confira instalação/porta existente antes de alterar pastas.
-
-Para remover mantendo dados, execute `down`, confira `status`, remova a extensão
-no Chrome e apenas a entrada `flow-batch` nos clientes MCP. Depois use
-`npm uninstall --global @nahpets01-org/flow-batch-automator` (`npm.cmd` no Windows).
-Biblioteca, configuração, SQLite, materiais, workspace e volumes permanecem.
-Excluir esses dados exige decisão separada sobre os caminhos daquela instalação.
-Não remova downloads do Chrome nem use `docker compose down -v` como parada.
-
-### Variáveis de ambiente
-
-| Variável                 | Uso e padrão                                                                 |
-| ------------------------ | ---------------------------------------------------------------------------- |
-| `FLOW_BATCH_HOME`        | Configuração da CLI e pastas padrão; `~/.flow-batch`.                        |
-| `CODEX_HOME`             | Pasta do Codex; `~/.codex`; `--codex-config` tem precedência.                |
-| `FLOW_API_URL`           | MCP/CLI independente; `http://127.0.0.1:4319`.                               |
-| `FLOW_AGENT_WORKSPACE`   | Workspace MCP; `~/.flow-batch/pedidos`.                                      |
-| `FLOW_AGENT_NAME`        | Agente da CLI orders; `agente-local`.                                        |
-| `WIN_EXTENSION_DIR`      | Compose do checkout; pasta de extensão obrigatória.                          |
-| `FLOW_LIBRARY_DIR`       | Compose do checkout; pasta de instruções obrigatória.                        |
-| `HOST` / `PORT`          | Servidor direto; `127.0.0.1` / `4319`; porta de 1024 a 65535.                |
-| `DATABASE_PATH`          | Servidor direto; `./data/flow-batch.sqlite`.                                 |
-| `MATERIALS_DIR`          | Materiais; por padrão `materials` junto ao SQLite.                           |
-| `LIBRARY_DIR`            | Servidor direto; `~/.flow-batch/biblioteca`; container usa `/library`.       |
-| `SQLITE_BUSY_TIMEOUT_MS` | Espera SQLite; 3000 ms, de 100 a 10000.                                      |
-| `LOG_LEVEL`              | Padrão `info`; aceita `silent`, `fatal`, `error`, `warn`, `info` ou `debug`. |
-
-Na instalação npm, setup salva os valores; não é necessário criar `.env`.
-Compose lê `.env` para interpolação; Node direto não o carrega automaticamente.
-O runtime gerenciado define caminhos, host, porta e log pela configuração salva.
-`FLOW_LOCAL_PACKAGE_DIRECTORY`, `FLOW_LOCAL_EXTENSION_DIRECTORY` e
-`FLOW_LOCAL_LIBRARY_DIRECTORY` são internas à CLI Compose, não opções manuais.
-A extensão distribuída aponta para 4319. Não exponha a API na rede nem compartilhe
-`native.json`, que pode conter segredo de controle local.
-
-`PLAYWRIGHT_BROWSERS_PATH`, `FLOW_TEST_NPM` e `FLOW_TEST_WINDOWS_NODE` escolhem
-navegador, npm e Node Windows somente nos testes. Não são requisitos de operação.
-
-## Gerar, auditar e publicar uma versão
-
-`packaging/npm.json` define nome, registro e visibilidade. A versão vem do
-`package.json` da raiz. `packaging/npm-files.json` é a lista exata de arquivos
-permitidos no artefato; o README distribuído vem de `packaging/README.md`.
+Na primeira configuração, prepare as instruções e uma pasta para a extensão:
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm check
-pnpm package:npm
-pnpm audit:npm
-pnpm test:package
-pnpm test:package --docker
-pnpm test:package:native
-pnpm test:package:native --windows
-pnpm publish:npm --dry-run
+pnpm build
+pnpm library seed /CAMINHO/Minha-Biblioteca-Flow
+pnpm library validate /CAMINHO/Minha-Biblioteca-Flow
+mkdir -p /CAMINHO/flow-batch-extension
 ```
 
-O arquivo auditado fica em
-`dist/npm/nahpets01-org-flow-batch-automator-0.6.6.tgz`.
-`pnpm package:local` continua disponível como alias de `package:npm`; a geração
-local não publica no registro. Também é possível instalar esse arquivo diretamente
-com `npm install --global --ignore-scripts /CAMINHO/ARQUIVO.tgz`; a primeira
-instalação precisa obter as dependências do registro.
+`library seed` copia a edição versionada de `instrucoes/` somente para uma pasta
+nova ou um scaffold modular vazio sem capturas. Conteúdo próprio, bibliotecas
+incompletas/legadas e formatos removidos são preservados. `library init` continua
+criando apenas o scaffold vazio. Esses comandos não criam backups nem geram mídia.
 
-`pnpm-lock.yaml` continua sendo a fonte das versões do projeto. O empacotamento
-consulta sua árvore de produção, gera `runtime/package-lock.json` com as
-ferramentas npm e verifica versões, URLs públicas, integridades e resolução
-das dependências.
-Esse lockfile é usado explicitamente por `npm ci` no Docker. É um artefato de
-distribuição incluído no pacote; não é um segundo lockfile de desenvolvimento
-para manter manualmente. A geração recusa divergências
-em relação à árvore pnpm, inclusive quando duas versões da mesma biblioteca são
-necessárias. O Docker usa esse mesmo lockfile e instala as dependências dentro
-da imagem. Seu contexto exclui os módulos do host.
-
-A instalação global segue a resolução normal do npm para dependências transitivas;
-o lockfile de produção congela explicitamente o servidor executado pelo Docker.
-Isso mantém compatibilidade com npm 11 e 12: a linha 12 retirou o suporte a
-`npm-shrinkwrap.json`. Não se promete uma árvore global transitiva congelada pela
-mera presença de um lockfile no pacote. A CLI usa suas dependências diretas exatas
-e o conector independente conserva o bundle validado.
-
-Somente o código da aplicação é compilado junto: suas bibliotecas de produção são
-resolvidas pelo npm. O protocolo privado do workspace é incorporado ao código
-compilado, sem publicar outro pacote ou referências `workspace:`/caminhos locais.
-O MCP independente e a extensão mantêm seus bundles para executar nos ambientes
-próprios. Licenças e atribuições continuam preservadas.
-
-A auditoria percorre o `.tgz`, verifica a lista de arquivos, o manifesto, o
-lockfile de produção e seus destinos. Bloqueia arquivos compactados internos,
-`node_modules` embutido, dados locais, source maps, caminhos pessoais reconhecidos e padrões
-conhecidos de tokens/chaves, sem exibir os valores encontrados. Um resultado sem
-achados não substitui a revisão do que a aplicação e suas dependências distribuem.
-
-Para publicar no WSL, autentique-se com
-`npm login --auth-type=web --browser=false --registry=https://registry.npmjs.org/`
-na conta autorizada para a organização. Abra a nova URL manualmente no navegador
-e espere a confirmação no terminal; depois confira com `npm whoami`. Não envie
-tokens, senhas ou códigos de autenticação pelo chat.
-Depois de revisar o nome, versão, acesso público e SHA-256 exibidos pela auditoria:
+Crie `.env` a partir de `.env.example` somente se ele ainda não existir.
+Configure `WIN_EXTENSION_DIR` com a pasta existente da extensão e
+`FLOW_LIBRARY_DIR` com a biblioteca ativa. Ambos são caminhos absolutos do
+ambiente que executa Compose. No WSL, use o caminho Linux para a pasta Windows.
+A pasta da extensão deve estar vazia ou identificada como Flow Batch.
 
 ```sh
-pnpm publish:npm
+docker compose config --quiet
+docker compose up -d --build
+docker compose ps
+docker compose logs --tail=100 orchestrator
 ```
 
-Esse comando audita uma cópia do arquivo exato imediatamente antes de executar
-`npm publish`, usando o registro e a visibilidade configurados. `--dry-run` simula
-a publicação. Não publique a raiz do repositório nem os diretórios de implantação.
-Para uma atualização, incremente a versão antes de gerar outro pacote; o npm
-não permite substituir uma versão já publicada.
+O build usa Node e pnpm com versões fixadas, instala as dependências do lockfile
+e prepara a árvore de produção dentro da imagem Linux. Não copia `node_modules`
+do host. `sync-extension` atualiza os arquivos gerenciados da extensão no destino
+configurado a cada início. Ele não tem rede e só escreve nessa pasta.
 
-## Instalação e instruções locais
+Abra `chrome://extensions`, ative o modo do desenvolvedor e carregue sem
+compactação a pasta da extensão. Confirme a identidade em
+<http://127.0.0.1:4319/connect> e abra <http://127.0.0.1:4319/orders>.
+Entre no Google Flow nessa conta e mantenha a sessão disponível.
+O registro do conector MCP está descrito adiante e permanece independente do
+contêiner. Instalar ou atualizar não autoriza gerações pagas.
 
-A edição criativa versionada em `instrucoes/` acompanha o npm. `setup` instala
-seus nove arquivos fora do prefixo do pacote: `base.md` e um Markdown em
-`formatos/` para cada formato abaixo. O runtime lê exclusivamente a pasta ativa
-configurada por `LIBRARY_DIR` (Compose: `FLOW_LIBRARY_DIR`), sem buscar regras
-faltantes no pacote ou no checkout. Atualizar o software não sincroniza edições
-nem repõe formatos que o usuário removeu. Compare manualmente as edições quando
-quiser incorporar mudanças; `npm root --global` localiza o pacote instalado.
+O servidor roda sem privilégios, com raiz somente para leitura e publicação
+apenas em `127.0.0.1:4319`. O Compose monta a biblioteca em `/library`; SQLite
+e materiais ficam no volume persistente `sqlite_data` do projeto. No projeto
+padrão, seu nome é `flow-batch-automator_sqlite_data`. Confira o nome real antes
+de operar uma instalação existente.
+
+Para atualizar, obtenha a revisão desejada do repositório e execute
+`docker compose up -d --build`; depois recarregue a extensão e os clientes MCP.
+As instruções ativas não são sincronizadas automaticamente com o código.
+Para parar preservando dados:
+
+```sh
+docker compose down
+```
+
+Antes de adotar outra instalação, confira processos, porta, projeto, volumes
+e pastas existentes. Nenhum comando migra ou apaga dados de instalações
+anteriores automaticamente. Não use `docker compose down -v` como parada.
+Para remover a interface, pare o Compose, remova a extensão no Chrome e apenas
+a entrada `flow-batch` nos clientes MCP. Biblioteca, materiais, capturas,
+volumes e downloads exigem uma decisão separada para exclusão.
+
+### Variáveis de ambiente
+
+| Variável                 | Uso e padrão                                                                               |
+| ------------------------ | ------------------------------------------------------------------------------------------ |
+| `WIN_EXTENSION_DIR`      | Compose: pasta existente da extensão, obrigatória.                                         |
+| `FLOW_LIBRARY_DIR`       | Compose: biblioteca ativa, obrigatória; também é aceita pela CLI offline quando exportada. |
+| `FLOW_API_URL`           | MCP e CLI de pedidos: `http://127.0.0.1:4319`.                                             |
+| `FLOW_AGENT_WORKSPACE`   | Workspace MCP: `~/.flow-batch/pedidos`.                                                    |
+| `FLOW_AGENT_NAME`        | Agente da CLI orders: `agente-local`.                                                      |
+| `CODEX_HOME`             | Pasta do Codex: `~/.codex`; `--config` no instalador MCP tem precedência.                  |
+| `LOG_LEVEL`              | Logs: `info`; aceita `silent`, `fatal`, `error`, `warn`, `info` e `debug`.                 |
+| `HOST` / `PORT`          | Internos ao servidor: Compose usa `0.0.0.0` / `4319`.                                      |
+| `DATABASE_PATH`          | Interno ao servidor: Compose usa `/data/flow-batch.sqlite`.                                |
+| `MATERIALS_DIR`          | Materiais: por padrão `materials` junto ao SQLite.                                         |
+| `LIBRARY_DIR`            | Interno ao servidor: Compose usa `/library`; a CLI offline também aceita a variável.       |
+| `SQLITE_BUSY_TIMEOUT_MS` | Espera SQLite: 3000 ms, de 100 a 10000.                                                    |
+
+Compose lê `.env` para interpolação; as CLIs no host usam apenas as variáveis
+exportadas ou os argumentos explícitos. A extensão aponta para a porta 4319.
+`PLAYWRIGHT_BROWSERS_PATH` escolhe o navegador somente nos testes.
+
+## Instruções locais
+
+A edição criativa versionada está em `instrucoes/`: `base.md` e oito arquivos
+em `formatos/`. Use `pnpm library seed PASTA` para iniciar uma biblioteca
+externa. O runtime lê exclusivamente a pasta ativa configurada por `LIBRARY_DIR`
+(Compose: `FLOW_LIBRARY_DIR`), sem buscar regras faltantes no checkout.
+Atualizar o software não repõe arquivos removidos nem sincroniza edições locais.
+Compare manualmente as edições quando quiser incorporar mudanças.
 
 | Arquivo em `formatos/` | Formato                   |
 | ---------------------- | ------------------------- |
@@ -296,7 +132,7 @@ Na clonagem, simplifique gestos complexos preservando a intenção demonstrativa
 da referência; registre a adaptação na análise e mantenha a fala de
 `preserve-copy` intacta. A regra vale para qualquer produto, sem proibir
 deformações naturais necessárias ao uso. Bibliotecas ativas existentes precisam
-receber essa edição explicitamente; atualizar o pacote não as sincroniza.
+receber essa edição explicitamente; atualizar o software não as sincroniza.
 
 `base.md` começa com `<!-- flow-base:1 -->`. Use `# [common]`, `# [copy]`,
 `# [image]` e `# [animation]`, com títulos livres após os identificadores.
@@ -326,7 +162,7 @@ legíveis, inclusive em capturas. Para visualizar a divisão sem criar metadados
 diretórios ou arquivos:
 
 ```sh
-flow-batch library split [PASTA]
+pnpm library split [PASTA]
 ```
 
 `library split [PASTA] --preserve-originals` aplica a divisão e arquiva fontes
@@ -338,9 +174,10 @@ arquivar conteúdo substituído e também exigem autorização para esse backup.
 Um `base.md` isolado não é um documento completo para `library import`.
 
 `pnpm library init [PASTA]` cria somente os nove arquivos vazios da estrutura
-modular. Os demais comandos funcionam por `pnpm library` após o build, ou
-`flow-batch library` na instalação. Sem pasta explícita, usam a instalação salva
-ou `~/.flow-batch/biblioteca`. Não configure a pasta interna do npm como ativa.
+modular. Os demais comandos funcionam por `pnpm library` após o build.
+Sem pasta explícita, usam `FLOW_LIBRARY_DIR`, depois `LIBRARY_DIR` e, na ausência
+de ambas, `~/.flow-batch/biblioteca`. As variáveis precisam estar exportadas;
+para usar o mesmo destino do `.env` do Compose, informe a pasta explicitamente.
 
 Leitura/salvamento MCP sem `path` resolve o arquivo principal do layout ativo:
 `base.md`, `biblioteca.md` ou as rotas legadas. Informe `revision` para ler uma
@@ -350,33 +187,14 @@ reservas; capturas, materiais e preparações anteriores permanecem intactos.
 A base pode servir a futuros canais; novos canais e formatos exigem suporte
 no contrato e no motor. Não há módulo orgânico/DTC/ODR implementado.
 
-Copie `.env.example` para `.env`. Configure `WIN_EXTENSION_DIR` com uma pasta
-existente para a extensão do Chrome e `FLOW_LIBRARY_DIR` com a pasta de instruções.
-Ambos são caminhos do ambiente que executa Docker Compose. No WSL, use caminhos
-Linux, inclusive `/mnt/c/...` quando escolher uma pasta Windows.
-
-```sh
-docker compose up -d --build
-```
-
-O Compose monta somente a pasta escolhida de instruções em `/library`. SQLite e
-materiais dos produtos continuam no volume persistente administrado pela aplicação.
-A aplicação roda sem privilégios e publica apenas `127.0.0.1:4319`. Não altere a
-pasta global de downloads do Chrome. Carregue a extensão não empacotada no destino
-configurado e confirme a conexão em <http://127.0.0.1:4319/connect>.
-
-Fora do Compose, `LIBRARY_DIR` escolhe a pasta; o padrão é
-`~/.flow-batch/biblioteca`. `.env` é lido pelo Compose, não pela execução direta.
-Uma atualização de software preserva suas instruções e não importa conteúdo novo.
-
 ## Backup e mudança de computador
 
 ```sh
-flow-batch library export /CAMINHO/biblioteca.md
-# Na outra máquina, depois de setup:
-flow-batch library import /CAMINHO/biblioteca.md
-# Backup completo com histórico:
-flow-batch library export /CAMINHO/backup-instrucoes.json
+pnpm library export /CAMINHO/Biblioteca-Flow /CAMINHO/biblioteca.md
+# Na outra máquina, com o checkout compilado:
+pnpm library import /CAMINHO/Biblioteca-Flow /CAMINHO/biblioteca.md
+# Backup completo com histórico, somente quando autorizado:
+pnpm library export /CAMINHO/Biblioteca-Flow /CAMINHO/backup-instrucoes.json
 ```
 
 O Markdown transporta as instruções atuais em um arquivo. O JSON inclui os arquivos atuais e as capturas
@@ -685,10 +503,7 @@ pnpm test
 pnpm build
 pnpm format:check
 pnpm check
-pnpm package:npm
-pnpm audit:npm
-pnpm test:package
-pnpm test:package --docker
+pnpm test:docker
 docker compose config --quiet
 pnpm test:browser:formats
 pnpm test:browser:library
@@ -702,6 +517,11 @@ pnpm test:browser:connect
 pnpm test:browser:flow --flow-status-only --port=4399
 pnpm test:browser:session
 ```
+
+`pnpm test:docker` usa projeto, imagens, porta e volume próprios; verifica build,
+conector MCP, isolamento, sincronização da extensão e persistência após reinício.
+Não atualiza a instalação em uso. O volume sintético permanece identificado na saída.
+`pnpm dev` inicia o servidor no host somente para desenvolvimento.
 
 Os testes usam contratos sintéticos, SQLite temporário e Chrome isolado com
 fixtures, sem perfil pessoal, Flow real ou consumo. `pnpm test:browser --port=4389`

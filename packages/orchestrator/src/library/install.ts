@@ -45,7 +45,7 @@ function populateScaffold(
       const destination = join(root, path);
       if (readText(destination) !== original[path])
         throw new Error(
-          'As instruções mudaram durante setup; preserve as edições e tente novamente.',
+          'As instruções mudaram durante a inicialização; preserve as edições e tente novamente.',
         );
       atomicWrite(destination, edition[path]!);
       written.push(path);
@@ -64,7 +64,7 @@ function populateScaffold(
     if (failures.length > 1)
       throw new AggregateError(
         failures,
-        'Falha ao instalar instruções; confira os arquivos antes de repetir setup.',
+        'Falha ao instalar instruções; confira os arquivos antes de repetir library seed.',
         { cause: failure },
       );
     throw failure;
@@ -91,7 +91,9 @@ export function installInstructions(
   try {
     const original = library.draft();
     if (original.hash !== filesHash(emptyModules()) || library.history().length)
-      throw new Error('A biblioteca mudou durante setup. Execute novamente.');
+      throw new Error(
+        'A biblioteca mudou durante a inicialização. Execute novamente.',
+      );
     populateScaffold(destination, original.files, edition);
     return { status: 'installed', files: Object.keys(edition).length };
   } finally {

@@ -5,6 +5,10 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { localClient } from './orders.mjs';
 import { appendFileSync, mkdirSync, readFileSync, statSync } from 'node:fs';
 import { resolve, join } from 'node:path';
+import {
+  availablePort,
+  isolatedCompose,
+} from './test-support/docker-project.mjs';
 
 // An isolated Compose project and synthetic state; never attach an existing volume.
 const project = `flow-batch-validation-${randomBytes(4).toString('hex')}`;
@@ -18,6 +22,8 @@ const environment = {
   FLOW_LIBRARY_DIR: join(directory, 'instructions'),
 };
 const log = join(directory, 'docker.log');
+const port = await availablePort();
+const base = `http://127.0.0.1:${port}`;
 
 function docker(args) {
   try {
@@ -35,8 +41,9 @@ function docker(args) {
   }
 }
 
+const composeFile = isolatedCompose(docker, project, directory, port);
 function compose(...args) {
-  return docker(['compose', '-p', project, ...args]);
+  return docker(['compose', '-f', composeFile, '-p', project, ...args]);
 }
 function executeNode(source) {
   return compose(
@@ -59,7 +66,7 @@ try {
   assert.equal(container.Config.User, '1000:1000');
   assert.equal(container.HostConfig.ReadonlyRootfs, true);
   assert.equal(
-    container.NetworkSettings.Ports['4319/tcp'][0].HostIp,
+    container.NetworkSettings.Ports[`${port}/tcp`][0].HostIp,
     '127.0.0.1',
   );
   assert.equal(
@@ -77,18 +84,23 @@ try {
   assert.equal(syncContainer.HostConfig.NetworkMode, 'none');
   assert.equal(syncContainer.HostConfig.ReadonlyRootfs, true);
   assert.equal(syncContainer.Mounts.length, 1);
+  assert.equal(
+    executeNode(`import { existsSync } from 'node:fs';
+      console.log(existsSync('./dist/local-cli'));`),
+    'false',
+  );
 
   for (const [path, expected] of [
     ['/health/live', { status: 'alive' }],
     ['/health', { status: 'ready', sqlite: 'available' }],
   ]) {
-    const response = await fetch(`http://127.0.0.1:4319${path}`, {
+    const response = await fetch(`${base}${path}`, {
       signal: AbortSignal.timeout(3000),
     });
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), expected);
   }
-  const forbidden = await fetch('http://127.0.0.1:4319/health', {
+  const forbidden = await fetch(`${base}/health`, {
     headers: { Origin: 'https://example.com' },
   });
   assert.equal(forbidden.status, 403);
@@ -96,13 +108,16 @@ try {
   const reference = readFileSync(
     new URL('./fixtures/reference.png', import.meta.url),
   );
-  const session = await fetch('http://127.0.0.1:4319/orders');
+  const connector = await fetch(`${base}/agent/flow-batch-mcp.mjs`);
+  assert.equal(connector.status, 200);
+  assert.match(await connector.text(), /flow_checkout/);
+  const session = await fetch(`${base}/orders`);
   const cookie = session.headers.get('set-cookie').split(';')[0];
-  const imported = await fetch('http://127.0.0.1:4319/manage/materials', {
+  const imported = await fetch(`${base}/manage/materials`, {
     method: 'POST',
     headers: {
       cookie,
-      Origin: 'http://127.0.0.1:4319',
+      Origin: base,
       'X-Flow-Management': '1',
       'Content-Type': 'application/octet-stream',
       'X-Flow-Filename': 'fixture.png',
@@ -111,7 +126,7 @@ try {
   });
   assert.equal(imported.status, 200);
   const material = await imported.json();
-  let api = await localClient();
+  let api = await localClient(base);
   const order = await api('/manage/orders', {
     id: randomUUID(),
     name: 'Docker order fixture',
@@ -175,7 +190,7 @@ try {
     console.log(db.prepare("SELECT value FROM application_metadata WHERE key = 'container-test'").get().value);
     db.close();`);
   assert.equal(persisted, 'preserved');
-  api = await localClient();
+  api = await localClient(base);
   assert.equal(
     (await api(`/manage/orders/${order.number}`)).order.id,
     order.id,
@@ -204,7 +219,7 @@ try {
     running: 0,
   });
   console.log(
-    'Docker: build, health, loopback, isolation, sync on both starts, SQLite/material persistence, cleanup and uncertain/pending queue recovery passed.',
+    'Docker: checkout build, MCP connector, health, isolated port/images/volume, sync on both starts, SQLite/material persistence, cleanup and uncertain/pending queue recovery passed.',
   );
   console.log(`Synthetic test volume preserved: ${project}_sqlite_data`);
   console.log(`Logs and extension: ${directory}`);

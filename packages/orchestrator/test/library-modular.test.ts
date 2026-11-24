@@ -128,7 +128,7 @@ test('split preview is read-only, conversion preserves every section and previou
     process.execPath,
     [resolve('../../scripts/library.mjs'), 'split', root],
     {
-      env: { ...process.env, FLOW_BATCH_HOME: join(root, 'uncreated-state') },
+      env: { ...process.env, FLOW_LIBRARY_DIR: join(root, 'uncreated-state') },
       encoding: 'utf8',
     },
   );

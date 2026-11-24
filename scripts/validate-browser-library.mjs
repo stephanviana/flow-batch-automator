@@ -79,7 +79,10 @@ try {
     process.execPath,
     ['scripts/library.mjs', 'convert', instructions],
     {
-      env: { ...process.env, FLOW_BATCH_HOME: resolve(directory, 'cli-state') },
+      env: {
+        ...process.env,
+        FLOW_LIBRARY_DIR: resolve(directory, 'cli-state'),
+      },
       stdio: 'pipe',
     },
   );
@@ -103,7 +106,10 @@ try {
     process.execPath,
     ['scripts/library.mjs', 'split', instructions],
     {
-      env: { ...process.env, FLOW_BATCH_HOME: resolve(directory, 'cli-state') },
+      env: {
+        ...process.env,
+        FLOW_LIBRARY_DIR: resolve(directory, 'cli-state'),
+      },
       encoding: 'utf8',
     },
   );

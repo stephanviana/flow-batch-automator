@@ -21,8 +21,8 @@ confirmação nem hash de aprovação. Use `flow_publish` com `execute=true` e
 número, autorização e extensão opcional. Isso não autoriza gerações nesta tarefa
 de manutenção nem retomadas automáticas após falha.
 A biblioteca criativa versionada está em `instrucoes/`: base.md e oito arquivos
-`formatos/*.md`. O npm distribui esses textos sem segredos; setup instala a edição
-na pasta configurada apenas quando nova ou com scaffold modular vazio sem capturas.
+`formatos/*.md`. `pnpm library seed [PASTA]` inicia a edição do checkout
+na pasta escolhida apenas quando nova ou com scaffold modular vazio sem capturas.
 Conteúdo local existente, incompleto ou legado é preservado. O runtime usa
 somente LIBRARY_DIR (Compose: FLOW_LIBRARY_DIR), sem fallback no checkout/pacote.
 Atualizar o software não sincroniza instruções. Preserve os textos ao formatar.
@@ -148,16 +148,11 @@ qualquer geração paga continua dependendo de autorização específica no chat
   Node de execução; não antecipar contratos de fases futuras.
 - `packages/orchestrator`: Fastify, configuração Zod, persistência `node:sqlite`
   e rotas HTTP. Separe configuração, persistência, comunicação e segurança.
-  `src/local-cli` configura a instalação WSL, registra os clientes MCP
-  e gerencia Compose fora do checkout; dados ficam fora do prefixo npm.
-  Windows usa `runtime=native` por padrão, sem Docker/WSL. Linux/WSL mantém
-  Docker por padrão e admite `--runtime native`. Configurações antigas preservam
-  Docker. O modo nativo inicia Node detached, sem shell, e usa controle local
-  autenticado (named pipe Windows, socket abstrato Linux) vinculado à pasta de
-  dados, adquirido antes de abrir SQLite. Não parar por PID nem por sinais Windows.
-  Não criar serviços, tarefas agendadas ou autostart. Não migrar volumes Docker
-  nem apagar dados automaticamente ao mudar o runtime.
-  O registro Codex usa `smol-toml`, com backup e preservação dos valores.
+  O modo de execução suportado é o Compose da raiz; não há distribuição npm,
+  instalador `flow-batch` ou runtime nativo gerenciado. O conector MCP independente
+  permanece em `src/mcp`. O registro Codex usa `smol-toml`, com backup autorizado
+  e preservação dos valores. Desenvolvimento e testes podem iniciar Node no host.
+  Um aplicativo desktop é direção futura; não antecipar framework ou contratos.
 - `packages/extension`: Chrome Manifest V3, Chrome 120+, side panel e service worker
   empacotados com esbuild. Identidade em IndexedDB; storage e alarms para estado
   de conexão e recuperação. Referências de execução em IndexedDB separado, com SHA-256;
@@ -234,52 +229,20 @@ mudanças apenas documentais não exigem criar testes de código.
   Instalação não prepara pedidos, não consome créditos e não encerra clientes.
 - `pnpm mcp:install codex`: registra o conector em `CODEX_HOME/config.toml`
   ou `~/.codex/config.toml`, preservando os demais servidores e valores.
-- Distribuição npm: `@nahpets01-org/flow-batch-automator`, acesso público. A
-  decisão atual substitui a distribuição exclusivamente local privada. Somente
-  o manifesto de distribuição é publicável; raiz e workspaces ficam privados.
-- `pnpm package:npm` compila e gera o `.tgz` auditado em `dist/npm`, sem publicar.
-  `pnpm package:local` é um alias. `packaging/npm.json` define o destino e a
-  visibilidade; `packaging/npm-files.json`, os únicos arquivos permitidos.
-- A distribuição 0.6.1 usa arquivos compilados e dependências npm normais,
-  sem `app.tar.gz` ou `node_modules` embutido. `runtime/package-lock.json` é gerado
-  exclusivamente para o artefato a partir da árvore de produção do lockfile
-  pnpm, com versões, URLs e integridades verificadas. O protocolo privado é
-  incorporado ao código; MCP independente e extensão preservam seus bundles.
-- `pnpm audit:npm` verifica manifesto, arquivos, lockfile de produção, caminhos pessoais,
-  padrões de segredos, links, metadados e source maps. Não imprimir achados que
-  revelem valores sensíveis. Preservar as licenças de terceiros. O Docker faz
-  `npm ci` com o lockfile de produção e não recebe os módulos instalados no host.
-- `pnpm publish:npm --dry-run` simula; `pnpm publish:npm` audita uma cópia exata
-  antes da publicação no destino configurado. Autenticação somente local, sem
-  tokens no chat, documentação ou pacote. Não publicar raiz ou implantação.
-- `flow-batch setup --extension PASTA [--library PASTA]`: configura a instalação
-  WSL e registra Antigravity/Codex. `up`, `down`, `status`, `logs` e `doctor`
-  operam o Compose; `down` mantém o volume. Não executar instalação global nem
-  adotar dados existentes durante testes; usar HOME/prefixo/volume sintéticos.
-- `setup --runtime native [--data PASTA]`: execução direta no Node; padrão de
-  novas instalações Windows. `up`, `down`, `status`, `logs`, `doctor` usam o
-  runtime salvo. Biblioteca, SQLite e materiais ficam fora do prefixo npm.
-  Encerre antes de atualizar o pacote ou mudar runtime, porta ou pastas. O modo
-  nativo mantém o HTTP em `127.0.0.1`, com a mesma segurança e fila do Compose.
-  Metadados de controle podem conter segredo local; nunca imprimir ou distribuir
-  `native.json`. Status e health não retornam esse segredo.
-- `pnpm test:package:native`: instalação npm e ciclo nativo completo em pastas
-  temporárias, com MCP, SQLite, materiais e reinstalação sem Docker no PATH.
-  `--windows` acrescenta execução real por Node Windows; no WSL usa a
-  interoperabilidade e uma cópia portátil de Node 24.22.2 validada por SHA-256,
-  sem substituir o Node instalado. Configuração, HOME, USERPROFILE e prefixo npm
-  do teste são sintéticos. `FLOW_TEST_WINDOWS_NODE` escolhe o executável inicial.
-- `pnpm test:package` valida instalação npm com dependências do registro em
-  prefixo temporário, versões diretas, MCP, stdio e reinstalação offline.
-  `pnpm test:package --docker` acrescenta Compose isolado, painel HTTP, árvore de
-  produção fixada e persistência entre `down`/`up`, sem créditos.
-  `FLOW_TEST_NPM=CAMINHO` seleciona outra versão do npm somente nesse teste.
+- `docker compose up -d --build` inicia/atualiza a aplicação e sincroniza a
+  extensão. `docker compose down` para preservando o volume. Configure
+  `WIN_EXTENSION_DIR` e `FLOW_LIBRARY_DIR` no `.env` ignorado pelo Git.
+  O Dockerfile da raiz instala versões fixadas pelo pnpm dentro da imagem e
+  prepara dependências de produção; não copia módulos do host.
+  Não instalar/desinstalar pacotes globais nem migrar instalações anteriores
+  automaticamente durante manutenção do código.
 - `pnpm mcp`: conector MCP stdio; o arquivo independente é servido em
   `/agent/flow-batch-mcp.mjs`, sem editor ou página de biblioteca.
-- `pnpm library init [PASTA]`, `import [PASTA] ARQUIVO.MD_OU_JSON`,
+- `pnpm library init [PASTA]`, `seed [PASTA]`, `import [PASTA] ARQUIVO.MD_OU_JSON`,
   `export [PASTA] DESTINO.MD_OU_JSON`, `validate [PASTA]`, `convert [PASTA]`, `split [PASTA] [--preserve-originals]` e
   `restore [PASTA] REVISAO`: manutenção offline. Sem pasta explícita, usam a
-  instalação configurada ou `~/.flow-batch/biblioteca`.
+  `FLOW_LIBRARY_DIR` exportada, depois `LIBRARY_DIR` ou `~/.flow-batch/biblioteca`.
+  A CLI offline não lê `.env` nem configurações de instaladores anteriores.
 - `pnpm test:browser:library`: inicialização vazia, importação local, painel de
   pedidos sem editor e download do conector em Chrome isolado.
 - `pnpm test:browser:orders-design`: layout do editor e acompanhamento, larguras
@@ -304,9 +267,10 @@ mudanças apenas documentais não exigem criar testes de código.
   imutável e autorização da extensão antes de persistir o despacho.
 - `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm lint`, `pnpm test`,
   `pnpm build`, `pnpm format:check`, `pnpm check`.
-- `pnpm dev` / `pnpm start`: servidor local.
+- `pnpm dev`: servidor no host somente para desenvolvimento.
 - `docker compose config --quiet` / `pnpm test:docker`: configuração e integração
-  em Compose isolado, com volume sintético próprio e porta 4319 livre.
+  em Compose isolado, com projeto, imagens, volume e porta sintéticos próprios.
+  Não reutilizar imagens, porta ou dados da instalação em uso.
 - `pnpm test:browser:orders` / `pnpm test:browser:reuse` /
   `pnpm test:browser:formats`: pedidos pelo painel,
   preparação, despacho, reutilização e downloads em Chrome for Testing com fixtures.

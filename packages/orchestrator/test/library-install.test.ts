@@ -7,7 +7,9 @@ import {
   writeFileSync,
   readdirSync,
   symlinkSync,
+  existsSync,
 } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import fs from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
@@ -27,7 +29,7 @@ function folder(t: { after(callback: () => void): void }): string {
   t.after(() => rmSync(path, { recursive: true, force: true }));
   return path;
 }
-test('setup installs nine unchanged creative files only into new or pristine scaffolds, without archives', (t) => {
+test('library seeding installs nine unchanged creative files only into new or pristine scaffolds, without archives', (t) => {
   const root = folder(t);
   assert.equal(Object.keys(bundledInstructions(edition)).length, 9);
   for (const scaffold of [false, true]) {
@@ -51,7 +53,7 @@ test('setup installs nine unchanged creative files only into new or pristine sca
   }
   assert.equal(installInstructions(edition, edition).status, 'preserved');
 });
-test('setup preserves removed formats, user edits, legacy/partial files and captured empty scaffolds', (t) => {
+test('library seeding preserves removed formats, user edits, legacy/partial files and captured empty scaffolds', (t) => {
   const root = folder(t);
   const active = join(root, 'active');
   installInstructions(edition, active);
@@ -139,4 +141,53 @@ test('an interrupted installation restores earlier writes and preserves a concur
       syncBuiltinESMExports();
     }
   }
+});
+
+test('offline CLI seeds the checkout edition using explicit paths or environment configuration and preserves existing edits', (t) => {
+  const root = folder(t);
+  const configured = join(root, 'configured library');
+  const fallback = join(root, 'fallback library');
+  const explicit = join(root, 'explicit library');
+  const cli = (
+    args: string[],
+    environment: NodeJS.ProcessEnv = {},
+  ): Record<string, unknown> =>
+    JSON.parse(
+      execFileSync(
+        process.execPath,
+        [resolve('../../scripts/library.mjs'), ...args],
+        {
+          encoding: 'utf8',
+          env: {
+            ...process.env,
+            FLOW_LIBRARY_DIR: configured,
+            LIBRARY_DIR: fallback,
+            ...environment,
+          },
+        },
+      ),
+    ) as Record<string, unknown>;
+  const seeded = cli(['seed']);
+  assert.equal(seeded.libraryDirectory, configured);
+  assert.equal(seeded.status, 'installed');
+  assert.deepEqual(draftFiles(configured), draftFiles(edition));
+  assert.equal(existsSync(fallback), false);
+  const edited =
+    readFileSync(join(configured, 'base.md'), 'utf8') +
+    '\nCustom local rule.\n';
+  writeFileSync(join(configured, 'base.md'), edited);
+  assert.equal(cli(['seed']).status, 'preserved');
+  assert.equal(readFileSync(join(configured, 'base.md'), 'utf8'), edited);
+  assert.equal(cli(['seed', explicit]).libraryDirectory, explicit);
+  assert.deepEqual(draftFiles(explicit), draftFiles(edition));
+  assert.equal(
+    cli(['seed'], { FLOW_LIBRARY_DIR: undefined }).libraryDirectory,
+    fallback,
+  );
+  assert.deepEqual(draftFiles(fallback), draftFiles(edition));
+  assert.equal(cli(['validate']).libraryDirectory, configured);
+  assert.throws(
+    () => cli(['seed'], { FLOW_LIBRARY_DIR: '' }),
+    /pasta de biblioteca não vazia/,
+  );
 });
