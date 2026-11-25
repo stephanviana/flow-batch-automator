@@ -341,13 +341,19 @@ as tentativas, as autorizações e as etapas de geração.
 origem. Use essa consulta para conferir um resultado incerto antes de decidir
 sobre outra tentativa.
 
+Se o envio do vídeo foi confirmado, confira o projeto e os downloads antes de
+usar **Confirmar falha após conferir no Flow**. O diagnóstico também sinaliza
+registros anteriores em que a marcação de não enviado contradiz o checkpoint.
+Takes que reutilizam imagens exibem qual take de origem ainda precisam aguardar.
+
 **Solicitar revisão no chat** copia uma solicitação identificando o take.
 Ao enviá-la ao agente, o usuário autoriza revisar a fala e o prompt e gerar uma
 única nova tentativa de vídeo com a imagem existente. O agente consulta
 `flow_review_take` e publica a revisão com `flow_prepare_take_revision`.
 Para revisar sem executar, a versão fica preparada; a execução posterior usa
 `flow_approve_take_revision`. Os parâmetros, a imagem, os materiais e a entrada
-original permanecem vinculados ao histórico.
+original permanecem vinculados ao histórico. Quando a imagem ainda não foi
+confirmada, o diagnóstico mostra por que essa revisão está indisponível.
 
 **Autorizar tentativa automática** concede até uma tentativa extra por take
 por 24 horas, somente para falhas comprovadas antes do envio. O painel mostra

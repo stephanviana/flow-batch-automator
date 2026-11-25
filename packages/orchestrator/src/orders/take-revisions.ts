@@ -12,7 +12,6 @@ import {
 import { QueueDatabase, type TaskRecord } from '../queue/database.js';
 import { FlowRevisionStore } from '../queue/flow-revisions.js';
 import { FlowRetries } from '../queue/flow-retries.js';
-import { FlowImages } from '../queue/flow-images.js';
 import type { LibraryStore } from '../library/store.js';
 import { instructionPaths } from '../library/routing.js';
 import { resolvedFiles } from '../library/resolution.js';
@@ -72,26 +71,6 @@ export class TakeRevisions {
     };
   }
 
-  private source(record: TaskRecord): NonNullable<FlowExecute['sourceImage']> {
-    if (
-      record.input.executor !== 'google-flow' ||
-      record.summary.state !== 'failed'
-    )
-      throw new HttpError(409, 'A revisão exige um take com falha confirmada.');
-    const reason = new FlowRetries(this.queue).reason(record, true);
-    if (reason) throw new HttpError(409, reason);
-    const image = new FlowImages(this.orders.database).forAttempt(
-      record,
-      record.summary.attemptCount + 1,
-    );
-    if (!image)
-      throw new HttpError(
-        409,
-        'Este take ainda não possui uma imagem confirmada para reutilizar.',
-      );
-    return image;
-  }
-
   private async variation(
     order: ProductionOrder,
     record: TaskRecord,
@@ -122,7 +101,7 @@ export class TakeRevisions {
     let sourceImage: FlowExecute['sourceImage'];
     let blockedReason: string | null = null;
     try {
-      sourceImage = this.source(record);
+      sourceImage = new FlowRetries(this.queue).revisionImage(record);
     } catch (error) {
       blockedReason =
         error instanceof Error ? error.message : 'Revisão indisponível.';
@@ -230,7 +209,7 @@ export class TakeRevisions {
           409,
           'O take mudou. Consulte o diagnóstico novamente.',
         );
-      const sourceImage = this.source(record);
+      const sourceImage = new FlowRetries(this.queue).revisionImage(record);
       this.validateContent(variation, record, input);
       const attempt = this.queue
         .detail(taskId, record.clientId)
@@ -280,7 +259,7 @@ export class TakeRevisions {
     const { record } = this.task(taskId);
     const revision = this.revisions.get(taskId, input.revisionId);
     if (revision.approvedAt !== null) return revision;
-    const image = this.source(record);
+    const image = new FlowRetries(this.queue).revisionImage(record);
     this.revisions.assertPending(record, input.revisionId);
     if (contentHash(image) !== contentHash(revision.sourceImage))
       throw new HttpError(

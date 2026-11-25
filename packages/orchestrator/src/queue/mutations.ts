@@ -4,7 +4,11 @@ import {
   type TaskSummary,
   type QueueCheckpoint,
 } from '@flow-batch/protocol';
-import type { QueueDatabase, TaskRecord } from './database.js';
+import {
+  hasVideoSubmission,
+  type QueueDatabase,
+  type TaskRecord,
+} from './database.js';
 import { queueHash } from './repository.js';
 import { HttpError } from '../security/errors.js';
 import { FlowProgress } from './flow-progress.js';
@@ -250,6 +254,17 @@ export class QueueMutations {
     action: Extract<QueueAction, { action: 'resolve' }>,
     now: number,
   ): void {
+    const reason = `operator-review:${action.outcome}:${action.note}`;
+    if (action.outcome === 'failed' && record.submissionReviewRequired) {
+      const { id } = record.summary;
+      this.database.connection
+        .prepare(
+          'UPDATE queue_tasks SET safe_to_retry=0,revision=revision+1,updated_at=? WHERE id=?',
+        )
+        .run(now, id);
+      this.database.event(id, 'failed', now, null, reason);
+      return;
+    }
     if (record.summary.state !== 'uncertain')
       throw new HttpError(409, 'Task does not require review');
     if (
@@ -260,11 +275,19 @@ export class QueueMutations {
         409,
         'Real completion requires a confirmed browser download',
       );
+    if (
+      action.outcome === 'not_submitted' &&
+      hasVideoSubmission(record.summary.step)
+    )
+      throw new HttpError(
+        409,
+        'O Flow já confirmou o envio do vídeo. Confira o resultado antes de marcar como falha.',
+      );
     this.database.change(
       record,
       action.outcome === 'completed' ? 'completed' : 'failed',
       now,
-      `operator-review:${action.outcome}:${action.note}`,
+      reason,
       {
         safeToRetry: action.outcome === 'not_submitted',
         error: null,

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { FlowRetryAction } from '@flow-batch/protocol';
+import type { FlowExecute, FlowRetryAction } from '@flow-batch/protocol';
 import type { QueueDatabase, TaskRecord } from './database.js';
 import { FlowImages } from './flow-images.js';
 import { HttpError } from '../security/errors.js';
@@ -104,6 +104,8 @@ export class FlowRetries {
       (summary.state !== 'failed' && summary.state !== 'uncertain')
     )
       return 'Somente takes com falha ou em revisão podem receber uma nova tentativa.';
+    if (record.submissionReviewRequired)
+      return 'O envio do vídeo foi confirmado. Confira o resultado no Flow e confirme a falha antes de solicitar uma nova tentativa.';
     if (
       this.database.connection
         .prepare(
@@ -132,6 +134,26 @@ export class FlowRetries {
         return 'Conclua primeiro o take que gera a imagem de origem.';
       }
     }
+  }
+
+  revisionImage(record: TaskRecord): NonNullable<FlowExecute['sourceImage']> {
+    if (
+      record.input.executor !== 'google-flow' ||
+      record.summary.state !== 'failed'
+    )
+      throw new HttpError(409, 'A revisão exige um take com falha confirmada.');
+    const reason = this.reason(record, true);
+    if (reason) throw new HttpError(409, reason);
+    const image = new FlowImages(this.database.connection).forAttempt(
+      record,
+      record.summary.attemptCount + 1,
+    );
+    if (!image)
+      throw new HttpError(
+        409,
+        'Este take ainda não possui uma imagem confirmada para reutilizar.',
+      );
+    return image;
   }
 
   schedule(

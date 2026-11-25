@@ -390,3 +390,59 @@ test('engine transmits the persisted source ID and never dispatches CTA after a 
     }
   }
 });
+
+test('CTA reuse take waits in queued state while Body is failed instead of failing with source_image_unavailable', async (t) => {
+  const f = await reuseFixture(t);
+  const [body, cta] = f.repository.enqueue(
+    f.clientId,
+    randomUUID(),
+    [f.body, f.cta],
+    Date.now() - FLOW_TAKE_INTERVAL_MS,
+  );
+  assert.ok(body && cta);
+  f.repository.control(f.clientId, true);
+  const connectionId = randomUUID();
+  const active = f.repository.claim(body.id, connectionId);
+  assert.ok(active?.activeAttemptId);
+  f.mutations.progress(f.clientId, connectionId, {
+    type: 'queue-progress',
+    taskId: body.id,
+    attemptId: active.activeAttemptId,
+    state: 'failed',
+    error: {
+      code: 'flow_model_unavailable',
+      message: 'Model unavailable before video submission',
+      retryable: false,
+      notSubmitted: false,
+    },
+  });
+  assert.equal(
+    f.repository.candidate(
+      [f.clientId],
+      [f.clientId],
+      [f.clientId],
+      [f.clientId],
+    ),
+    undefined,
+  );
+  assert.equal(f.queueDatabase.task(cta.id).summary.state, 'queued');
+  f.mutations.action(f.clientId, {
+    action: 'retry_flow',
+    requestId: randomUUID(),
+    taskId: body.id,
+    expectedRevision: f.queueDatabase.task(body.id).summary.revision,
+    confirmedFailure: true,
+    approve: true,
+    startQueue: false,
+  });
+  complete(f, body.id, f.body);
+  assert.equal(
+    f.repository.candidate(
+      [f.clientId],
+      [f.clientId],
+      [f.clientId],
+      [f.clientId],
+    )?.summary.id,
+    cta.id,
+  );
+});

@@ -20,6 +20,7 @@ export interface TaskRecord {
   activeAttemptId: string | null;
   connectionId: string | null;
   deadlineAt: number | null;
+  submissionReviewRequired: boolean;
 }
 export interface ChangeDetails {
   error?: TaskSummary['lastError'];
@@ -31,6 +32,14 @@ function json(value: unknown): unknown {
   return value === null || value === undefined
     ? null
     : (JSON.parse(String(value)) as unknown);
+}
+
+export function hasVideoSubmission(step: unknown): boolean {
+  return (
+    step === 'video_submitted' ||
+    step === 'video_ready' ||
+    step === 'download_started'
+  );
 }
 
 export class QueueDatabase {
@@ -56,6 +65,17 @@ export class QueueDatabase {
       .get(...(clientId ? [id, clientId] : [id]));
     if (!row) throw new HttpError(404, 'Task not found');
     const input = taskInputSchema.parse(json(row.input));
+    const step =
+      row.state === 'queued'
+        ? null
+        : (this.connection
+            .prepare(
+              `SELECT c.stage FROM queue_checkpoints c JOIN queue_attempts a ON a.id=c.attempt_id
+             WHERE c.task_id=? AND a.number=? ORDER BY c.sequence DESC LIMIT 1`,
+            )
+            .get(id, row.attempt_count as number)?.stage ?? null);
+    const videoSubmitted = hasVideoSubmission(step);
+    const markedSafeToRetry = row.safe_to_retry === 1;
     const summary = taskSummarySchema.parse({
       id: row.id,
       taskKey: row.task_key,
@@ -68,15 +88,7 @@ export class QueueDatabase {
           }
         : {}),
       executor: input.executor,
-      step:
-        row.state === 'queued'
-          ? null
-          : (this.connection
-              .prepare(
-                `SELECT c.stage FROM queue_checkpoints c JOIN queue_attempts a ON a.id=c.attempt_id
-             WHERE c.task_id=? AND a.number=? ORDER BY c.sequence DESC LIMIT 1`,
-              )
-              .get(id, row.attempt_count as number)?.stage ?? null),
+      step,
       product: input.product,
       video: input.video,
       format: input.format,
@@ -89,7 +101,7 @@ export class QueueDatabase {
       updatedAt: row.updated_at,
       nextAttemptAt: row.next_attempt_at,
       generationId: row.generation_id,
-      safeToRetry: row.safe_to_retry === 1,
+      safeToRetry: markedSafeToRetry && !videoSubmitted,
       result: json(row.result),
       lastError: json(row.last_error),
     });
@@ -102,6 +114,8 @@ export class QueueDatabase {
       connectionId:
         row.connection_id === null ? null : String(row.connection_id),
       deadlineAt: row.deadline_at === null ? null : Number(row.deadline_at),
+      submissionReviewRequired:
+        summary.state === 'failed' && videoSubmitted && markedSafeToRetry,
     };
   }
 

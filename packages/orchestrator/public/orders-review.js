@@ -113,13 +113,16 @@ function dispatchReview(parent, dispatch, orderNumber, context) {
   element(section, 'p', `Grupo: ${dispatch.id}`, 'hint');
 }
 
-function resolveTaskActions(details, task, orderNumber, context) {
-  if (task.state === 'uncertain') {
+function resolveTaskActions(details, diagnostic, orderNumber, context) {
+  const { task, videoSubmitted, submissionReviewRequired } = diagnostic;
+  if (task.state === 'uncertain' || submissionReviewRequired) {
     const actions = element(details, 'div', '', 'order-actions');
     const markFailed = element(
       actions,
       'button',
-      'Marcar como falha',
+      videoSubmitted
+        ? 'Confirmar falha após conferir no Flow'
+        : 'Marcar como falha',
       'danger',
     );
     markFailed.type = 'button';
@@ -133,6 +136,7 @@ function resolveTaskActions(details, task, orderNumber, context) {
         await context.refresh();
       });
     });
+    if (videoSubmitted) return;
     const notSubmitted = element(
       actions,
       'button',
@@ -167,13 +171,21 @@ function resolveTaskActions(details, task, orderNumber, context) {
 }
 
 function taskReview(parent, diagnostic, orderNumber, context) {
-  const { task, events, checkpoints, projectId, retryBlockedReason } =
-    diagnostic;
+  const {
+    task,
+    events,
+    checkpoints,
+    projectId,
+    retryBlockedReason,
+    revisionBlockedReason,
+    imageDependency,
+    submissionReviewRequired,
+  } = diagnostic;
   const details = element(parent, 'details', '', 'diagnostic-task');
   element(
     details,
     'summary',
-    `${task.product} · ${task.video} · ${task.take} · ${states[task.state] ?? task.state}`,
+    `${task.product} · ${task.video} · ${task.take} · ${imageDependency ? 'Aguardando imagem de origem' : (states[task.state] ?? task.state)}`,
   );
   if (task.lastError)
     element(
@@ -183,21 +195,36 @@ function taskReview(parent, diagnostic, orderNumber, context) {
       'error',
     );
   details.open = task.state === 'uncertain' || task.state === 'failed';
-  if (task.state === 'uncertain')
+  if (task.state === 'uncertain' || submissionReviewRequired)
     element(
       details,
       'p',
       'Confira o projeto e os downloads para verificar o resultado antes de decidir.',
     );
-  resolveTaskActions(details, task, orderNumber, context);
+  if (imageDependency)
+    element(
+      details,
+      'p',
+      imageDependency.take
+        ? `Depende da imagem do take ${imageDependency.take} (${states[imageDependency.state] ?? imageDependency.state}).`
+        : 'A imagem de origem deste take está indisponível.',
+      'hint',
+    );
+  resolveTaskActions(details, diagnostic, orderNumber, context);
   if (projectId) {
     const link = element(details, 'a', 'Conferir projeto no Flow');
     link.href = `https://flow.google.com/project/${encodeURIComponent(projectId)}`;
     link.target = 'flow-batch-review';
     link.rel = 'noopener';
   }
-  if (retryBlockedReason) element(details, 'p', retryBlockedReason, 'hint');
-  takeRevisionAction(details, task, diagnostic.revisions ?? []);
+  const blockedReason = revisionBlockedReason || retryBlockedReason;
+  if (blockedReason) element(details, 'p', blockedReason, 'hint');
+  takeRevisionAction(
+    details,
+    task,
+    diagnostic.revisions ?? [],
+    !revisionBlockedReason,
+  );
   element(
     details,
     'p',

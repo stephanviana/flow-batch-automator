@@ -82,14 +82,12 @@ export function dispatchReviewActions(parent, dispatch, number, context) {
     );
 }
 
-export function takeRevisionAction(parent, task, revisions) {
-  if (
-    task.executor !== 'google-flow' ||
-    (task.state !== 'failed' && !revisions.length)
-  )
+export function takeRevisionAction(parent, task, revisions, canPrepare) {
+  const offerRevision = task.state === 'failed' && canPrepare;
+  if (task.executor !== 'google-flow' || (!offerRevision && !revisions.length))
     return;
   const section = element(parent, 'section', '', 'diagnostic-revision');
-  if (task.state === 'failed') {
+  if (offerRevision) {
     element(
       section,
       'p',

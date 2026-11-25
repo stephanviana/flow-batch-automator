@@ -2,8 +2,10 @@ import type { DatabaseSync } from 'node:sqlite';
 import {
   taskInputSchema,
   queueCheckpointSchema,
+  taskStateSchema,
   type TaskInput,
   type FlowExecute,
+  type TaskState,
 } from '@flow-batch/protocol';
 import { HttpError } from '../security/errors.js';
 import type { TaskRecord } from './database.js';
@@ -12,11 +14,14 @@ type RealInput = Extract<TaskInput, { executor: 'google-flow' }>;
 export class FlowImages {
   constructor(private readonly sql: DatabaseSync) {}
 
-  assertSource(clientId: string, input: RealInput): string | undefined {
+  sourceTake(
+    clientId: string,
+    input: RealInput,
+  ): { id: string; take: string; state: TaskState } | undefined {
     if (!input.flow.imageSourceTaskKey) return undefined;
     const row = this.sql
       .prepare(
-        'SELECT id,input FROM queue_tasks WHERE client_id=? AND task_key=?',
+        'SELECT id,input,state FROM queue_tasks WHERE client_id=? AND task_key=?',
       )
       .get(clientId, input.flow.imageSourceTaskKey);
     if (!row)
@@ -48,29 +53,30 @@ export class FlowImages {
         409,
         'Source image must match the immutable visual materials, variation and project',
       );
-    return String(row.id);
+    return {
+      id: String(row.id),
+      take: source.take,
+      state: taskStateSchema.parse(row.state),
+    };
   }
 
   resolve(clientId: string, input: RealInput): FlowExecute['sourceImage'] {
-    const id = this.assertSource(clientId, input);
-    if (!id) return undefined;
-    const source = this.sql
-      .prepare('SELECT state FROM queue_tasks WHERE id=?')
-      .get(id);
-    if (source?.state !== 'completed')
+    const source = this.sourceTake(clientId, input);
+    if (!source) return undefined;
+    if (source.state !== 'completed')
       throw new HttpError(409, 'Source take must complete before image reuse');
     const row = this.sql
       .prepare(
         "SELECT payload FROM queue_checkpoints WHERE task_id=? AND stage='image_generated' ORDER BY sequence DESC LIMIT 1",
       )
-      .get(id);
+      .get(source.id);
     if (!row) throw new HttpError(409, 'Source image checkpoint unavailable');
     const checkpoint = queueCheckpointSchema.parse(
       JSON.parse(String(row.payload)) as unknown,
     );
     if (checkpoint.stage !== 'image_generated')
       throw new HttpError(409, 'Source image checkpoint incompatible');
-    return { taskId: id, mediaId: checkpoint.mediaId };
+    return { taskId: source.id, mediaId: checkpoint.mediaId };
   }
 
   forAttempt(

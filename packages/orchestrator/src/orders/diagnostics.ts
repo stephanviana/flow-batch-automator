@@ -1,8 +1,13 @@
 import type { OrderState, TaskDetail, TaskSummary } from '@flow-batch/protocol';
 import type { ClientStore } from '../persistence/clients.js';
-import { QueueDatabase } from '../queue/database.js';
+import {
+  QueueDatabase,
+  hasVideoSubmission,
+  type TaskRecord,
+} from '../queue/database.js';
 import { FlowRetries } from '../queue/flow-retries.js';
 import { FlowImages } from '../queue/flow-images.js';
+import { HttpError } from '../security/errors.js';
 import { DispatchRecovery, type DispatchReview } from './dispatch-recovery.js';
 import type { OrderRepository, ProductionOrder } from './repository.js';
 
@@ -14,6 +19,13 @@ interface TaskDiagnostic {
   checkpoints: { at: number; stage: string }[];
   retry: { images: number; videos: number } | null;
   retryBlockedReason: string | null;
+  revisionBlockedReason: string | null;
+  videoSubmitted: boolean;
+  submissionReviewRequired: boolean;
+  imageDependency: {
+    take: string | null;
+    state: TaskSummary['state'] | null;
+  } | null;
 }
 export interface OrderDiagnostic {
   number: number;
@@ -83,6 +95,42 @@ export function orderDiagnostic(
   };
 }
 
+function imageDependency(
+  images: FlowImages,
+  detail: TaskDetail,
+  clientId: string,
+): TaskDiagnostic['imageDependency'] {
+  if (detail.task.state !== 'queued' || detail.input.executor !== 'google-flow')
+    return null;
+  try {
+    const source = images.sourceTake(clientId, detail.input);
+    return source && source.state !== 'completed'
+      ? { take: source.take, state: source.state }
+      : null;
+  } catch (error) {
+    if (error instanceof HttpError) return { take: null, state: null };
+    throw error;
+  }
+}
+
+function revisionBlock(
+  retries: FlowRetries,
+  record: TaskRecord,
+): string | null {
+  if (
+    record.input.executor !== 'google-flow' ||
+    record.summary.state !== 'failed'
+  )
+    return null;
+  try {
+    retries.revisionImage(record);
+    return null;
+  } catch (error) {
+    if (error instanceof HttpError) return error.message;
+    throw error;
+  }
+}
+
 function taskDiagnostic(
   queue: QueueDatabase,
   id: string,
@@ -95,7 +143,9 @@ function taskDiagnostic(
     flow && ['failed', 'uncertain'].includes(detail.task.state)
       ? queue.task(id, clientId)
       : undefined;
-  const blocked = record ? new FlowRetries(queue).reason(record) : undefined;
+  const retries = new FlowRetries(queue);
+  const images = new FlowImages(queue.connection);
+  const blocked = record ? retries.reason(record) : undefined;
   return {
     revisions: detail.revisions,
     task: detail.task,
@@ -103,16 +153,17 @@ function taskDiagnostic(
     retry:
       record && !blocked
         ? {
-            images: new FlowImages(queue.connection).forAttempt(
-              record,
-              detail.task.attemptCount + 1,
-            )
+            images: images.forAttempt(record, detail.task.attemptCount + 1)
               ? 0
               : 1,
             videos: 1,
           }
         : null,
     retryBlockedReason: blocked ?? null,
+    revisionBlockedReason: record ? revisionBlock(retries, record) : null,
+    videoSubmitted: hasVideoSubmission(detail.task.step),
+    submissionReviewRequired: record?.submissionReviewRequired ?? false,
+    imageDependency: imageDependency(images, detail, clientId),
     events: detail.events,
     checkpoints: detail.checkpoints.map(({ at, checkpoint }) => ({
       at,

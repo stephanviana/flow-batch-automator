@@ -16,6 +16,7 @@ import { QueueRepository } from '../src/queue/repository.js';
 import { QueueMutations } from '../src/queue/mutations.js';
 import { QueueEngine } from '../src/queue/engine.js';
 import { FlowRevisionStore } from '../src/queue/flow-revisions.js';
+import { BatchStore } from '../src/persistence/batches.js';
 import type { QueueTransport } from '../src/queue/ports.js';
 
 type BaseFixture = Awaited<ReturnType<typeof blockedFixture>>;
@@ -32,7 +33,11 @@ interface RevisionFixture extends BaseFixture {
   api: (path: string, payload?: Record<string, unknown>) => Promise<ApiReply>;
   draft: FlowRevisionPreparation;
 }
-async function refusedTake(t: TestContext): Promise<RevisionFixture> {
+async function refusedTake(
+  t: TestContext,
+  failure:
+    'video-refused' | 'video-timeout' | 'image-unconfirmed' = 'video-refused',
+): Promise<RevisionFixture> {
   const fixture = await blockedFixture(t);
   const { f, repository, order, batchId } = fixture;
   const clientId = String(
@@ -44,6 +49,14 @@ async function refusedTake(t: TestContext): Promise<RevisionFixture> {
   const queue = new QueueRepository(database);
   const mutations = new QueueMutations(database);
   const original = flowInput();
+  original.flow.batchId = batchId;
+  const batches = new BatchStore(f.database);
+  batches.action(clientId, {
+    action: 'attach',
+    id: batchId,
+    expectedRevision: batches.get(clientId, batchId).revision,
+    projectId: original.flow.projectId,
+  });
   const manifest = repository.get(order.id).preparation!.manifests[0]!;
   original.taskKey = await stableImportId([
     'flow-import-v1',
@@ -53,9 +66,6 @@ async function refusedTake(t: TestContext): Promise<RevisionFixture> {
   ]);
   const [task] = queue.enqueue(clientId, randomUUID(), [original]);
   assert.ok(task);
-  f.database
-    .prepare('UPDATE queue_tasks SET batch_id=? WHERE id=?')
-    .run(batchId, task.id);
   queue.control(clientId, true);
   const connectionId = randomUUID();
   const active = queue.claim(task.id, connectionId)!;
@@ -79,25 +89,31 @@ async function refusedTake(t: TestContext): Promise<RevisionFixture> {
     generationId: `flow-${base.attemptId}`,
   });
   const mediaId = randomUUID();
-  mutations.checkpoint(clientId, connectionId, {
-    ...base,
-    type: 'queue-checkpoint',
-    stage: 'image_generated',
-    mediaId,
-  });
-  mutations.checkpoint(clientId, connectionId, {
-    ...base,
-    type: 'queue-checkpoint',
-    stage: 'video_submitted',
-    operationId: randomUUID(),
-  });
+  if (failure !== 'image-unconfirmed') {
+    mutations.checkpoint(clientId, connectionId, {
+      ...base,
+      type: 'queue-checkpoint',
+      stage: 'image_generated',
+      mediaId,
+    });
+    mutations.checkpoint(clientId, connectionId, {
+      ...base,
+      type: 'queue-checkpoint',
+      stage: 'video_submitted',
+      operationId: randomUUID(),
+    });
+  }
   mutations.progress(clientId, connectionId, {
     ...base,
     type: 'queue-progress',
-    state: 'failed',
+    state: failure === 'video-timeout' ? 'uncertain' : 'failed',
     error: {
-      code: 'flow_unsafe_generation',
-      message: 'Confirmed refusal',
+      code: {
+        'video-refused': 'flow_unsafe_generation',
+        'video-timeout': 'flow_video_timeout',
+        'image-unconfirmed': 'flow_response_invalid',
+      }[failure],
+      message: 'Synthetic Flow failure',
       retryable: false,
       notSubmitted: false,
     },
@@ -137,6 +153,78 @@ async function refusedTake(t: TestContext): Promise<RevisionFixture> {
     draft,
   };
 }
+
+test('a confirmed video submission cannot be resolved as unsent and an older contradiction must be reviewed again', async (t) => {
+  const f = await refusedTake(t, 'video-timeout');
+  const url = `/manage/orders/${f.order.number}/diagnostics`;
+  async function resolve(
+    outcome: 'not_submitted' | 'failed',
+  ): Promise<ApiReply> {
+    return f.f.app.inject({
+      method: 'POST',
+      url: url + '/resolve',
+      headers: f.headers,
+      payload: {
+        taskId: f.task.id,
+        expectedRevision: f.database.task(f.task.id).summary.revision,
+        outcome,
+      },
+    });
+  }
+  assert.equal((await resolve('not_submitted')).statusCode, 409);
+  assert.equal(f.database.task(f.task.id).summary.state, 'uncertain');
+  assert.equal((await resolve('failed')).statusCode, 200);
+  assert.equal(f.database.task(f.task.id).summary.safeToRetry, false);
+
+  const before = f.database.detail(f.task.id, f.clientId);
+  f.f.database
+    .prepare('UPDATE queue_tasks SET safe_to_retry=1 WHERE id=?')
+    .run(f.task.id);
+  assert.equal(f.database.task(f.task.id).summary.safeToRetry, false);
+  const diagnostic = await f.f.app.inject({ url, headers: f.headers });
+  assert.equal(diagnostic.statusCode, 200, diagnostic.body);
+  assert.equal(diagnostic.json().tasks[0].submissionReviewRequired, true);
+  assert.equal(diagnostic.json().tasks[0].videoSubmitted, true);
+  assert.equal((await f.api('/review')).json().canPrepare, false);
+  const denied = await f.api('/revisions', {
+    ...f.draft,
+    expectedRevision: f.database.task(f.task.id).summary.revision,
+    execution: { userAuthorized: true },
+  });
+  assert.equal(denied.statusCode, 409, denied.body);
+  assert.equal((await resolve('failed')).statusCode, 200);
+  assert.equal((await f.api('/review')).json().canPrepare, true);
+  const after = f.database.detail(f.task.id, f.clientId);
+  assert.deepEqual(after.attempts, before.attempts);
+  assert.deepEqual(after.checkpoints, before.checkpoints);
+  assert.equal(after.attempts.length, 1);
+  assert.equal(after.revisions.length, 0);
+});
+
+test('diagnostics report a queued CTA waiting for its failed source and the lack of a reusable image', async (t) => {
+  const f = await refusedTake(t, 'image-unconfirmed');
+  const cta = structuredClone(f.original);
+  cta.taskKey = randomUUID();
+  cta.take = '03-CTA';
+  cta.flow.imageSourceTaskKey = f.original.taskKey;
+  cta.flow.approval.imageGenerations = 0;
+  const [dependent] = f.queue.enqueue(f.clientId, randomUUID(), [cta]);
+  assert.ok(dependent);
+  const diagnostic = await f.f.app.inject({
+    url: `/manage/orders/${f.order.number}/diagnostics`,
+    headers: f.headers,
+  });
+  assert.equal(diagnostic.statusCode, 200, diagnostic.body);
+  const [body, dependentDiagnostic] = diagnostic.json().tasks;
+  assert.match(body.revisionBlockedReason, /não possui uma imagem confirmada/);
+  assert.equal(dependentDiagnostic.task.state, 'queued');
+  assert.equal(dependentDiagnostic.task.attemptCount, 0);
+  assert.deepEqual(dependentDiagnostic.imageDependency, {
+    take: f.original.take,
+    state: 'failed',
+  });
+  assert.equal((await f.api('/review')).json().canPrepare, false);
+});
 
 test('a revision is a durable preview and only explicit approval dispatches its video with the recorded image', async (t) => {
   const f = await refusedTake(t);

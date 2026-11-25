@@ -73,7 +73,7 @@ export class QueueRepository {
     }
     const id = randomUUID();
     if (input.executor === 'google-flow')
-      new FlowImages(sql).assertSource(clientId, input);
+      new FlowImages(sql).sourceTake(clientId, input);
     const batchId =
       input.executor === 'google-flow' ? input.flow.batchId : undefined;
     if (batchId && input.executor === 'google-flow') {
@@ -216,6 +216,15 @@ export class QueueRepository {
                  AND json_extract(q.input,'$.flow.output') IS NULL)${include(modernFlowClientIds)})
            AND (json_extract(q.input,'$.flow.output.root') IS NULL${include(videoFolderClientIds)})
            AND (q.attempt_count=0 OR json_extract(q.input,'$.executor')='simulation'${include(flowRetryClientIds)})
+           AND (
+             json_extract(q.input,'$.flow.imageSourceTaskKey') IS NULL
+             OR EXISTS (
+               SELECT 1 FROM queue_tasks s
+               WHERE s.client_id=q.client_id
+                 AND s.task_key=json_extract(q.input,'$.flow.imageSourceTaskKey')
+                 AND s.state IN ('completed','cancelled')
+             )
+           )
          ORDER BY q.sequence LIMIT 1`,
       )
       .get(
