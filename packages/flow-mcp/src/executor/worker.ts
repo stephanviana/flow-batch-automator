@@ -1,4 +1,4 @@
-import { open, writeFile, unlink } from 'node:fs/promises';
+import { open, readFile, writeFile, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { ProfileBrowser } from '../browser.js';
@@ -8,6 +8,16 @@ import { ExecutorApi } from './api.js';
 import { BrowserTakeExecutor } from './take.js';
 import { processBrowserDispatch } from './dispatch.js';
 import { WorkerChannel } from './worker-channel.js';
+
+async function stopRequested(home: string): Promise<boolean> {
+  try {
+    const raw = await readFile(join(home, 'worker-stop.json'), 'utf8');
+    const parsed = JSON.parse(raw) as { pid?: unknown };
+    return parsed.pid === process.pid;
+  } catch {
+    return false;
+  }
+}
 
 export async function runBrowserWorker(
   config: BrowserConfig,
@@ -31,6 +41,12 @@ export async function runBrowserWorker(
   const stop = (): void => controller.abort();
   process.once('SIGINT', stop);
   process.once('SIGTERM', stop);
+  const stopWatcher = setInterval(() => {
+    void stopRequested(config.home).then((requested) => {
+      if (requested) stop();
+    });
+  }, 400);
+  stopWatcher.unref();
   let channel: WorkerChannel | undefined;
   try {
     if (!(await browser.connect()))
@@ -50,6 +66,10 @@ export async function runBrowserWorker(
       { mode: 0o600 },
     );
     while (!controller.signal.aborted) {
+      if (await stopRequested(config.home)) {
+        stop();
+        break;
+      }
       if (!channel.busy) {
         try {
           await processBrowserDispatch(
@@ -67,7 +87,9 @@ export async function runBrowserWorker(
       );
     }
   } finally {
+    clearInterval(stopWatcher);
     controller.abort();
+    await unlink(join(config.home, 'worker-stop.json')).catch(() => {});
     await channel?.close();
     await browser.disconnect();
     process.removeListener('SIGINT', stop);

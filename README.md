@@ -6,7 +6,7 @@ geração de imagens e vídeos e download dos arquivos finais.
 
 A operação é organizada em pedidos, formatos e variações. O painel reúne os
 materiais; um agente conectado pelo MCP prepara o conteúdo; o servidor valida e
-coordena a fila; o executor local ou a extensão do Chrome executa as gerações no Google Flow.
+coordena a fila; o executor local (`flow-mcp` e app desktop Electron no Windows) executa as gerações no Google Flow.
 As instruções locais definem a linguagem, o objetivo e a direção visual de cada
 produção.
 
@@ -21,8 +21,8 @@ produção.
    instruções e os materiais usados.
 4. **Execute a fila.** O executor escolhido prepara o projeto do lote no Flow e processa
    um take por vez, registrando as etapas de imagem, vídeo e download.
-5. **Acompanhe e receba os arquivos.** O painel e a extensão mostram o andamento,
-   as falhas e o histórico. Os MP4s concluídos ficam nos downloads do Chrome.
+5. **Acompanhe e receba os arquivos.** O painel local e a barra do app desktop mostram o andamento,
+   as falhas e o histórico. Os MP4s concluídos ficam nos downloads configurados do Chrome.
 
 ### Organização da produção
 
@@ -46,47 +46,56 @@ permite selecionar Veo 3.1 Lite para todos os seus takes.
 | Painel local        | Cadastro dos pedidos, materiais, prévias, acompanhamento e diagnóstico.                    |
 | Conector MCP        | Consulta e preparação dos pedidos por um agente, com acesso às instruções e aos materiais. |
 | Orquestrador        | Validação, compilação dos prompts, autorizações, fila e persistência.                      |
-| Extensão Chrome     | Conexão com o servidor, execução na aba do Flow e confirmação dos downloads.               |
+| App Desktop         | Aplicativo Electron nativo para Windows com painel, controle de perfis Chrome, fila e MCP. |
+| Executor Chrome     | Conexão CDP ao Chrome dedicado, envio na interface do Flow e confirmação dos downloads.    |
 | Biblioteca local    | Regras de copy, imagem e animação e instruções dos formatos.                               |
 | Armazenamento local | Registros em SQLite e materiais importados em arquivos identificados por hash.             |
 
 A preparação criativa cabe ao agente. O orquestrador compila os textos com os
-templates da biblioteca e mantém os registros de execução. A extensão usa a
-sessão do Flow no navegador; as credenciais permanecem no Chrome.
+templates da biblioteca e mantém os registros de execução. O executor usa a
+sessão do Flow em um perfil dedicado do Chrome; as credenciais permanecem no navegador.
 
 ## Instalação e execução
 
-A aplicação executa pelo Docker Compose do repositório.
-São necessários Docker com Compose, Chrome 120+ e Node.js 24.22.2 LTS ou
-26.12.1 para o MCP e os comandos locais. O projeto usa pnpm 12.15.0.
-No Windows, execute os comandos pelo Linux/WSL com acesso ao Docker e carregue
-a extensão no Chrome do Windows.
+### App Desktop Windows (`packages/desktop`)
 
-### Primeira configuração
+O modo principal no Windows executa nativamente orquestrador, SQLite, biblioteca,
+executor Chrome e controles de login/perfil sem Docker ou terminal no dia a dia:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm desktop:dist:win
+```
+
+O pacote gerado fica em `packages/desktop/release/win-unpacked/Flow Batch.exe`
+(e `packages/desktop/release/Flow Batch-0.1.0-win.zip`). Ao abrir o aplicativo:
+
+1. Use **MCP Antigravity** ou **MCP Codex** na barra superior para registrar `flow-batch` e `flow-browser`.
+2. Use **Login / Trocar conta** para autenticar no Google Flow sem automação e feche o Chrome ao concluir.
+3. Clique em **Conectar Flow** e depois em **Parear executor** (confirmando o código em **Conexões**).
+4. Use **Perfil Chrome** / **+ Novo perfil** sempre que quiser alternar ou isolar contas mantendo o pareamento local.
+
+### Docker Compose (opcional em Linux)
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm build
 pnpm library seed /CAMINHO/Biblioteca-Flow
 pnpm library validate /CAMINHO/Biblioteca-Flow
-mkdir -p /CAMINHO/flow-batch-extension
 ```
 
 `library seed` inicia a edição de instruções do projeto em uma pasta nova ou em
 um scaffold vazio sem capturas. Bibliotecas com conteúdo próprio são preservadas.
 
-Crie `.env` a partir de `.env.example`, preservando um arquivo já existente.
-Configure duas pastas absolutas e existentes:
+Crie `.env` a partir de `.env.example`, preservando um arquivo já existente:
 
 ```dotenv
-WIN_EXTENSION_DIR=/CAMINHO/flow-batch-extension
 FLOW_LIBRARY_DIR=/CAMINHO/Biblioteca-Flow
 LOG_LEVEL=info
 ```
 
 Os caminhos pertencem ao ambiente que executa o Compose. No WSL, use o caminho
-Linux da pasta Windows. O destino da extensão deve estar vazio ou identificado
-como uma instalação do Flow Batch Automator.
+Linux da pasta Windows.
 
 ```sh
 docker compose config --quiet
@@ -94,17 +103,9 @@ docker compose up -d --build
 ```
 
 O build instala as dependências fixadas pelo lockfile dentro da imagem.
-O serviço `sync-extension` copia os arquivos gerenciados da extensão para a pasta
-configurada. O orquestrador usa o volume persistente `sqlite_data` e monta a
-biblioteca em `/library`.
+O orquestrador usa o volume persistente `sqlite_data` e monta a biblioteca em `/library`.
 
-No Chrome:
-
-1. Abra `chrome://extensions` e ative o modo do desenvolvedor.
-2. Carregue sem compactação a pasta configurada em `WIN_EXTENSION_DIR`.
-3. Confirme a conexão em <http://127.0.0.1:4319/connect>.
-4. Abra <http://127.0.0.1:4319/orders> para montar pedidos.
-5. Entre na conta do Google Flow usada para as gerações.
+Abra <http://127.0.0.1:4319/orders> para montar pedidos e <http://127.0.0.1:4319/connect> para autorizar o executor local.
 
 ### Conectar o agente pelo MCP
 
@@ -143,9 +144,8 @@ O pacote `packages/flow-mcp` contém um servidor MCP próprio para consultar e
 executar no Flow pela interface, usando Playwright/CDP em um Chrome com perfil dedicado.
 A implementação foi orientada pela arquitetura do
 [GTAI-1/flow-mcp](https://github.com/GTAI-1/flow-mcp); não exige instalar esse
-projeto separadamente. O agente continua criando copys e prompts pelo MCP
-`flow-batch`; o novo executor recebe da fila os takes já preparados e autorizados.
-A extensão continua disponível como outra opção de execução.
+O agente continua criando copys e prompts pelo MCP `flow-batch`; o executor local
+recebe da fila os takes já preparados e autorizados.
 
 Após instalar as dependências e compilar o projeto:
 
@@ -267,7 +267,7 @@ docker compose up -d --build
 docker compose down
 ```
 
-Após atualizar, recarregue a extensão e o cliente MCP. `down` preserva o volume
+Após atualizar, recarregue o cliente MCP e reconecte o executor quando necessário. `down` preserva o volume
 de dados. A publicação HTTP fica restrita a `127.0.0.1:4319`; o contêiner executa
 sem privilégios e com raiz somente para leitura.
 
@@ -317,8 +317,7 @@ valida a correspondência dos textos.
 
 ### Acompanhamento e resultados
 
-A extensão reúne as abas **Início**, **Fila e gerações** e **Configurações**.
-O painel e a extensão mostram as etapas registradas, pausas, falhas e resultados
+O painel local e a barra do app desktop mostram as etapas registradas, pausas, falhas e resultados
 que precisam de revisão. Cada lote conserva o vínculo com seu projeto do Flow.
 A fila executa um take por vez e espera 15 segundos após um download confirmado
 antes de iniciar o próximo take.
@@ -356,17 +355,13 @@ o orçamento adicional e permite revogar a autorização. Resultados incertos
 exigem revisão; recusas de conteúdo exigem revisar o take.
 
 `flow_unusual_activity` indica que o Google Flow bloqueou a atividade.
-A extensão usa a verificação disponível na página, sem interceptar ou substituir
-o reCAPTCHA. Quando identifica a proteção contra extensões, interrompe a etapa
-antes do envio e não solicita repetição automática. Uma recusa recebida após o
+Quando o executor identifica bloqueio antes do envio, interrompe a etapa
+e não solicita repetição automática. Uma recusa recebida após o
 envio mantém o resultado incerto para revisão, preservando as etapas registradas.
-Aguarde alguns minutos e confira a sessão e os avisos na aba do Flow; a
+Aguarde alguns minutos e confira a sessão e a conta na janela do Chrome; a
 [ajuda do Google](https://support.google.com/flow/answer/16353333?hl=pt-BR)
 também recomenda desativar VPN ou proxy, se estiverem em uso. Outra tentativa
-exige nova autorização no chat; atualizar a extensão não retoma o take.
-Após atualizar uma versão que interceptava o reCAPTCHA, recarregue a extensão
-em `chrome://extensions` e, com a fila parada, recarregue a aba do Flow para
-remover a interferência anterior. Isso não garante a liberação pelo Google.
+exige nova autorização no chat ou resolução explícita no diagnóstico. Isso não garante a liberação pelo Google.
 
 Grupos bloqueados podem ser encerrados quando suas condições permitirem.
 A limpeza do painel e da fila retira registros elegíveis da visualização,
@@ -411,23 +406,23 @@ biblioteca ativa e devem ser preservados junto de seus textos.
 
 ## Configuração
 
-| Variável                     | Uso                                                                     |
-| ---------------------------- | ----------------------------------------------------------------------- |
-| `WIN_EXTENSION_DIR`          | Pasta existente para sincronização da extensão; obrigatória no Compose. |
-| `FLOW_LIBRARY_DIR`           | Pasta da biblioteca ativa; obrigatória no Compose.                      |
-| `FLOW_API_URL`               | Endereço usado pelo MCP e pela CLI; padrão `http://127.0.0.1:4319`.     |
-| `FLOW_AGENT_WORKSPACE`       | Pasta de trabalho do MCP; padrão `~/.flow-batch/pedidos`.               |
-| `FLOW_AGENT_NAME`            | Identificação usada pela CLI de pedidos; padrão `agente-local`.         |
-| `CODEX_HOME`                 | Pasta de configuração do Codex; padrão `~/.codex`.                      |
-| `LOG_LEVEL`                  | Nível dos logs; padrão `info`.                                          |
-| `FLOW_BROWSER_HOME`          | Estado do MCP de navegador; padrão `~/.flow-batch/flow-browser`.        |
-| `FLOW_BROWSER_CHROME`        | Executável absoluto do Chrome dedicado; por padrão, detecção local.     |
-| `FLOW_BROWSER_DOWNLOADS_DIR` | Raiz de downloads do executor local; padrão `~/Downloads`.              |
-| `HOST` / `PORT`              | Endereço interno do servidor; o Compose define `0.0.0.0` e `4319`.      |
-| `DATABASE_PATH`              | Caminho do SQLite; o Compose define `/data/flow-batch.sqlite`.          |
-| `MATERIALS_DIR`              | Pasta de materiais; por padrão `materials` junto ao SQLite.             |
-| `LIBRARY_DIR`                | Pasta de instruções lida pelo servidor; o Compose define `/library`.    |
-| `SQLITE_BUSY_TIMEOUT_MS`     | Espera de bloqueio do SQLite; padrão 3000 ms.                           |
+| Variável                     | Uso                                                                  |
+| ---------------------------- | -------------------------------------------------------------------- |
+| `FLOW_LIBRARY_DIR`           | Pasta da biblioteca ativa; obrigatória no Compose.                   |
+| `FLOW_DESKTOP_HOME`          | Raiz local do app desktop; padrão `~/.flow-batch`.                   |
+| `FLOW_API_URL`               | Endereço usado pelo MCP e pela CLI; padrão `http://127.0.0.1:4319`.  |
+| `FLOW_AGENT_WORKSPACE`       | Pasta de trabalho do MCP; padrão `~/.flow-batch/pedidos`.            |
+| `FLOW_AGENT_NAME`            | Identificação usada pela CLI de pedidos; padrão `agente-local`.      |
+| `CODEX_HOME`                 | Pasta de configuração do Codex; padrão `~/.codex`.                   |
+| `LOG_LEVEL`                  | Nível dos logs; padrão `info`.                                       |
+| `FLOW_BROWSER_HOME`          | Estado do MCP de navegador; padrão `~/.flow-batch/flow-browser`.     |
+| `FLOW_BROWSER_CHROME`        | Executável absoluto do Chrome dedicado; por padrão, detecção local.  |
+| `FLOW_BROWSER_DOWNLOADS_DIR` | Raiz de downloads do executor local; padrão `~/Downloads`.           |
+| `HOST` / `PORT`              | Endereço interno do servidor; o Compose define `0.0.0.0` e `4319`.   |
+| `DATABASE_PATH`              | Caminho do SQLite; o Compose define `/data/flow-batch.sqlite`.       |
+| `MATERIALS_DIR`              | Pasta de materiais; por padrão `materials` junto ao SQLite.          |
+| `LIBRARY_DIR`                | Pasta de instruções lida pelo servidor; o Compose define `/library`. |
+| `SQLITE_BUSY_TIMEOUT_MS`     | Espera de bloqueio do SQLite; padrão 3000 ms.                        |
 
 O Compose lê `.env`. Os comandos locais usam argumentos ou variáveis exportadas.
 Na CLI da biblioteca, a pasta explícita tem precedência; depois são consultadas
@@ -439,9 +434,9 @@ Na CLI da biblioteca, a pasta explícita tem precedência; depois são consultad
 | ----------------------- | --------------------------------------------------------- |
 | `packages/protocol`     | Contratos Zod, tipos e compilação das preparações.        |
 | `packages/orchestrator` | API Fastify, SQLite, fila, biblioteca e MCP.              |
-| `packages/extension`    | Extensão Chrome Manifest V3 e integração com o Flow.      |
+| `packages/desktop`      | App Electron para Windows com orquestrador e controles.   |
 | `packages/flow-mcp`     | MCP do Flow e executor da fila via Chrome dedicado e CDP. |
-| `shared/styles`         | Tema compartilhado pelo painel e pela extensão.           |
+| `shared/styles`         | Tema compartilhado pelo painel e pelo app desktop.        |
 | `instrucoes`            | Edição de regras criativas e templates.                   |
 | `skills`                | Orientações operacionais para o agente.                   |
 | `scripts`               | Ferramentas de manutenção, desenvolvimento e validação.   |
@@ -453,13 +448,13 @@ pnpm test
 pnpm build
 pnpm format:check
 pnpm check
+pnpm desktop:dev
+pnpm desktop:dev:win
+pnpm desktop:dist:win
 pnpm test:docker
 pnpm test:browser:library
-pnpm test:browser:orders --port=4389
-pnpm test:browser:orders --format=clone --clone-scenes=abc --port=4389
-pnpm test:browser:orders --format=clone --clone-scenes=aba --port=4389
+pnpm test:browser:cloning
 pnpm test:browser:orders-design
-pnpm test:browser:queue-design
 pnpm test:browser:connect
 pnpm test:browser:session
 pnpm test:browser:flow-mcp

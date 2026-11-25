@@ -206,3 +206,34 @@ test('symlink configuration is preserved and unbundled sources cannot be install
     /conector independente/,
   );
 });
+
+test('browser option registers both flow-batch and flow-browser with optional ELECTRON_RUN_AS_NODE', async (t) => {
+  const { root, source, config } = await fixture(t);
+  const browserEntry = join(root, 'flow-mcp-main.js');
+  await writeFile(browserEntry, '// flow-mcp entry\n');
+  const result = await installMcpConnector({
+    sourceFile: source,
+    homeDirectory: root,
+    nodeExecutable: process.execPath,
+    runAsNode: true,
+    browser: {
+      entryFile: browserEntry,
+      downloadsDirectory: join(root, 'Downloads'),
+    },
+    skipCheck: true,
+  });
+  assert.equal(result.browserConnectorFile, browserEntry);
+  const saved = JSON.parse(await readFile(config, 'utf8'));
+  assert.equal(saved.mcpServers['flow-batch'].env.ELECTRON_RUN_AS_NODE, '1');
+  assert.equal(saved.mcpServers['flow-browser'].command, process.execPath);
+  assert.deepEqual(saved.mcpServers['flow-browser'].args, [browserEntry]);
+  assert.equal(saved.mcpServers['flow-browser'].env.ELECTRON_RUN_AS_NODE, '1');
+  assert.equal(
+    saved.mcpServers['flow-browser'].env.FLOW_BROWSER_HOME,
+    join(root, '.flow-batch', 'flow-browser'),
+  );
+  assert.equal(
+    saved.mcpServers['flow-browser'].env.FLOW_BROWSER_DOWNLOADS_DIR,
+    join(root, 'Downloads'),
+  );
+});

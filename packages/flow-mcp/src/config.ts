@@ -1,12 +1,27 @@
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { isAbsolute, join, resolve } from 'node:path';
+import { z } from 'zod';
 import { FlowBrowserError } from './contracts.js';
+
+export const DEFAULT_PROFILE_NAME = 'default';
+export const profileNameSchema = z
+  .string()
+  .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,47}$/);
 
 export interface BrowserConfig {
   home: string;
   profile: string;
+  activeProfile?: string;
+  profiles?: string[];
   executable: string | undefined;
+}
+
+export function profileDirectory(home: string, name: string): string {
+  const validated = profileNameSchema.parse(name);
+  return validated === DEFAULT_PROFILE_NAME
+    ? join(resolve(home), 'chrome-profile')
+    : join(resolve(home), 'profiles', validated);
 }
 
 export function browserConfig(
@@ -25,9 +40,21 @@ export function browserConfig(
       'invalid_config',
       'FLOW_BROWSER_CHROME deve ser um caminho absoluto.',
     );
+  const requestedProfile = env.FLOW_BROWSER_PROFILE;
+  const activeProfile = requestedProfile
+    ? profileNameSchema.safeParse(requestedProfile).data
+    : DEFAULT_PROFILE_NAME;
+  if (requestedProfile && !activeProfile)
+    throw new FlowBrowserError(
+      'invalid_config',
+      'FLOW_BROWSER_PROFILE deve usar apenas letras, números, "-" e "_".',
+    );
+  const resolvedProfile = activeProfile ?? DEFAULT_PROFILE_NAME;
   return {
     home: resolve(home),
-    profile: join(resolve(home), 'chrome-profile'),
+    profile: profileDirectory(home, resolvedProfile),
+    activeProfile: resolvedProfile,
+    profiles: [...new Set([DEFAULT_PROFILE_NAME, resolvedProfile])],
     executable,
   };
 }

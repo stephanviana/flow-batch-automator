@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
+  "appId": "com.flowbatch.automator",
+  "productName": "Flow Batch",
+  "electronVersion": "45.4.1",
+  "asar": false,
+  "directories": {
+    "app": ".cache/win-stage",
+    "output": "release"
+  },
+  "files": ["**/*"],
+  "extraResources": [
+    {
+      "from": "../../instrucoes",
+      "to": "instrucoes"
+    },
+    {
+      "from": "../orchestrator/dist/public/flow-batch-mcp.mjs",
+      "to": "mcp/flow-batch-mcp.mjs"
+    }
+  ],
+  "win": {
+    "target": ["dir", "zip"],
+    "signAndEditExecutable": false
+  }
+}

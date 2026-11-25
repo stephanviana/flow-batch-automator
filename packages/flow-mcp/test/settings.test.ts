@@ -11,7 +11,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { browserConfig } from '../src/config.js';
-import { loadBrowserConfig, saveBrowserExecutable } from '../src/settings.js';
+import {
+  listBrowserProfiles,
+  loadBrowserConfig,
+  saveBrowserExecutable,
+  saveBrowserProfile,
+} from '../src/settings.js';
 
 test('saved executable survives a new process configuration without touching the browser profile', async (t) => {
   const home = await mkdtemp(join(tmpdir(), 'flow-browser-settings-'));
@@ -90,4 +95,26 @@ test('configuration from another OS is ignored and invalid configuration fails c
     loadBrowserConfig({ FLOW_BROWSER_HOME: home }),
     /absoluto/,
   );
+});
+
+test('named profiles keep default chrome-profile intact, isolate profiles, and reject invalid names', async (t) => {
+  const home = await mkdtemp(join(tmpdir(), 'flow-browser-profiles-'));
+  t.after(() => rm(home, { recursive: true, force: true }));
+  const env = { FLOW_BROWSER_HOME: home };
+  const initial = await loadBrowserConfig(env);
+  assert.equal(initial.activeProfile, 'default');
+  assert.equal(initial.profile, join(home, 'chrome-profile'));
+  const switched = await saveBrowserProfile(initial, 'conta-2');
+  assert.equal(switched.activeProfile, 'conta-2');
+  assert.equal(switched.profile, join(home, 'profiles', 'conta-2'));
+  const reloaded = await loadBrowserConfig(env);
+  assert.equal(reloaded.activeProfile, 'conta-2');
+  assert.equal(reloaded.profile, join(home, 'profiles', 'conta-2'));
+  const listed = await listBrowserProfiles(reloaded);
+  assert.equal(listed.activeProfile, 'conta-2');
+  assert.deepEqual(
+    listed.profiles.map((entry) => entry.name),
+    ['default', 'conta-2'],
+  );
+  await assert.rejects(saveBrowserProfile(reloaded, '../escape'), /inválido/);
 });

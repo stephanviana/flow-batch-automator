@@ -22,6 +22,7 @@ export interface McpInstallResult {
   client: 'antigravity' | 'codex';
   configFile: string;
   connectorFile: string;
+  browserConnectorFile?: string;
   workspace: string;
   server: string;
   changed: boolean;
@@ -101,6 +102,9 @@ export async function installMcpConnector(
     client: options.client ?? 'antigravity',
     configFile,
     connectorFile: plan.connectorFile,
+    ...(plan.browserConnectorFile
+      ? { browserConnectorFile: plan.browserConnectorFile }
+      : {}),
     workspace: plan.workspace,
     server: plan.server,
     changed: configChanged || connectorChanged,

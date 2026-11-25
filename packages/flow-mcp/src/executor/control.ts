@@ -99,7 +99,14 @@ export class ExecutorControl {
         env: {
           ...process.env,
           FLOW_BROWSER_HOME: this.config.home,
+          ...(this.config.activeProfile
+            ? { FLOW_BROWSER_PROFILE: this.config.activeProfile }
+            : {}),
+          ...(this.config.executable
+            ? { FLOW_BROWSER_CHROME: this.config.executable }
+            : {}),
           ...(this.base ? { FLOW_API_URL: this.base } : {}),
+          ...(process.versions.electron ? { ELECTRON_RUN_AS_NODE: '1' } : {}),
         },
       },
     );
@@ -124,6 +131,56 @@ export class ExecutorControl {
       'worker_start_unknown',
       'A conexão do processo ainda não foi confirmada. Consulte o estado antes de iniciar outro.',
     );
+  }
+
+  async workerProcess(): Promise<{ running: boolean; pid: number | null }> {
+    let raw: string;
+    try {
+      raw = await readFile(join(this.config.home, 'worker.lock'), 'utf8');
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT')
+        return { running: false, pid: null };
+      throw error;
+    }
+    try {
+      const parsed = z
+        .strictObject({ pid: z.number().int().positive(), clientId: z.uuid() })
+        .parse(JSON.parse(raw));
+      process.kill(parsed.pid, 0);
+      return { running: true, pid: parsed.pid };
+    } catch {
+      return { running: false, pid: null };
+    }
+  }
+
+  async stop(): Promise<void> {
+    const worker = await this.workerProcess();
+    if (!worker.running || worker.pid === null) return;
+    await writeFile(
+      join(this.config.home, 'worker-stop.json'),
+      JSON.stringify({ pid: worker.pid, at: Date.now() }),
+      { mode: 0o600 },
+    ).catch(() => {});
+    if (process.platform !== 'win32') {
+      try {
+        process.kill(worker.pid, 'SIGTERM');
+      } catch {
+        return;
+      }
+    }
+    const deadline = Date.now() + 8000;
+    while (Date.now() < deadline) {
+      const next = await this.workerProcess();
+      if (!next.running) return;
+      await delay(150);
+    }
+    if (process.platform === 'win32') {
+      try {
+        process.kill(worker.pid, 'SIGTERM');
+      } catch {
+        return;
+      }
+    }
   }
 
   async pause(): Promise<unknown> {

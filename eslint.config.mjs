@@ -3,7 +3,12 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/.cache/**', '**/node_modules/**'],
+    ignores: [
+      '**/dist/**',
+      '**/.cache/**',
+      '**/node_modules/**',
+      '**/release/**',
+    ],
   },
   eslint.configs.recommended,
   tseslint.configs.recommended,
@@ -30,7 +35,6 @@ export default tseslint.config(
         setInterval: 'readonly',
         indexedDB: 'readonly',
         crypto: 'readonly',
-        chrome: 'readonly',
       },
     },
   },

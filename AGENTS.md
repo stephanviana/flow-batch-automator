@@ -7,7 +7,7 @@ camada continuam válidas dentro dela, respeitando as instruções do usuário.
 
 Aplicação local para organizar e automatizar operações de vídeos verticais.
 O usuário monta pedidos no painel, o agente conectado pelo MCP prepara falas e
-prompts, a API coordena a fila e o executor local ou a extensão executa no Google Flow. O objetivo,
+prompts, a API coordena a fila e o executor local (`flow-mcp`) executa no Google Flow. O objetivo,
 a linguagem e a direção criativa são definidos pelo pedido e pelas instruções
 locais. A saída são arquivos MP4 com histórico de preparação e execução.
 
@@ -20,7 +20,7 @@ os números selecionados no chat, nos formatos e quantidades do pedido, sem outr
 confirmação nem hash de aprovação. Use `flow_publish` com `execute=true` e
 `userAuthorized=true`; “apenas prepare”, “para revisão” ou “não execute” exige
 `execute=false`. Para executar uma preparação existente, `flow_approve` usa só
-número, autorização e extensão opcional. Isso não autoriza gerações nesta tarefa
+número, autorização e cliente executor opcional. Isso não autoriza gerações nesta tarefa
 de manutenção nem retomadas automáticas após falha.
 A biblioteca criativa versionada está em `instrucoes/`: base.md e oito arquivos
 `formatos/*.md`. `pnpm library seed [PASTA]` inicia a edição do checkout
@@ -62,7 +62,7 @@ todos os takes; ausência legada resolve Omni na compilação sem regravar regis
 
 O SQLite guarda registros; os materiais importados ficam em arquivos por hash
 em armazenamento persistente administrado pelo aplicativo, com deduplicação.
-Agente e extensão acessam materiais pela API local autorizada. Pedidos e
+Agente e executor local acessam materiais pela API local autorizada. Pedidos e
 materiais permanecem no armazenamento administrado pela aplicação.
 Exclusões de dados exigem autorização específica. Preserve a pasta global de
 downloads e os resultados já registrados.
@@ -119,12 +119,10 @@ O painel oferece encerramento explícito de grupos bloqueados com um clique,
 sem campo de nota ou confirmação adicional. `dispatch_closures` registra a decisão sem alterar corpo,
 materiais, autorização ou falha originais. Grupos com takes pendentes, ativos ou
 incertos e criação de projeto em andamento não podem ser encerrados. Grupos
-encerrados deixam o despacho da extensão e não podem receber novas gerações;
+encerrados deixam a fila e não podem receber novas gerações;
 os resultados confirmados permanecem registrados. Pedidos encerrados com parte
 dos vídeos pronta exibem “Encerrado parcialmente”. A limpeza do painel persiste
-para pedidos sem envio ou já encerrados e também limpa seus takes finalizados
-na extensão. A extensão limpa concluídos, falhos e cancelados da lista e dos
-totais, mantendo pendentes, ativos e incertos. Nenhuma limpeza apaga materiais,
+para pedidos sem envio ou já encerrados. Nenhuma limpeza apaga materiais,
 tentativas ou autorizações. Pedidos removidos não aceitam nova preparação ou
 despacho. Ao esvaziar a lista, um novo ciclo recomeça em #1; números consultam o
 ciclo atual e UUIDs preservam acesso histórico. Checkouts dos novos ciclos usam
@@ -147,11 +145,7 @@ Qualquer geração paga exige autorização específica no chat.
   O modo de execução suportado é o Compose da raiz. O conector MCP fica em
   `src/mcp`. O registro Codex usa `smol-toml`, com backup autorizado e preservação
   dos valores. Desenvolvimento e testes podem iniciar Node no host.
-- `packages/extension`: Chrome Manifest V3, Chrome 120+, side panel e service worker
-  empacotados com esbuild. Identidade em IndexedDB; storage e alarms para estado
-  de conexão e recuperação. Referências de execução em IndexedDB separado, com SHA-256;
-  materiais importados passam pela API local e ficam em arquivos persistentes. A integração executa RPCs no contexto da aba do Flow,
-  aproveitando sua sessão; credenciais e tokens permanecem no navegador.
+- `packages/desktop`: Electron 45.4.1 (`BrowserWindow` + `WebContentsView`, `preload.cjs` com `contextIsolation`, `sandbox` e `nodeIntegration: false`) executando nativamente no Windows o orquestrador, SQLite (`node:sqlite` embutido), biblioteca local, executor `flow-mcp` (com perfis isolados e login Chrome sem automação) e instalador unificado dos MCPs `flow-batch` e `flow-browser`. Empacotamento Windows em `packages/desktop/release/` via `pnpm desktop:dist:win`.
 - `packages/flow-mcp`: MCP stdio do Flow e executor local com TypeScript estrito,
   MCP SDK 2.4.0, Playwright Core 1.64.1 e Zod 4.6.7, mantidos neste workspace.
   Chrome com perfil dedicado, consulta de sessão, abertura de projeto existente
@@ -168,14 +162,11 @@ Qualquer geração paga exige autorização específica no chat.
   seeds e contratos anteriores. Conferir opções e cotação antes do envio: imagem
   exige zero créditos; vídeo respeita o limite registrado. Downloads exigem GUID
   e conclusão do Chrome, tamanho correspondente e MP4, sem sobrescrever destinos.
-  A extensão mantém seu transporte e sua identidade. Não acrescentar geração,
-  retentativas ou edição de prompts fora dos contratos do orquestrador.
   Locks de worker e de operação do navegador impedem concorrência; interrupções
   exigem revisão, sem remover locks ou repetir gerações automaticamente.
-- Docker Compose: orquestrador com volume persistente e serviço temporário
-  `sync-extension` para os arquivos da extensão.
-- `shared/styles/theme.css`: base visual compartilhada pelo orquestrador e pela
-  extensão, copiada nos dois builds. Estilos específicos ficam em cada camada.
+- Docker Compose: orquestrador com volume persistente.
+- `shared/styles/theme.css`: base visual compartilhada pelo orquestrador e pelo
+  `packages/desktop`, copiada nos dois builds. Estilos específicos ficam em cada camada.
 - Antes de implementar, confira o estado real do repositório e os contratos
   existentes. Preserve alterações do usuário e decisões já validadas.
 - Ao definir a stack, registre aqui linguagens, versões, gerenciador de pacotes,
@@ -243,13 +234,18 @@ mudanças apenas documentais não exigem criar testes de código.
   Instalação não prepara pedidos, não consome créditos e não encerra clientes.
 - `pnpm mcp:install codex`: registra o conector em `CODEX_HOME/config.toml`
   ou `~/.codex/config.toml`, preservando os demais servidores e valores.
-- `docker compose up -d --build` inicia/atualiza a aplicação e sincroniza a
-  extensão. `docker compose down` para preservando o volume. Configure
-  `WIN_EXTENSION_DIR` e `FLOW_LIBRARY_DIR` no `.env` ignorado pelo Git.
+- `docker compose up -d --build` inicia/atualiza a aplicação em container.
+  `docker compose down` para preservando o volume. Configure `FLOW_LIBRARY_DIR`
+  no `.env` ignorado pelo Git.
   O Dockerfile da raiz instala versões fixadas pelo pnpm dentro da imagem e
   prepara dependências de produção; não copia módulos do host.
   Não instalar/desinstalar pacotes globais nem migrar instalações anteriores
   automaticamente durante manutenção do código.
+- `pnpm desktop:dev`: abre o app desktop Electron no ambiente atual.
+- `pnpm desktop:dev:win`: recompila os pacotes no WSL e abre o app desktop
+  diretamente no Windows nativo (`packages/desktop/release/win-unpacked/`).
+- `pnpm desktop:dist:win`: gera o pacote Windows em
+  `packages/desktop/release/win-unpacked/` (`Flow Batch.exe`) e o arquivo `.zip`.
 - `pnpm mcp`: conector MCP stdio; o arquivo independente é servido em
   `/agent/flow-batch-mcp.mjs`, sem editor ou página de biblioteca.
 - `pnpm flow:login`: abre o Chrome dedicado para login manual.
@@ -293,30 +289,18 @@ mudanças apenas documentais não exigem criar testes de código.
 - `pnpm orders publish CAMINHO/preparacao.json --execute`: publica e despacha
   após o pedido direto no chat; sem `--execute`, só prepara para revisão.
 - `pnpm orders approve NUMERO --approve`: executa uma preparação existente quando
-  o usuário pedir; sem hash. `--client UUID` escolhe a extensão quando necessário.
+  o usuário pedir; sem hash. `--client UUID` escolhe o executor quando necessário.
 - Contrato de preparação `flow-orders/5`: publicação com execução opcional e
   biblioteca em documento único. Instruções em arquivos nunca autorizam consumo;
   o sinalizador de execução vem da chamada do agente. Verificar estado, conteúdo
-  imutável e autorização da extensão antes de persistir o despacho.
+  imutável e autorização do executor antes de persistir o despacho.
 - `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm lint`, `pnpm test`,
   `pnpm build`, `pnpm format:check`, `pnpm check`.
 - `pnpm dev`: servidor no host somente para desenvolvimento.
 - `docker compose config --quiet` / `pnpm test:docker`: configuração e integração
   em Compose isolado, com projeto, imagens, volume e porta sintéticos próprios.
   Não reutilizar imagens, porta ou dados da instalação em uso.
-- `pnpm test:browser:orders` / `pnpm test:browser:reuse` /
-  `pnpm test:browser:formats`: pedidos pelo painel,
-  preparação, despacho, reutilização e downloads em Chrome for Testing com fixtures.
-- `pnpm test:browser:orders --format=clone`: clonagem com uma imagem compartilhada
-  e três downloads; `--clone-scenes=abc` valida três cenas distintas;
-  `--clone-scenes=aba` valida retorno do CTA à imagem do Gancho. Também aceita
-  `aab` e `abb` para as demais combinações de duas cenas.
-  Usa Chrome isolado, referências sintéticas e RPCs interceptadas, sem créditos.
-- `pnpm test:browser:queue-design`: assets compilados da extensão em Chrome com
-  snapshots sintéticos, layout de 280 a 640 px, etapas, tempo, pausa e revisão.
-  Não inicia servidor nem despacha pedidos.
-- `pnpm test:browser:queue` / `pnpm test:browser`: fila e percurso completo em
-  perfil isolado. Não instalar bibliotecas globais nem usar o perfil pessoal.
+- `pnpm test:browser:cloning`: pedidos e clonagem no painel com mídias sintéticas.
 - `docker compose up -d --build` / `docker compose down`: atualizar/iniciar/parar.
 
 ## Segurança e persistência
@@ -325,29 +309,28 @@ mudanças apenas documentais não exigem criar testes de código.
   preventivas e backups automáticos disparados por scripts ou ferramentas.
   Autorizar uma atualização, instalação ou correção não autoriza criar backups.
 - Não alterar configurações globais de Windows, WSL, Docker ou Chrome.
-- Identifique instalações existentes antes de agir e preserve seus dados.
-  Use o destino de extensão configurado em `WIN_EXTENSION_DIR`; caminhos
-  específicos da instalação pertencem ao `.env` local.
+- Identifique instalações existentes antes de agir e preserve seus dados;
+  caminhos específicos da instalação pertencem ao `.env` local ou ao perfil
+  `~/.flow-batch/`.
 - Servidor em `0.0.0.0` no container e publicação somente em `127.0.0.1:4319`.
   Execute sem privilégios, com raiz somente para leitura e volume SQLite próprio.
 - SQLite com WAL, foreign keys, busy timeout, temporários em memória para a raiz
   somente leitura do container, migrações transacionais versionadas
   e encerramento limpo. Não usar `docker compose down -v` como parada normal.
 - Materiais importados ficam no volume persistente local; não montar pastas
-  arbitrárias do Windows no servidor. `sync-extension` não tem rede e escreve
-  somente no destino montado.
+  arbitrárias do Windows no servidor.
 - Healthchecks não expõem caminhos, arquivos ou credenciais. Valide Host e
   Origin; não habilite CORS indiscriminadamente. Gestão local exige sessão
   HttpOnly/SameSite, cabeçalho próprio e confirmação explícita em `/connect`.
   A renovação em `POST /manage/session` exige Origin exata e o cabeçalho próprio,
   preservando HttpOnly/SameSite e o vínculo com a autoridade. A sessão do painel
-  não autoriza a extensão. O cliente só repete uma requisição após o código
+  não autoriza o executor. O cliente só repete uma requisição após o código
   `MANAGEMENT_SESSION_REQUIRED`, emitido antes de qualquer efeito; nunca repetir
   automaticamente após erro de rede, resultado incerto ou falha do servidor.
-- ECDSA P-256 não exportável na extensão, autorização SQLite, pedidos de 2 minutos
+- ECDSA P-256 local no executor, autorização SQLite, pedidos de 2 minutos
   e desafios de 60 segundos, consumidos antes da verificação assíncrona. Assine
   método, autoridade, caminho e digest dos bytes exatos do corpo. Sem bearer.
-- WebSocket exige Origin exata da extensão e autenticação na primeira mensagem
+- WebSocket exige Origin local autorizada e autenticação na primeira mensagem
   com prazo limitado. Não enviar credenciais pela URL. Revogação encerra conexões
   e impede tentativas automáticas. Simulações interrompidas não são reenviadas.
 - A fila tem um único trabalho ativo globalmente. Persista a intenção antes do

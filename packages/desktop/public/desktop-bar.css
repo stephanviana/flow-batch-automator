@@ -1,0 +1,83 @@
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--surface);
+}
+.desktop-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.bar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.nav-group,
+.profile-group,
+.action-group,
+.create-profile {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.action-group {
+  flex-wrap: wrap;
+}
+.brand-pill {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--accent);
+}
+.profile-group label {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.profile-group select,
+.create-profile input {
+  width: auto;
+  margin-top: 0;
+  min-height: 32px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface-inset);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+}
+.desktop-bar button {
+  min-height: 32px;
+  padding: 4px 10px;
+  font-size: 0.82rem;
+}
+.status-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.summary,
+#feedback {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+#feedback.error {
+  color: var(--danger);
+}
+#feedback.success {
+  color: var(--success);
+}

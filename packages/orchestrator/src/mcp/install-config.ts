@@ -4,6 +4,11 @@ import { parse, stringify } from 'smol-toml';
 
 export const STANDALONE_MARKER = '// flow-batch-standalone-mcp:1';
 type JsonObject = Record<string, unknown>;
+export interface BrowserMcpOptions {
+  entryFile: string;
+  homeDirectory?: string;
+  downloadsDirectory?: string;
+}
 export interface McpInstallOptions {
   client?: 'antigravity' | 'codex';
   codexHome?: string;
@@ -14,11 +19,14 @@ export interface McpInstallOptions {
   workspace?: string;
   server?: string;
   nodeExecutable?: string;
+  runAsNode?: boolean;
+  browser?: BrowserMcpOptions;
   skipCheck?: boolean;
 }
 export interface McpInstallPlan {
   configFile: string;
   connectorFile: string;
+  browserConnectorFile?: string;
   workspace: string;
   server: string;
   contents: Buffer;
@@ -68,8 +76,8 @@ function parseConfig(original: Buffer | null, codex: boolean): JsonObject {
     );
   }
 }
-function ownServer(servers: JsonObject): JsonObject {
-  if (servers.mcpServers !== undefined) {
+function namedServer(servers: JsonObject, name: string): JsonObject {
+  if (name === 'flow-batch' && servers.mcpServers !== undefined) {
     const nested = object(servers.mcpServers, 'mcpServers.mcpServers');
     if (
       Object.keys(nested).length !== 1 ||
@@ -83,14 +91,28 @@ function ownServer(servers: JsonObject): JsonObject {
     delete servers.mcpServers;
   }
   const existing =
-    servers['flow-batch'] === undefined
-      ? {}
-      : object(servers['flow-batch'], 'flow-batch');
+    servers[name] === undefined ? {} : object(servers[name], name);
   if (existing.url !== undefined || existing.serverUrl !== undefined)
     throw new Error(
-      'flow-batch já é uma conexão remota. Use --config com outro arquivo para instalar o conector local.',
+      `${name} já é uma conexão remota. Use --config com outro arquivo para instalar o conector local.`,
     );
   return existing;
+}
+function serverEnv(previous: JsonObject, label: string): JsonObject {
+  const env = previous.env === undefined ? {} : object(previous.env, label);
+  if (Object.values(env).some((value) => typeof value !== 'string'))
+    throw new Error('As variáveis de ambiente do MCP devem ser textos.');
+  return env;
+}
+function nextNodeEnv(
+  existing: JsonObject,
+  updates: Record<string, string>,
+  runAsNode?: boolean,
+): Record<string, unknown> {
+  const env: Record<string, unknown> = { ...existing, ...updates };
+  if (runAsNode === true) env.ELECTRON_RUN_AS_NODE = '1';
+  else if (runAsNode === false) delete env.ELECTRON_RUN_AS_NODE;
+  return env;
 }
 export function installPlan(
   options: McpInstallOptions,
@@ -106,11 +128,8 @@ export function installPlan(
   const serverKey = codex ? 'mcp_servers' : 'mcpServers';
   const servers =
     config[serverKey] === undefined ? {} : object(config[serverKey], serverKey);
-  const previous = ownServer(servers);
-  const env =
-    previous.env === undefined ? {} : object(previous.env, 'flow-batch.env');
-  if (Object.values(env).some((value) => typeof value !== 'string'))
-    throw new Error('As variáveis de ambiente do MCP devem ser textos.');
+  const previous = namedServer(servers, 'flow-batch');
+  const env = serverEnv(previous, 'flow-batch.env');
   const workspace = resolve(
     options.workspace ??
       (typeof env.FLOW_AGENT_WORKSPACE === 'string'
@@ -133,17 +152,52 @@ export function installPlan(
   const executable = options.nodeExecutable ?? process.execPath;
   if (!isAbsolute(executable))
     throw new Error('O executável Node deve usar um caminho absoluto.');
-  const nextServer = {
+  servers['flow-batch'] = {
     ...previous,
     command: executable,
     args: [connectorFile],
-    env: { ...env, FLOW_API_URL: server, FLOW_AGENT_WORKSPACE: workspace },
+    env: nextNodeEnv(
+      env,
+      { FLOW_API_URL: server, FLOW_AGENT_WORKSPACE: workspace },
+      options.runAsNode,
+    ),
   };
-  servers['flow-batch'] = nextServer;
+  let browserConnectorFile: string | undefined;
+  if (options.browser) {
+    browserConnectorFile = resolve(options.browser.entryFile);
+    if (!isAbsolute(browserConnectorFile))
+      throw new Error('O conector flow-browser deve usar um caminho absoluto.');
+    const previousBrowser = namedServer(servers, 'flow-browser');
+    const browserEnv = serverEnv(previousBrowser, 'flow-browser.env');
+    const browserHome = resolve(
+      options.browser.homeDirectory ??
+        (typeof browserEnv.FLOW_BROWSER_HOME === 'string'
+          ? browserEnv.FLOW_BROWSER_HOME
+          : join(options.homeDirectory, '.flow-batch', 'flow-browser')),
+    );
+    const downloadsDir = options.browser.downloadsDirectory
+      ? resolve(options.browser.downloadsDirectory)
+      : undefined;
+    servers['flow-browser'] = {
+      ...previousBrowser,
+      command: executable,
+      args: [browserConnectorFile],
+      env: nextNodeEnv(
+        browserEnv,
+        {
+          FLOW_API_URL: server,
+          FLOW_BROWSER_HOME: browserHome,
+          ...(downloadsDir ? { FLOW_BROWSER_DOWNLOADS_DIR: downloadsDir } : {}),
+        },
+        options.runAsNode,
+      ),
+    };
+  }
   config[serverKey] = servers;
   return {
     configFile: resolve(options.configFile ?? defaultConfigFile(options)),
     connectorFile,
+    ...(browserConnectorFile ? { browserConnectorFile } : {}),
     workspace,
     server,
     contents:

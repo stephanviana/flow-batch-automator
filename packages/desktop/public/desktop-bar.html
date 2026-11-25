@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self';"
+    />
+    <title>Flow Batch Desktop</title>
+    <link rel="stylesheet" href="./theme.css" />
+    <link rel="stylesheet" href="./desktop-bar.css" />
+  </head>
+  <body>
+    <header class="desktop-bar">
+      <div class="bar-row">
+        <div class="nav-group" role="navigation" aria-label="Páginas locais">
+          <span class="brand-pill">Desktop</span>
+          <button id="nav-orders" type="button" class="secondary">
+            Pedidos
+          </button>
+          <button id="nav-connect" type="button" class="secondary">
+            Conexões
+          </button>
+        </div>
+
+        <div class="profile-group">
+          <label for="profile-select">Perfil Chrome</label>
+          <select id="profile-select" aria-label="Perfil Chrome"></select>
+          <button id="new-profile" type="button" class="secondary">
+            + Novo perfil
+          </button>
+        </div>
+
+        <div class="action-group">
+          <button id="open-login" type="button" class="secondary">
+            Login / Trocar conta
+          </button>
+          <button id="connect-browser" type="button" class="secondary">
+            Conectar Flow
+          </button>
+          <button id="start-executor" type="button">Iniciar executor</button>
+          <button id="toggle-queue" type="button" class="secondary">
+            Pausar fila
+          </button>
+          <button id="install-antigravity" type="button" class="secondary">
+            MCP Antigravity
+          </button>
+          <button id="install-codex" type="button" class="secondary">
+            MCP Codex
+          </button>
+          <button id="open-videos" type="button" class="secondary">
+            Vídeos
+          </button>
+        </div>
+      </div>
+
+      <div class="status-row">
+        <p id="summary" class="summary">Iniciando ambiente local…</p>
+        <form id="create-profile-form" class="create-profile" hidden>
+          <input
+            id="new-profile-name"
+            type="text"
+            placeholder="nome-do-perfil (ex: conta-2)"
+            maxlength="48"
+            pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,47}"
+            required
+          />
+          <button type="submit">Criar e usar</button>
+          <button id="cancel-profile" type="button" class="secondary">
+            Cancelar
+          </button>
+        </form>
+        <p id="feedback" role="status" aria-live="polite"></p>
+      </div>
+    </header>
+    <script src="./desktop-bar.js" type="module"></script>
+  </body>
+</html>
