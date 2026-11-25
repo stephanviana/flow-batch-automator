@@ -342,6 +342,12 @@ export async function runFlowTake(
   emit: Emit,
 ): Promise<void> {
   const { flow, original, taskId, attemptId } = command;
+  if (flow.driver === 'browser-ui')
+    throw new FlowRunError(
+      'flow_driver_mismatch',
+      'Este take pertence ao executor local do navegador.',
+      true,
+    );
   const tabId = await projectTab(flow.projectId, Boolean(flow.batchId));
   if (command.attemptNumber > 1) {
     try {

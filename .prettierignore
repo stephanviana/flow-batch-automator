@@ -4,8 +4,5 @@ dist
 .cache
 data
 
-# Vendored FlowKit source; preserve the upstream file.
-packages/extension/public/flowkit-hijack.js
-
 # Conteúdo criativo e templates devem permanecer intactos.
 instrucoes/**

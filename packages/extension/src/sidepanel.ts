@@ -19,6 +19,9 @@ const ordersLink = document.querySelector<HTMLAnchorElement>('#open-orders');
 if (!status || !code || !flowStatus || !flowProject || !ordersLink)
   throw new Error('Side panel elements missing');
 initializePanelTabs();
+const version = document.querySelector('#extension-version');
+if (version)
+  version.textContent = `Flow Batch ${chrome.runtime.getManifest().version}`;
 
 function showError(message: string): void {
   document.querySelector('#panel-feedback')!.textContent = message;

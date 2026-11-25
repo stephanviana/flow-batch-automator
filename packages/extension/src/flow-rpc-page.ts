@@ -44,9 +44,6 @@ export async function flowRpcPage(
     return fail('flow_rpc_invalid', 'Chamada Flow não reconhecida.');
   const page = globalThis as typeof globalThis & {
     WIZ_global_data?: Record<string, unknown>;
-    __fk_hijack?: {
-      pristine?: (key: string, options: { action: string }) => Promise<string>;
-    };
     grecaptcha?: {
       enterprise?: {
         execute?: (key: string, options: { action: string }) => Promise<string>;
@@ -79,27 +76,23 @@ export async function flowRpcPage(
   if (request.captchaAction) {
     try {
       const enterprise = page.grecaptcha?.enterprise;
-      if (
-        !page.__fk_hijack?.pristine &&
-        enterprise?.execute?.toString().includes('extension_hijack_detected')
-      )
+      const execute = enterprise?.execute;
+      if (execute?.toString().includes('extension_hijack_detected'))
         return fail(
-          'flow_captcha_not_ready',
-          'Recarregue o projeto após recarregar a extensão e tente novamente.',
+          'flow_unusual_activity',
+          'O Flow bloqueou a verificação da extensão. Nenhuma chamada foi enviada nesta etapa. Confira a aba e solicite revisão no chat.',
         );
-      const execute =
-        page.__fk_hijack?.pristine ?? enterprise?.execute?.bind(enterprise);
-      if (!execute || execute.toString().includes('extension_hijack_detected'))
+      if (!execute)
         return fail(
           'flow_captcha_not_ready',
-          'Recarregue o projeto após recarregar a extensão e tente novamente.',
+          'A verificação do Flow ainda não está disponível. Confira a aba do projeto.',
         );
       const siteKey =
         Object.values(page.___grecaptcha_cfg?.clients ?? {}).find(
           (client) => typeof client.sitekey === 'string',
         )?.sitekey ?? '6LdsFiUsAAAAAIjVDZcuLhaHiDn5nnHVXVRQGeMV';
       const token = await within(
-        execute(siteKey, { action: request.captchaAction }),
+        execute.call(enterprise, siteKey, { action: request.captchaAction }),
         20000,
       );
       if (typeof token !== 'string' || !token)
@@ -185,11 +178,26 @@ export async function flowRpcPage(
         'flow_response_large',
         'O projeto excede o tamanho de resposta suportado.',
       );
-    if (text.includes('PUBLIC_ERROR_UNUSUAL_ACTIVITY'))
+    const activityMarker = 'PUBLIC_ERROR_UNUSUAL_ACTIVITY';
+    const hasActivityNotice = text.includes(activityMarker);
+    const activityFailure = (matched: boolean): FlowRpcTransportReply => {
+      const stage = {
+        maseQ: 'upload da referência',
+        ogiZ0b: 'geração de imagem',
+        eb1hJf: 'geração de vídeo',
+        jwpduf: 'consulta da operação',
+        Zzl0ze: 'leitura do projeto',
+        as29s: 'leitura do resultado',
+        jHPbke: 'criação do projeto',
+      }[request.rpcId];
+      const detail = matched
+        ? 'Recusa confirmada na operação'
+        : 'Aviso na resposta, sem vínculo confirmado com a operação';
       return fail(
         'flow_unusual_activity',
-        'O Flow bloqueou a atividade. Confira a aba antes de tentar outra geração.',
+        `${detail} de ${stage} (HTTP ${response.status}, ${activityMarker}). Confira a aba do Flow.`,
       );
+    };
     let payload: unknown;
     for (const line of text.split('\n')) {
       if (!line.startsWith('[')) continue;
@@ -209,6 +217,10 @@ export async function flowRpcPage(
           continue;
         if (typeof entry[2] !== 'string') {
           const errorSlot: unknown = entry[5];
+          if (hasActivityNotice)
+            return activityFailure(
+              JSON.stringify(errorSlot)?.includes(activityMarker) === true,
+            );
           const errorCode: unknown = Array.isArray(errorSlot)
             ? errorSlot[0]
             : undefined;
@@ -236,6 +248,7 @@ export async function flowRpcPage(
         }
       }
     }
+    if (hasActivityNotice) return activityFailure(false);
     if (!Array.isArray(payload))
       return fail(
         'flow_response_invalid',

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Flow Batch",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "minimum_chrome_version": "120",
   "description": "Nano Banana Pro/2.1 e Omni 1.1 Flash com Frames, fila local e download pelo Google Flow.",
   "permissions": ["storage", "alarms", "sidePanel", "scripting", "downloads"],
@@ -23,13 +23,5 @@
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'none'; connect-src http://127.0.0.1:4319 ws://127.0.0.1:4319"
-  },
-  "content_scripts": [
-    {
-      "matches": ["https://flow.google.com/*"],
-      "js": ["flowkit-hijack.js"],
-      "run_at": "document_start",
-      "world": "MAIN"
-    }
-  ]
+  }
 }

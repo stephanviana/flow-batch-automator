@@ -1,4 +1,13 @@
-import { cp, lstat, mkdir, readdir, readFile, rename } from 'node:fs/promises';
+import {
+  cp,
+  lstat,
+  mkdir,
+  readdir,
+  readFile,
+  rename,
+  unlink,
+} from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -48,6 +57,23 @@ async function copyRegularFile(source, destination, filename) {
   await rename(temporary, target);
 }
 
+async function retireLegacyInterceptor(source, destination) {
+  const filename = 'flowkit-hijack.js';
+  if (await exists(join(source, filename))) return;
+  const target = join(destination, filename);
+  const installed = await exists(target);
+  if (!installed?.isFile()) return;
+  const digest = createHash('sha256')
+    .update(await readFile(target))
+    .digest('hex');
+  // Delete only the exact third-party script shipped by earlier builds.
+  if (
+    digest ===
+    '2489c16e66ee2183a3ac17a4ee1ef776c5536ad522b3780cca1b7c076ecfe675'
+  )
+    await unlink(target);
+}
+
 /** @param {string} sourceDirectory @param {string} destinationDirectory @returns {Promise<void>} */
 export async function syncExtension(sourceDirectory, destinationDirectory) {
   const source = resolve(sourceDirectory);
@@ -63,10 +89,11 @@ export async function syncExtension(sourceDirectory, destinationDirectory) {
   const filenames = (await readdir(source)).filter(
     (filename) => filename !== markerName,
   );
-  filenames.push(markerName); // Publish the build marker last.
   for (const filename of filenames) {
     await copyRegularFile(source, destination, filename);
   }
+  await retireLegacyInterceptor(source, destination);
+  await copyRegularFile(source, destination, markerName); // Publish last.
   console.log(`Extension synced (${sourceMarker.build}). Reload it in Chrome.`);
 }
 

@@ -59,8 +59,6 @@ export async function createFlowRpcFixture(
           if(globalThis.__fixtureCaptchaFailure)throw new Error('fixture');
           return 'fixture-captcha-'+options.action+'-'+${JSON.stringify(randomUUID())}+'-'+(++globalThis.__fixtureCaptchaCounter);
         }}};
-        const original=globalThis.grecaptcha.enterprise.execute;
-        globalThis.grecaptcha.enterprise.execute=(key,options)=>original(key,Object.assign({},options,{action:'extension_hijack_detected'}));
       </script>Flow fixture</body></html>`,
       });
       return;

@@ -79,7 +79,12 @@ export class QueueExecutor {
                 : active.submitted
                   ? 'Simulated executor failed after submission'
                   : 'Could not persist the execution receipt',
-          retryable: safe,
+          retryable:
+            safe &&
+            !(
+              error instanceof FlowRunError &&
+              error.code === 'flow_unusual_activity'
+            ),
           notSubmitted: safe,
         },
       });

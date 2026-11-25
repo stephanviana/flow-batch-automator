@@ -61,3 +61,19 @@ test('sync refuses symlink targets rather than writing outside its destination',
   await assert.rejects(syncExtension(source, destination), /non-regular/);
   assert.equal(await readFile(external, 'utf8'), 'untouched');
 });
+
+test('retirement preserves an unrecognized file and a symlink at the old script path', async (context) => {
+  const { directory, source, destination } = await fixture(context);
+  await syncExtension(source, destination);
+  const legacy = join(destination, 'flowkit-hijack.js');
+  await writeFile(legacy, 'user-owned-content');
+  await syncExtension(source, destination);
+  assert.equal(await readFile(legacy, 'utf8'), 'user-owned-content');
+  await rm(legacy);
+  const external = join(directory, 'external');
+  await writeFile(external, 'external-content');
+  await symlink(external, legacy);
+  await syncExtension(source, destination);
+  assert.equal(await readFile(external, 'utf8'), 'external-content');
+  assert.equal(await readFile(legacy, 'utf8'), 'external-content');
+});

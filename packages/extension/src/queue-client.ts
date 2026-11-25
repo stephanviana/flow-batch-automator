@@ -80,6 +80,10 @@ export async function queueCommand(
       detail.task.result.simulated
     )
       throw new Error('Download indisponível.');
+    if (typeof detail.task.result.downloadId !== 'number')
+      throw new Error(
+        'Este download pertence ao executor local. Consulte o destino no painel.',
+      );
     chrome.downloads.show(detail.task.result.downloadId);
     return;
   }

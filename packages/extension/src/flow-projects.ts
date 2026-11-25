@@ -58,13 +58,13 @@ async function navigate(tabId: number, url: string): Promise<void> {
 }
 
 interface ProjectReload {
-  projectId: string;
   staleDocumentId: string;
   signal: AbortSignal;
 }
 
 async function readyTab(
   tabId: number,
+  projectId?: string,
   reload?: ProjectReload,
 ): Promise<number> {
   const deadline = Date.now() + 20000;
@@ -73,15 +73,21 @@ async function readyTab(
     const tab = await chrome.tabs.get(tabId);
     if (
       tab.status === 'complete' &&
-      (reload
-        ? isFlowProject(tab.url, reload.projectId)
+      !tab.pendingUrl &&
+      (projectId
+        ? isFlowProject(tab.url, projectId)
         : tab.url?.startsWith('https://flow.google.com/'))
     ) {
       try {
         const [result] = await chrome.scripting.executeScript({
           target: { tabId },
           world: 'MAIN',
-          func: () =>
+          args: [projectId ?? null],
+          func: (expected: string | null) =>
+            location.origin === 'https://flow.google.com' &&
+            (!expected ||
+              location.pathname.match(/\/project\/([^/]+)(?:\/|$)/)?.[1] ===
+                expected) &&
             Boolean(
               (
                 globalThis as typeof globalThis & {
@@ -127,8 +133,7 @@ export async function reloadFlowProject(
   if (!isFlowProject((await chrome.tabs.get(tabId)).url, projectId))
     throw new FlowInputError('A aba não está mais no projeto vinculado.');
   await chrome.tabs.reload(tabId);
-  await readyTab(tabId, {
-    projectId,
+  await readyTab(tabId, projectId, {
     staleDocumentId: previous.documentId,
     signal,
   });
@@ -148,7 +153,7 @@ export async function openProject(
     await chrome.tabs.update(tab.id, { active: true });
     await chrome.windows.update(tab.windowId, { focused: true });
   }
-  return readyTab(tab.id);
+  return readyTab(tab.id, projectId);
 }
 
 export async function createProject(name: string): Promise<FlowRpcReply> {
