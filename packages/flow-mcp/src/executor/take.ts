@@ -136,8 +136,11 @@ export class BrowserTakeExecutor {
         },
       });
     } finally {
-      this.active = false;
-      await release?.();
+      try {
+        await release?.();
+      } finally {
+        this.active = false;
+      }
     }
   }
 

@@ -20,7 +20,7 @@ export class WorkerChannel {
   private heartbeat: ReturnType<typeof setInterval>;
   private constructor(
     private readonly socket: WebSocket,
-    private readonly executor: BrowserTakeExecutor,
+    private readonly executor: Pick<BrowserTakeExecutor, 'run'>,
     private readonly controller: AbortController,
   ) {
     socket.on('error', () => controller.abort());
@@ -30,8 +30,8 @@ export class WorkerChannel {
   }
 
   static async open(
-    api: ExecutorApi,
-    executor: BrowserTakeExecutor,
+    api: Pick<ExecutorApi, 'base' | 'clientId' | 'proof'>,
+    executor: Pick<BrowserTakeExecutor, 'run'>,
     controller: AbortController,
   ): Promise<WorkerChannel> {
     const proof = await api.proof('GET', '/ws');
@@ -100,13 +100,27 @@ export class WorkerChannel {
       this.socket.close(4001, 'Executor already active');
       return;
     }
+    let terminal: QueueProgress | undefined;
     this.active = this.executor
-      .run(command, this.controller.signal, (event) => this.send(event))
-      .catch(() => {
-        this.socket.close(4001, 'Execution result requires review');
+      .run(command, this.controller.signal, (event) => {
+        if (
+          event.type === 'queue-progress' &&
+          (event.state === 'completed' ||
+            event.state === 'failed' ||
+            event.state === 'uncertain')
+        )
+          terminal = event;
+        else this.send(event);
       })
-      .finally(() => {
+      .then(() => {
         this.active = undefined;
+        if (!terminal)
+          throw new Error('Execution ended without a terminal event');
+        this.send(terminal);
+      })
+      .catch(() => {
+        this.active = undefined;
+        this.socket.close(4001, 'Execution result requires review');
       });
   }
 

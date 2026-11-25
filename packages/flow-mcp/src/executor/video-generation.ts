@@ -11,7 +11,7 @@ import { ExecutionError } from './errors.js';
 import { attachImage } from './tiles.js';
 import { exactPrompt } from './prompt.js';
 import { observeAction } from './response.js';
-import { waitForVideo } from './video.js';
+import { observeVideo } from './video.js';
 import { downloadClip } from './download.js';
 import type { Checkpoint } from './take-events.js';
 
@@ -37,26 +37,28 @@ export async function executeVideo(
     );
   await attachImage(page, frame, true);
   await exactPrompt(page, command.original.videoPrompt);
-  const accepted = await observeAction(
-    page,
-    { rpcId: 'eb1hJf', projectId: command.flow.projectId },
-    async () => {
-      signal.throwIfAborted();
-      requireProject(page.url(), command.flow.projectId);
-      submitted();
-      await page
-        .getByRole('button', { name: 'Start generation', exact: true })
-        .click({ timeout: 10000 });
-    },
-    signal,
-  );
-  const operationId = flowIdSchema.parse(accepted.operationId);
-  checkpoint({ stage: 'video_submitted', operationId });
-  const video = await waitForVideo(
+  const { operationId, video } = await observeVideo(
     page,
     command.flow.projectId,
-    operationId,
     signal,
+    async () => {
+      const accepted = await observeAction(
+        page,
+        { rpcId: 'eb1hJf', projectId: command.flow.projectId },
+        async () => {
+          signal.throwIfAborted();
+          requireProject(page.url(), command.flow.projectId);
+          submitted();
+          await page
+            .getByRole('button', { name: 'Start generation', exact: true })
+            .click({ timeout: 10000 });
+        },
+        signal,
+      );
+      const id = flowIdSchema.parse(accepted.operationId);
+      checkpoint({ stage: 'video_submitted', operationId: id });
+      return id;
+    },
   );
   checkpoint({ stage: 'video_ready', mediaId: video.mediaId });
   progress('download_pending');
