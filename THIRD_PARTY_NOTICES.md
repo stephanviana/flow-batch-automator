@@ -15,6 +15,15 @@ The full license is included in
 [`FlowKit-LICENSE.txt`](packages/extension/public/FlowKit-LICENSE.txt) and copied
 into the distributed extension.
 
-`packages/extension/public/flowkit-hijack.js` is a copy of FlowKit
-`extension/hijack_bypass.js` from the same commit, with an attribution header.
-It is loaded in the Flow page at document start. Upstream formatting is preserved.
+Earlier distributions also included FlowKit's `extension/hijack_bypass.js`
+from the same commit. That script is no longer distributed or loaded.
+
+## Flow MCP design reference
+
+`packages/flow-mcp` is an independent implementation informed by the dedicated
+Chrome/CDP architecture and Flow UI selectors documented in
+[`GTAI-1/flow-mcp`](https://github.com/GTAI-1/flow-mcp), inspected at commit
+`770e00181390e6a41393be6a185e49e9987fc9c6`.
+No upstream source files are vendored or copied into this repository.
+The upstream manifest declares ISC but that revision has no standalone license
+file; this reference does not assert a license grant for other upstream code.

@@ -7,7 +7,7 @@ camada continuam válidas dentro dela, respeitando as instruções do usuário.
 
 Aplicação local para organizar e automatizar operações de vídeos verticais.
 O usuário monta pedidos no painel, o agente conectado pelo MCP prepara falas e
-prompts, a API coordena a fila e a extensão executa no Google Flow. O objetivo,
+prompts, a API coordena a fila e o executor local ou a extensão executa no Google Flow. O objetivo,
 a linguagem e a direção criativa são definidos pelo pedido e pelas instruções
 locais. A saída são arquivos MP4 com histórico de preparação e execução.
 
@@ -152,6 +152,26 @@ Qualquer geração paga exige autorização específica no chat.
   de conexão e recuperação. Referências de execução em IndexedDB separado, com SHA-256;
   materiais importados passam pela API local e ficam em arquivos persistentes. A integração executa RPCs no contexto da aba do Flow,
   aproveitando sua sessão; credenciais e tokens permanecem no navegador.
+- `packages/flow-mcp`: MCP stdio do Flow e executor local com TypeScript estrito,
+  MCP SDK 2.4.0, Playwright Core 1.64.1 e Zod 4.6.7, mantidos neste workspace.
+  Chrome com perfil dedicado, consulta de sessão, abertura de projeto existente
+  e confirmação de imagens por ID. Executa junto ao Chrome,
+  fora do Compose; Node e Chrome devem rodar no mesmo sistema operacional.
+  Login real usa Chrome comum, sem CDP ou Playwright durante a entrada de
+  credenciais. Após o usuário concluir e fechar a janela manual, flow:connect
+  abre o mesmo perfil e conecta o controle. Chrome for Testing fica restrito
+  aos testes sintéticos; não comprova aceitação de login pelo Google.
+  O worker recebe apenas takes imutáveis da fila, com identidade local P-256,
+  confirmação explícita em /connect e protocolo v9. A chave local é própria da
+  aplicação, protegida por permissão 0600 em POSIX; não é credencial do Google.
+  Novos takes usam driver=browser-ui, seed=null e maxVideoCredits=25; preservar
+  seeds e contratos anteriores. Conferir opções e cotação antes do envio: imagem
+  exige zero créditos; vídeo respeita o limite registrado. Downloads exigem GUID
+  e conclusão do Chrome, tamanho correspondente e MP4, sem sobrescrever destinos.
+  A extensão mantém seu transporte e sua identidade. Não acrescentar geração,
+  retentativas ou edição de prompts fora dos contratos do orquestrador.
+  Locks de worker e de operação do navegador impedem concorrência; interrupções
+  exigem revisão, sem remover locks ou repetir gerações automaticamente.
 - Docker Compose: orquestrador com volume persistente e serviço temporário
   `sync-extension` para os arquivos da extensão.
 - `shared/styles/theme.css`: base visual compartilhada pelo orquestrador e pela
@@ -232,6 +252,25 @@ mudanças apenas documentais não exigem criar testes de código.
   automaticamente durante manutenção do código.
 - `pnpm mcp`: conector MCP stdio; o arquivo independente é servido em
   `/agent/flow-batch-mcp.mjs`, sem editor ou página de biblioteca.
+- `pnpm flow:login`: abre o Chrome dedicado para login manual.
+  `pnpm flow:connect`: após concluir o login e fechar a janela manual, reabre o
+  mesmo perfil com controle. Nenhuma geração é iniciada por esses comandos.
+  `pnpm flow:status`: consulta a sessão sem iniciar Chrome.
+  `pnpm flow:login --chrome CAMINHO` salva a localização do executável no estado
+  local do aplicativo, sem backup ou alterações globais.
+  `pnpm flow:mcp`: inicia o MCP de navegador, com consulta, navegação e controle
+  do worker. `pnpm flow:pair` solicita conexão a confirmar pelo usuário em /connect;
+  `pnpm flow:executor-status` consulta o clientId e a conexão. `pnpm flow:worker`
+  executa a fila em primeiro plano; pelo MCP, flow_browser_start_worker inicia
+  em segundo plano. Só recebe pedidos já autorizados para esse clientId.
+  `pnpm flow:pause` pausa os próximos takes. Configure
+  `FLOW_BROWSER_HOME` e `FLOW_BROWSER_CHROME` no ambiente do processo, quando necessário.
+- `pnpm test:browser:flow-mcp`: consulta, grade virtual, imagens com títulos
+  repetidos, navegação, configurações, prompts, reutilização e download com GUID
+  em Chromium isolado com páginas e respostas sintéticas.
+  O E2E do worker usa a porta 4398 e pedido sintético pelo painel até três MP4s,
+  intervalo de 15 segundos e revogação sem reenvio. Exige build do workspace.
+  Não comprova login ou integração com o serviço real do Google.
 - `pnpm library init [PASTA]`, `seed [PASTA]`, `import [PASTA] ARQUIVO.MD_OU_JSON`,
   `export [PASTA] DESTINO.MD_OU_JSON`, `validate [PASTA]`, `convert [PASTA]`, `split [PASTA] [--preserve-originals]` e
   `restore [PASTA] REVISAO`: manutenção offline. Sem pasta explícita, usam a

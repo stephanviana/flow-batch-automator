@@ -6,7 +6,7 @@ geração de imagens e vídeos e download dos arquivos finais.
 
 A operação é organizada em pedidos, formatos e variações. O painel reúne os
 materiais; um agente conectado pelo MCP prepara o conteúdo; o servidor valida e
-coordena a fila; a extensão do Chrome executa as gerações no Google Flow.
+coordena a fila; o executor local ou a extensão do Chrome executa as gerações no Google Flow.
 As instruções locais definem a linguagem, o objetivo e a direção visual de cada
 produção.
 
@@ -19,7 +19,7 @@ produção.
 3. **Valide a preparação.** O servidor confere os campos, as quantidades, os
    vínculos de imagem e a autorização de execução. Cada preparação conserva as
    instruções e os materiais usados.
-4. **Execute a fila.** A extensão prepara o projeto do lote no Flow e processa
+4. **Execute a fila.** O executor escolhido prepara o projeto do lote no Flow e processa
    um take por vez, registrando as etapas de imagem, vídeo e download.
 5. **Acompanhe e receba os arquivos.** O painel e a extensão mostram o andamento,
    as falhas e o histórico. Os MP4s concluídos ficam nos downloads do Chrome.
@@ -137,6 +137,127 @@ curl --fail http://127.0.0.1:4319/agent/flow-batch-mcp.mjs -o /CAMINHO/flow-batc
 node /CAMINHO/flow-batch-mcp.mjs --install codex
 ```
 
+### MCP de navegador e executor local
+
+O pacote `packages/flow-mcp` contém um servidor MCP próprio para consultar e
+executar no Flow pela interface, usando Playwright/CDP em um Chrome com perfil dedicado.
+A implementação foi orientada pela arquitetura do
+[GTAI-1/flow-mcp](https://github.com/GTAI-1/flow-mcp); não exige instalar esse
+projeto separadamente. O agente continua criando copys e prompts pelo MCP
+`flow-batch`; o novo executor recebe da fila os takes já preparados e autorizados.
+A extensão continua disponível como outra opção de execução.
+
+Após instalar as dependências e compilar o projeto:
+
+```sh
+pnpm flow:login
+# Conclua o login manual e feche a janela antes do próximo comando.
+pnpm flow:connect
+pnpm flow:status
+pnpm flow:mcp
+```
+
+Para usar um executável em outro local, configure-o uma vez:
+
+```sh
+pnpm flow:login --chrome /CAMINHO/Chrome/chrome
+```
+
+O caminho fica em `settings.json` na pasta de estado do MCP. Essa preferência é
+local ao sistema operacional; `FLOW_BROWSER_CHROME` tem precedência quando
+exportada. Use o Chrome comum para a conta real. O Chrome for Testing é reservado
+aos testes sintéticos; sua disponibilidade não comprova que o Google aceitará
+um login real nesse navegador.
+
+`flow:login` abre uma janela comum para entrar no Google manualmente, sem CDP,
+conexão Playwright ou scripts durante a entrada das credenciais. O perfil fica
+em `~/.flow-batch/flow-browser/chrome-profile`. Enquanto essa janela estiver
+aberta, `flow:status` informa `manual-login`, sem consultar a conta, e o controle
+fica bloqueado. Conclua o login e feche essa janela; `flow:connect` reabre o mesmo
+perfil e conecta a automação. O estado e os arquivos do perfil são preservados.
+
+Se aparecer “This browser or app may not be secure”, o Google recusou esse
+contexto de autenticação. A [orientação do Google](https://support.google.com/accounts/answer/7675428?co=GENIE.Platform%3DDesktop&hl=pt-BR)
+inclui usar um navegador compatível e atualizado e informa que logins sob
+automação podem ser bloqueados. A separação do login manual não garante a
+aceitação da conta. Não são alteradas proteções do navegador nem exportados
+cookies para tentar autenticar outro contexto.
+
+A descoberta das ferramentas funciona com o Chrome fechado. Encerrar o cliente
+MCP mantém a janela e a sessão do Chrome. As consultas posteriores usam apenas
+o perfil dedicado aberto por `flow:connect`.
+
+O processo MCP deve executar no mesmo sistema operacional do Chrome. Para
+Chrome do Windows, use Node do Windows e caminhos Windows; para execução no WSL,
+use um Chrome Linux com sessão gráfica. Não são configurados encaminhamento
+de portas, acesso remoto ou alterações globais do navegador. A consulta real
+via MCP foi validada em Linux/WSLg com Chrome comum: login manual preservado
+após reabrir o perfil, abertura de projeto existente, listagem de mídias e
+confirmação de uma imagem pelo ID. O percurso de geração e download do novo executor
+é validado com respostas sintéticas em Chrome isolado. A geração real paga e a
+execução nativa no Windows e macOS ainda precisam de validação própria.
+
+Com o painel atualizado pelo Compose, conecte a identidade local à fila:
+
+```sh
+pnpm flow:pair
+# Abra a confirmationUrl retornada, compare o código e confirme em /connect.
+pnpm flow:executor-status
+pnpm flow:worker
+```
+
+`flow:worker` fica em primeiro plano. Pelo MCP, `flow_browser_start_worker`
+inicia o processo em segundo plano. Escolha o `clientId` retornado por
+`flow_browser_executor_status` ao publicar ou aprovar um pedido pelo `flow-batch`.
+A conexão exige confirmação explícita em `/connect`; iniciar o processo não
+autoriza pedidos novos nem repetições. `pnpm flow:pause` pausa os próximos takes,
+sem interromper a geração já enviada. Um novo despacho exige autorização no chat.
+
+A identidade do executor usa assinatura P-256 e desafios de uso único, com
+protocolo v9. Sua chave local fica em `executor-identity.json` na pasta de estado,
+com permissão 0600 nos sistemas POSIX; ela não contém credenciais do Google.
+As credenciais do Flow permanecem no perfil do Chrome. Operações que navegam ou
+percorrem a grade reservam o navegador para não interferir em um take ativo.
+Após interrupção com lock persistente, confira o processo e a fila antes de
+qualquer remoção manual; não há retomada automática de gerações.
+
+Os novos takes desse executor registram `driver: browser-ui` e `seed: null`,
+pois a interface não oferece controle de seed. Contratos anteriores mantêm seus
+valores. O executor confere modelo, proporção, duração, resolução e quantidade
+antes de enviar, exige custo zero para imagem e limita o vídeo a 25 créditos
+por take. Se uma opção ou cotação não puder ser confirmada, interrompe o envio.
+Os prompts são preservados sem edição. Imagens reutilizadas são conferidas pelo ID;
+não existe geração de substituição.
+
+O download precisa dos eventos de início e conclusão do Chrome, com GUID, e de
+um arquivo MP4 com tamanho correspondente. Os arquivos vão para `~/Downloads/Flow/Videos/...`
+ou para `FLOW_BROWSER_DOWNLOADS_DIR/Flow/Videos/...`, sem sobrescrever arquivos.
+As tentativas, checkpoints, autorizações, pausas e resultados incertos continuam
+na fila do painel. Uma falha não provoca novo envio automático.
+
+Configure o cliente MCP para executar `node /CAMINHO/flow-batch-automator/packages/flow-mcp/dist/main.js`,
+com o nome de servidor `flow-browser`, ao lado do conector de pedidos `flow-batch`.
+O comando não modifica configurações dos clientes automaticamente.
+
+| Ferramenta                     | Comportamento                                                                                                      |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `flow_browser_status`          | Informa sessão, projeto, idioma e geração em andamento.                                                            |
+| `flow_browser_login`           | Abre ou reutiliza o Chrome dedicado para o usuário fazer login manualmente.                                        |
+| `flow_browser_connect`         | Após o login e o fechamento da janela manual, reabre o mesmo perfil e conecta o controle.                          |
+| `flow_browser_open_project`    | Abre um projeto existente por UUID na mesma aba; preserva textos no compositor e recusa navegação durante geração. |
+| `flow_browser_assets`          | Percorre a grade da visualização atual e lista imagens/vídeos com IDs estáveis, dentro dos limites informados.     |
+| `flow_browser_find_image`      | Confirma uma imagem por ID no projeto informado.                                                                   |
+| `flow_browser_pair`            | Solicita a conexão local e retorna código e URL para confirmação em `/connect`.                                    |
+| `flow_browser_executor_status` | Consulta autorização, conexão e `clientId` do executor.                                                            |
+| `flow_browser_start_worker`    | Inicia o executor já autorizado para receber os pedidos destinados a ele.                                          |
+| `flow_browser_pause_worker`    | Pausa o início dos próximos takes.                                                                                 |
+
+As consultas respeitam a visualização e os filtros existentes. A listagem informa
+se atingiu o fim da rolagem e se encontrou mídias sem ID estável; isso não prova
+que todas as mídias do projeto foram consultadas. Títulos repetidos permanecem
+separados pelos IDs. URLs assinadas não servem como identidade nem são retornadas.
+Uma imagem não confirmada encerra a consulta, sem gerar uma substituta.
+
 ### Consultar, atualizar e parar
 
 ```sh
@@ -234,6 +355,19 @@ por 24 horas, somente para falhas comprovadas antes do envio. O painel mostra
 o orçamento adicional e permite revogar a autorização. Resultados incertos
 exigem revisão; recusas de conteúdo exigem revisar o take.
 
+`flow_unusual_activity` indica que o Google Flow bloqueou a atividade.
+A extensão usa a verificação disponível na página, sem interceptar ou substituir
+o reCAPTCHA. Quando identifica a proteção contra extensões, interrompe a etapa
+antes do envio e não solicita repetição automática. Uma recusa recebida após o
+envio mantém o resultado incerto para revisão, preservando as etapas registradas.
+Aguarde alguns minutos e confira a sessão e os avisos na aba do Flow; a
+[ajuda do Google](https://support.google.com/flow/answer/16353333?hl=pt-BR)
+também recomenda desativar VPN ou proxy, se estiverem em uso. Outra tentativa
+exige nova autorização no chat; atualizar a extensão não retoma o take.
+Após atualizar uma versão que interceptava o reCAPTCHA, recarregue a extensão
+em `chrome://extensions` e, com a fila parada, recarregue a aba do Flow para
+remover a interferência anterior. Isso não garante a liberação pelo Google.
+
 Grupos bloqueados podem ser encerrados quando suas condições permitirem.
 A limpeza do painel e da fila retira registros elegíveis da visualização,
 preservando os resultados e o histórico. Ao esvaziar a lista de pedidos, um novo
@@ -277,20 +411,23 @@ biblioteca ativa e devem ser preservados junto de seus textos.
 
 ## Configuração
 
-| Variável                 | Uso                                                                     |
-| ------------------------ | ----------------------------------------------------------------------- |
-| `WIN_EXTENSION_DIR`      | Pasta existente para sincronização da extensão; obrigatória no Compose. |
-| `FLOW_LIBRARY_DIR`       | Pasta da biblioteca ativa; obrigatória no Compose.                      |
-| `FLOW_API_URL`           | Endereço usado pelo MCP e pela CLI; padrão `http://127.0.0.1:4319`.     |
-| `FLOW_AGENT_WORKSPACE`   | Pasta de trabalho do MCP; padrão `~/.flow-batch/pedidos`.               |
-| `FLOW_AGENT_NAME`        | Identificação usada pela CLI de pedidos; padrão `agente-local`.         |
-| `CODEX_HOME`             | Pasta de configuração do Codex; padrão `~/.codex`.                      |
-| `LOG_LEVEL`              | Nível dos logs; padrão `info`.                                          |
-| `HOST` / `PORT`          | Endereço interno do servidor; o Compose define `0.0.0.0` e `4319`.      |
-| `DATABASE_PATH`          | Caminho do SQLite; o Compose define `/data/flow-batch.sqlite`.          |
-| `MATERIALS_DIR`          | Pasta de materiais; por padrão `materials` junto ao SQLite.             |
-| `LIBRARY_DIR`            | Pasta de instruções lida pelo servidor; o Compose define `/library`.    |
-| `SQLITE_BUSY_TIMEOUT_MS` | Espera de bloqueio do SQLite; padrão 3000 ms.                           |
+| Variável                     | Uso                                                                     |
+| ---------------------------- | ----------------------------------------------------------------------- |
+| `WIN_EXTENSION_DIR`          | Pasta existente para sincronização da extensão; obrigatória no Compose. |
+| `FLOW_LIBRARY_DIR`           | Pasta da biblioteca ativa; obrigatória no Compose.                      |
+| `FLOW_API_URL`               | Endereço usado pelo MCP e pela CLI; padrão `http://127.0.0.1:4319`.     |
+| `FLOW_AGENT_WORKSPACE`       | Pasta de trabalho do MCP; padrão `~/.flow-batch/pedidos`.               |
+| `FLOW_AGENT_NAME`            | Identificação usada pela CLI de pedidos; padrão `agente-local`.         |
+| `CODEX_HOME`                 | Pasta de configuração do Codex; padrão `~/.codex`.                      |
+| `LOG_LEVEL`                  | Nível dos logs; padrão `info`.                                          |
+| `FLOW_BROWSER_HOME`          | Estado do MCP de navegador; padrão `~/.flow-batch/flow-browser`.        |
+| `FLOW_BROWSER_CHROME`        | Executável absoluto do Chrome dedicado; por padrão, detecção local.     |
+| `FLOW_BROWSER_DOWNLOADS_DIR` | Raiz de downloads do executor local; padrão `~/Downloads`.              |
+| `HOST` / `PORT`              | Endereço interno do servidor; o Compose define `0.0.0.0` e `4319`.      |
+| `DATABASE_PATH`              | Caminho do SQLite; o Compose define `/data/flow-batch.sqlite`.          |
+| `MATERIALS_DIR`              | Pasta de materiais; por padrão `materials` junto ao SQLite.             |
+| `LIBRARY_DIR`                | Pasta de instruções lida pelo servidor; o Compose define `/library`.    |
+| `SQLITE_BUSY_TIMEOUT_MS`     | Espera de bloqueio do SQLite; padrão 3000 ms.                           |
 
 O Compose lê `.env`. Os comandos locais usam argumentos ou variáveis exportadas.
 Na CLI da biblioteca, a pasta explícita tem precedência; depois são consultadas
@@ -298,15 +435,16 @@ Na CLI da biblioteca, a pasta explícita tem precedência; depois são consultad
 
 ## Desenvolvimento e validação
 
-| Pasta                   | Conteúdo                                                |
-| ----------------------- | ------------------------------------------------------- |
-| `packages/protocol`     | Contratos Zod, tipos e compilação das preparações.      |
-| `packages/orchestrator` | API Fastify, SQLite, fila, biblioteca e MCP.            |
-| `packages/extension`    | Extensão Chrome Manifest V3 e integração com o Flow.    |
-| `shared/styles`         | Tema compartilhado pelo painel e pela extensão.         |
-| `instrucoes`            | Edição de regras criativas e templates.                 |
-| `skills`                | Orientações operacionais para o agente.                 |
-| `scripts`               | Ferramentas de manutenção, desenvolvimento e validação. |
+| Pasta                   | Conteúdo                                                  |
+| ----------------------- | --------------------------------------------------------- |
+| `packages/protocol`     | Contratos Zod, tipos e compilação das preparações.        |
+| `packages/orchestrator` | API Fastify, SQLite, fila, biblioteca e MCP.              |
+| `packages/extension`    | Extensão Chrome Manifest V3 e integração com o Flow.      |
+| `packages/flow-mcp`     | MCP do Flow e executor da fila via Chrome dedicado e CDP. |
+| `shared/styles`         | Tema compartilhado pelo painel e pela extensão.           |
+| `instrucoes`            | Edição de regras criativas e templates.                   |
+| `skills`                | Orientações operacionais para o agente.                   |
+| `scripts`               | Ferramentas de manutenção, desenvolvimento e validação.   |
 
 ```sh
 pnpm typecheck
@@ -324,6 +462,7 @@ pnpm test:browser:orders-design
 pnpm test:browser:queue-design
 pnpm test:browser:connect
 pnpm test:browser:session
+pnpm test:browser:flow-mcp
 ```
 
 `pnpm dev` inicia o servidor no host para desenvolvimento. Os testes usam dados
@@ -331,6 +470,12 @@ sintéticos e perfis isolados de navegador. `test:docker` usa projeto, imagens,
 porta e volume próprios e verifica a persistência após reiniciar os contêineres.
 As validações com fixtures comprovam os cenários simulados; gerações reais
 exigem autorização específica e validação própria.
+
+`test:browser:flow-mcp` também percorre um pedido sintético pelo painel, checkout,
+preparação, despacho autorizado, criação de projeto, imagem compartilhada e três
+downloads confirmados pelo Chrome. Confere intervalo de 15 segundos e revogação
+sem reenvio. Usa API isolada na porta 4398 e diretórios temporários; exige build
+atualizado do workspace.
 
 As regras de contribuição e segurança estão em [`AGENTS.md`](AGENTS.md).
 As atribuições de código estão em [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
