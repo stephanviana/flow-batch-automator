@@ -18,6 +18,7 @@ const products = [],
   container = document.querySelector('#products');
 const previewDisposers = [];
 let savedOrders = [];
+let executorState = null;
 let draftId = crypto.randomUUID(),
   busy = false;
 function addProduct() {
@@ -123,9 +124,54 @@ function clearOrders(orders) {
 document
   .querySelector('#clear-unsent-orders')
   .addEventListener('click', () => clearOrders(savedOrders));
+function renderExecutorState() {
+  const summary = document.querySelector('#executor-summary');
+  const toggle = document.querySelector('#executor-toggle-queue');
+  if (!executorState?.executor) {
+    summary.textContent =
+      'Nenhum executor MCP conectado. Autorize o flow-browser em Executor MCP.';
+    toggle.hidden = true;
+    return;
+  }
+  const { connected, running } = executorState.executor;
+  const { counts, blockedByReview } = executorState;
+  const parts = [
+    connected ? 'Executor MCP conectado' : 'Executor MCP desconectado',
+    blockedByReview
+      ? 'Fila bloqueada (resultado incerto)'
+      : running
+        ? 'Fila ativa'
+        : 'Fila pausada',
+  ];
+  if (counts.active) parts.push(`${counts.active} em execução`);
+  if (counts.queued) parts.push(`${counts.queued} na fila`);
+  if (counts.uncertain) parts.push(`${counts.uncertain} incerto(s)`);
+  summary.textContent = parts.join(' · ');
+  toggle.hidden = false;
+  toggle.textContent = running ? 'Pausar fila' : 'Retomar fila';
+  toggle.disabled = !running && blockedByReview;
+}
+document.querySelector('#executor-toggle-queue').addEventListener(
+  'click',
+  () =>
+    void action(async () => {
+      if (!executorState?.executor) return;
+      const nextAction = executorState.executor.running ? 'pause' : 'start';
+      executorState = await api('/manage/executor/control', {
+        action: nextAction,
+        clientId: executorState.executor.id,
+      });
+      renderExecutorState();
+    }),
+);
 async function refresh() {
-  const { orders } = await api('/manage/orders');
+  const [{ orders }, executor] = await Promise.all([
+    api('/manage/orders'),
+    api('/manage/executor'),
+  ]);
   savedOrders = orders;
+  executorState = executor;
+  renderExecutorState();
   renderSavedOrders();
   if (status.dataset.errorSource === 'refresh') {
     status.textContent = '';

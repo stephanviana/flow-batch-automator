@@ -14,7 +14,7 @@ const states = {
   failed: 'Falha',
   uncertain: 'Resultado incerto',
   cancelled: 'Cancelado',
-  pending: 'Aguardando a extensão',
+  pending: 'Aguardando o executor',
   blocked: 'Bloqueado',
 };
 const stages = {
@@ -29,9 +29,9 @@ const stages = {
 };
 const failureCauses = {
   project_locate_tab_failed:
-    'A extensão não conseguiu localizar uma aba utilizável do Flow.',
+    'O executor não conseguiu localizar uma aba utilizável do Flow.',
   project_navigate_failed:
-    'A extensão não conseguiu abrir a página do Flow para preparar o projeto.',
+    'O executor não conseguiu abrir a página do Flow para preparar o projeto.',
   project_wait_ready_failed:
     'A página do Flow não ficou pronta para uso. Confira o login e se a página terminou de carregar.',
   flow_project_creation_unknown:
@@ -42,11 +42,11 @@ const failureCauses = {
 const reasons = {
   enqueued: 'Take registrado na fila',
   'dispatch-intent-persisted': 'Intenção de envio registrada',
-  'executor-progress': 'Andamento confirmado pela extensão',
-  'executor-failed': 'Falha informada pela extensão',
-  'executor-outcome-unknown': 'A extensão não confirmou o resultado',
+  'executor-progress': 'Andamento confirmado pelo executor',
+  'executor-failed': 'Falha informada pelo executor',
+  'executor-outcome-unknown': 'O executor não confirmou o resultado',
   'server-restart': 'Servidor reiniciado durante a tentativa',
-  'connection-lost': 'Conexão com a extensão interrompida',
+  'connection-lost': 'Conexão com o executor interrompida',
   'attempt-timeout': 'Prazo de resposta esgotado',
   'dispatch-outcome-unknown': 'O envio não foi confirmado',
   'operator-flow-failure-confirmed':
@@ -113,7 +113,60 @@ function dispatchReview(parent, dispatch, orderNumber, context) {
   element(section, 'p', `Grupo: ${dispatch.id}`, 'hint');
 }
 
-function taskReview(parent, diagnostic) {
+function resolveTaskActions(details, task, orderNumber, context) {
+  if (task.state === 'uncertain') {
+    const actions = element(details, 'div', '', 'order-actions');
+    const markFailed = element(
+      actions,
+      'button',
+      'Marcar como falha',
+      'danger',
+    );
+    markFailed.type = 'button';
+    markFailed.addEventListener('click', () => {
+      void context.action(async () => {
+        await context.api(`/manage/orders/${orderNumber}/diagnostics/resolve`, {
+          taskId: task.id,
+          expectedRevision: task.revision,
+          outcome: 'failed',
+        });
+        await context.refresh();
+      });
+    });
+    const notSubmitted = element(
+      actions,
+      'button',
+      'Não foi enviado',
+      'secondary',
+    );
+    notSubmitted.type = 'button';
+    notSubmitted.addEventListener('click', () => {
+      void context.action(async () => {
+        await context.api(`/manage/orders/${orderNumber}/diagnostics/resolve`, {
+          taskId: task.id,
+          expectedRevision: task.revision,
+          outcome: 'not_submitted',
+        });
+        await context.refresh();
+      });
+    });
+  } else if (task.state === 'queued') {
+    const actions = element(details, 'div', '', 'order-actions');
+    const cancel = element(actions, 'button', 'Cancelar take', 'danger');
+    cancel.type = 'button';
+    cancel.addEventListener('click', () => {
+      void context.action(async () => {
+        await context.api(`/manage/orders/${orderNumber}/diagnostics/cancel`, {
+          taskId: task.id,
+          expectedRevision: task.revision,
+        });
+        await context.refresh();
+      });
+    });
+  }
+}
+
+function taskReview(parent, diagnostic, orderNumber, context) {
   const { task, events, checkpoints, projectId, retryBlockedReason } =
     diagnostic;
   const details = element(parent, 'details', '', 'diagnostic-task');
@@ -136,6 +189,7 @@ function taskReview(parent, diagnostic) {
       'p',
       'Confira o projeto e os downloads para verificar o resultado antes de decidir.',
     );
+  resolveTaskActions(details, task, orderNumber, context);
   if (projectId) {
     const link = element(details, 'a', 'Conferir projeto no Flow');
     link.href = `https://flow.google.com/project/${encodeURIComponent(projectId)}`;
@@ -194,7 +248,8 @@ function renderDiagnostic(parent, diagnostic, context) {
       'p',
       'Nenhum take foi registrado na fila para este pedido.',
     );
-  for (const task of diagnostic.tasks) taskReview(parent, task);
+  for (const task of diagnostic.tasks)
+    taskReview(parent, task, diagnostic.number, context);
 }
 
 export function orderReview(parent, order, context) {

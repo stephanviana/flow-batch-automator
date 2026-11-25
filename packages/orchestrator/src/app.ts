@@ -1,4 +1,5 @@
 import { registerOrderDiagnostics } from './http/order-diagnostics.js';
+import { registerExecutorManagement } from './http/executor.js';
 import { registerTakeRevisions } from './http/take-revisions.js';
 import { registerDispatchRecovery } from './http/dispatch-recovery.js';
 import Fastify, { LogController, type FastifyInstance } from 'fastify';
@@ -89,6 +90,14 @@ export function createApp(config: AppConfig): FastifyInstance {
     orders,
     clients,
     queueMutations,
+    queueEngine,
+  );
+  registerExecutorManagement(
+    app,
+    sessions,
+    clients,
+    hub,
+    queueRepository,
     queueEngine,
   );
   registerMaterialDownloads(app, signatures, clients, orders, materials);

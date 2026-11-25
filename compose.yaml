@@ -1,38 +1,11 @@
 name: flow-batch-automator
 
 services:
-  sync-extension:
-    image: flow-batch-automator-sync-extension:0.6.0
-    build:
-      context: .
-      target: sync-extension
-    network_mode: none
-    read_only: true
-    user: '1000:1000'
-    cap_drop: [ALL]
-    security_opt: [no-new-privileges:true]
-    restart: 'no'
-    cpus: 0.25
-    mem_limit: 128m
-    pids_limit: 32
-    volumes:
-      - type: bind
-        source: ${WIN_EXTENSION_DIR:?Defina WIN_EXTENSION_DIR no arquivo .env com o destino local da extensão}
-        target: /destination
-        bind:
-          create_host_path: false
-    logging:
-      driver: json-file
-      options: { max-size: '5m', max-file: '2' }
-
   orchestrator:
     image: flow-batch-automator-orchestrator:0.6.0
     build:
       context: .
       target: orchestrator
-    depends_on:
-      sync-extension:
-        condition: service_completed_successfully
     init: true
     user: '1000:1000'
     read_only: true

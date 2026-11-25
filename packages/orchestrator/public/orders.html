@@ -17,7 +17,7 @@
         >
         <nav aria-label="Navegação principal">
           <a href="/orders" aria-current="page">Pedidos</a>
-          <a href="/connect">Conexão da extensão</a>
+          <a href="/connect">Executor MCP</a>
         </nav>
       </header>
       <div class="page-intro">
@@ -88,6 +88,19 @@
                 title="Atualizar pedidos"
               >
                 <span data-icon="refresh"></span>
+              </button>
+            </div>
+            <div class="executor-bar" id="executor-panel">
+              <p id="executor-summary" class="hint">
+                Verificando executor MCP…
+              </p>
+              <button
+                id="executor-toggle-queue"
+                type="button"
+                class="secondary"
+                hidden
+              >
+                Pausar fila
               </button>
             </div>
             <div class="orders-cleanup-toolbar">

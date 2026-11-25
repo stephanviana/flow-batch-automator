@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { localClient } from './orders.mjs';
-import { appendFileSync, mkdirSync, readFileSync, statSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import {
   availablePort,
@@ -13,12 +13,10 @@ import {
 // An isolated Compose project and synthetic state; never attach an existing volume.
 const project = `flow-batch-validation-${randomBytes(4).toString('hex')}`;
 const directory = resolve('.cache', project);
-const destination = join(directory, 'extension');
-mkdirSync(destination, { recursive: true });
+mkdirSync(directory, { recursive: true });
 installInstructions(join(directory, 'instructions'));
 const environment = {
   ...process.env,
-  WIN_EXTENSION_DIR: destination,
   FLOW_LIBRARY_DIR: join(directory, 'instructions'),
 };
 const log = join(directory, 'docker.log');
@@ -77,13 +75,6 @@ try {
     container.Mounts.find((mount) => mount.Destination === '/data').RW,
     true,
   );
-  const syncContainer = JSON.parse(
-    docker(['inspect', compose('ps', '-a', '-q', 'sync-extension')]),
-  )[0];
-  assert.equal(syncContainer.State.ExitCode, 0);
-  assert.equal(syncContainer.HostConfig.NetworkMode, 'none');
-  assert.equal(syncContainer.HostConfig.ReadonlyRootfs, true);
-  assert.equal(syncContainer.Mounts.length, 1);
   assert.equal(
     executeNode(`import { existsSync } from 'node:fs';
       console.log(existsSync('./dist/local-cli'));`),
@@ -147,14 +138,6 @@ try {
     db.exec("INSERT INTO application_metadata (key, value) VALUES ('container-test', 'preserved')");
     console.log(JSON.stringify({wal: db.prepare('PRAGMA journal_mode').get().journal_mode}));
     db.close();`);
-  const marker = join(destination, '.flow-batch-foundation.json');
-  const before = statSync(marker).mtimeMs;
-  assert.equal(
-    JSON.parse(readFileSync(join(destination, 'manifest.json'), 'utf8'))
-      .manifest_version,
-    3,
-  );
-  const build = JSON.parse(readFileSync(marker, 'utf8')).build;
 
   // Synthetic queue state in this test project's own SQLite volume only.
   executeNode(`import { DatabaseSync } from 'node:sqlite';
@@ -180,11 +163,6 @@ try {
   compose('down'); // Deliberately preserve SQLite across container recreation.
   docker(['volume', 'inspect', `${project}_sqlite_data`]);
   compose('up', '-d', '--wait', '--wait-timeout', '60');
-  assert.ok(
-    statSync(marker).mtimeMs > before,
-    'sync must run again without --build',
-  );
-  assert.equal(JSON.parse(readFileSync(marker, 'utf8')).build, build);
   const persisted = executeNode(`import { DatabaseSync } from 'node:sqlite';
     const db = new DatabaseSync('/data/flow-batch.sqlite');
     console.log(db.prepare("SELECT value FROM application_metadata WHERE key = 'container-test'").get().value);
@@ -219,10 +197,10 @@ try {
     running: 0,
   });
   console.log(
-    'Docker: checkout build, MCP connector, health, isolated port/images/volume, sync on both starts, SQLite/material persistence, cleanup and uncertain/pending queue recovery passed.',
+    'Docker: checkout build, MCP connector, health, isolated port/images/volume, SQLite/material persistence, cleanup and uncertain/pending queue recovery passed.',
   );
   console.log(`Synthetic test volume preserved: ${project}_sqlite_data`);
-  console.log(`Logs and extension: ${directory}`);
+  console.log(`Logs: ${directory}`);
 } finally {
   compose('down');
 }
