@@ -35,7 +35,9 @@ export class BrowserTakeExecutor {
         true,
       );
     this.active = true;
-    let sent = false;
+    let phase: 'image' | 'video' = 'image';
+    let imageSent = false;
+    let videoSent = false;
     const base = { taskId: command.taskId, attemptId: command.attemptId };
     const progress = (
       state: 'submitted' | 'generating' | 'download_pending',
@@ -65,11 +67,12 @@ export class BrowserTakeExecutor {
         command,
         signal,
         (): void => {
-          sent = true;
+          imageSent = true;
         },
         progress,
         checkpoint,
       );
+      phase = 'video';
       const result = await executeVideo(
         page,
         this.home,
@@ -77,7 +80,7 @@ export class BrowserTakeExecutor {
         frame,
         signal,
         (): void => {
-          sent = true;
+          videoSent = true;
         },
         progress,
         checkpoint,
@@ -93,8 +96,10 @@ export class BrowserTakeExecutor {
       const known = error instanceof ExecutionError ? error : undefined;
       const browserError =
         !known && error instanceof FlowBrowserError ? error : undefined;
+      const currentSent = phase === 'image' ? imageSent : videoSent;
+      const anySent = imageSent || videoSent;
       const safe =
-        !sent &&
+        !currentSent &&
         (known?.notSubmitted ??
           (browserError !== undefined &&
             browserError.code !== 'attempt_receipt_failed'));
@@ -109,7 +114,7 @@ export class BrowserTakeExecutor {
           : '';
       if (!known && !browserError)
         console.error(
-          `[flow-worker] ${command.taskId} failed (${sent ? 'after-send' : 'pre-send'}): ${sanitized || 'unknown error'}`,
+          `[flow-worker] ${command.taskId} failed (${currentSent ? 'after-send' : `${phase}-pre-send`}): ${sanitized || 'unknown error'}`,
         );
       emit({
         type: 'queue-progress',
@@ -121,13 +126,13 @@ export class BrowserTakeExecutor {
           message:
             known?.message ??
             browserError?.message ??
-            (!sent && sanitized
+            (!currentSent && sanitized
               ? `Falha na interface do Flow antes do envio: ${sanitized}`
               : sanitized
                 ? `Não foi possível confirmar esta tentativa (${sanitized}). Confira o projeto antes de repetir.`
                 : 'Não foi possível confirmar esta tentativa. Confira o projeto antes de repetir.'),
           retryable: false,
-          notSubmitted: safe,
+          notSubmitted: !anySent && safe,
         },
       });
     } finally {

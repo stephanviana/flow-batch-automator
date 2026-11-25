@@ -8,18 +8,33 @@ export function sameId(left: unknown, right: unknown): boolean {
     left.toLowerCase() === right.toLowerCase()
   );
 }
+const ASB_HOSTS = new Set(['lh3.googleusercontent.com', 'flow.google.com']);
+const ASB_PATH = /^\/asb\/[a-zA-Z0-9_-]+(?:=[a-zA-Z0-9_,=-]+)?$/;
+
 export function cdnUrl(value: unknown, kind: 'image' | 'video'): string | null {
   if (typeof value !== 'string') return null;
   try {
     const url = new URL(value);
-    return url.protocol === 'https:' &&
+    if (
+      url.protocol !== 'https:' ||
+      url.port ||
+      url.username ||
+      url.password ||
+      url.hash
+    )
+      return null;
+    if (
       url.hostname === 'flow-content.google' &&
-      !url.port &&
-      !url.username &&
-      !url.password &&
       new RegExp(`^/${kind}/[a-zA-Z0-9_-]+$`).test(url.pathname)
-      ? value
-      : null;
+    )
+      return value;
+    if (
+      !url.search &&
+      ASB_HOSTS.has(url.hostname) &&
+      ASB_PATH.test(url.pathname)
+    )
+      return value;
+    return null;
   } catch {
     return null;
   }

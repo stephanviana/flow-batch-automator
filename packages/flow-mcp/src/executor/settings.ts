@@ -77,6 +77,21 @@ async function radio(page: Page, name: string): Promise<void> {
   await selectRadio(target, name);
 }
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function modelMatches(label: string, expected: string): boolean {
+  const normalized = label
+    .replace(/^[^A-Za-z]+/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (normalized === expected) return true;
+  return new RegExp(
+    `^${escapeRegex(expected)}\\s+Leaving\\s+[A-Za-z]+\\s+\\d+$`,
+  ).test(normalized);
+}
+
 async function model(page: Page, name: string): Promise<void> {
   const trigger = page.getByRole('button', {
     name: 'Select model family',
@@ -84,11 +99,13 @@ async function model(page: Page, name: string): Promise<void> {
   });
   await trigger.click();
   const choices = page.getByRole('menuitem');
+  await choices
+    .first()
+    .waitFor({ state: 'visible', timeout: 5000 })
+    .catch(() => {});
   const labels = await choices.allTextContents();
   const indices = labels
-    .map((label, index) =>
-      label.replace(/^[^A-Za-z]+/, '').trim() === name ? index : -1,
-    )
+    .map((label, index) => (modelMatches(label, name) ? index : -1))
     .filter((index) => index >= 0);
   if (indices.length !== 1)
     throw new ExecutionError(

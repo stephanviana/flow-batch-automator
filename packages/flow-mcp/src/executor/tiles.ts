@@ -84,6 +84,12 @@ export async function attachImage(
           if (!raw) return null;
           try {
             const parsed = new URL(raw, globalThis.location.href);
+            if (
+              (parsed.hostname === 'flow.google.com' ||
+                parsed.hostname === 'lh3.googleusercontent.com') &&
+              parsed.pathname.startsWith('/asb/')
+            )
+              return `asb:${parsed.pathname.replace(/=[^/]*$/, '')}`;
             return `${parsed.origin}${parsed.pathname.replace(/=[ws]\d+[^/]*$/i, '')}`;
           } catch {
             return raw;
@@ -99,11 +105,25 @@ export async function attachImage(
           const childIds = [...entry.querySelectorAll('[data-media-id]')].map(
             (node) => node.getAttribute('data-media-id')?.toLowerCase(),
           );
-          if (ownId === targetId || childIds.includes(targetId))
-            idIndices.push(index);
           const srcs = [...entry.querySelectorAll('img')].map((img) =>
             img.getAttribute('src'),
           );
+          const srcMatchesId = srcs.some((raw) => {
+            if (!raw) return false;
+            try {
+              const parsed = new URL(raw, globalThis.location.href);
+              return (
+                parsed.origin === 'https://flow-content.google' &&
+                parsed.pathname
+                  .split('/')
+                  .some((segment) => segment.toLowerCase() === targetId)
+              );
+            } catch {
+              return false;
+            }
+          });
+          if (ownId === targetId || childIds.includes(targetId) || srcMatchesId)
+            idIndices.push(index);
           if (input.thumbnail && srcs.includes(input.thumbnail))
             exactSrcIndices.push(index);
           if (targetNorm && srcs.some((src) => normalize(src) === targetNorm))
@@ -129,24 +149,31 @@ export async function attachImage(
     }
     await delay(100);
   }
-  if (!match)
+  if (!match) {
+    await page.keyboard.press('Escape').catch(() => {});
     throw new ExecutionError(
       'source_picker_ambiguous',
       `O seletor não confirmou a imagem por ID (${lastStats}). Nenhuma imagem substituta será gerada.`,
       true,
     );
-  await options.nth(match.index).click();
-  const closedOnSelect = await picker
-    .waitFor({ state: 'hidden', timeout: 500 })
-    .then(() => true)
-    .catch(() => false);
-  if (!closedOnSelect) {
-    const add = page.getByRole('button', {
-      name: 'Add to prompt',
-      exact: true,
-    });
-    if ((await add.count()) === 1 && (await add.isVisible()))
-      await add.click({ timeout: 3000 }).catch(() => {});
-    await picker.waitFor({ state: 'hidden', timeout: 5000 });
+  }
+  try {
+    await options.nth(match.index).click();
+    const closedOnSelect = await picker
+      .waitFor({ state: 'hidden', timeout: 500 })
+      .then(() => true)
+      .catch(() => false);
+    if (!closedOnSelect) {
+      const add = page.getByRole('button', {
+        name: 'Add to prompt',
+        exact: true,
+      });
+      if ((await add.count()) === 1 && (await add.isVisible()))
+        await add.click({ timeout: 3000 }).catch(() => {});
+      await picker.waitFor({ state: 'hidden', timeout: 5000 });
+    }
+  } catch (error) {
+    await page.keyboard.press('Escape').catch(() => {});
+    throw error;
   }
 }

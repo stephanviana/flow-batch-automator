@@ -470,3 +470,186 @@ test('asset picker ignores transient Add to prompt button when selection closes 
     JSON.stringify(events),
   );
 });
+
+test('model selector accepts Leaving deprecation suffix while ignoring adjacent model families', async (t) => {
+  const f = await fixture(t);
+  await f.page.evaluate(() => {
+    const models = document.querySelector('#models');
+    if (!models) return;
+    for (const button of models.querySelectorAll('[role=menuitem]')) {
+      if (button.textContent === 'Omni 1.1 Flash')
+        button.textContent = 'Omni 1.1 Flash Leaving Dec 5 ';
+    }
+    const newer = document.createElement('button');
+    newer.setAttribute('role', 'menuitem');
+    newer.textContent = 'Omni 1.2 Flash';
+    newer.setAttribute(
+      'onclick',
+      "document.querySelector('#model-trigger').textContent=this.textContent;document.querySelector('#models').hidden=true",
+    );
+    models.prepend(newer);
+  });
+  const input = command(true);
+  const events: (QueueCheckpoint | QueueProgress)[] = [];
+  await f.executor.run(input, new AbortController().signal, (event) =>
+    events.push(event),
+  );
+  const result = events.at(-1);
+  assert.ok(
+    result?.type === 'queue-progress' && result.state === 'completed',
+    JSON.stringify(events),
+  );
+});
+
+test('video pre-send failure after image generation reports failed (not uncertain) with notSubmitted false', async (t) => {
+  const f = await fixture(t, 30, true);
+  const input = command(false);
+  await preserve(f.home, input);
+  const events: (QueueCheckpoint | QueueProgress)[] = [];
+  await f.executor.run(input, new AbortController().signal, (event) =>
+    events.push(event),
+  );
+  const stages = events
+    .filter((event) => event.type === 'queue-checkpoint')
+    .map((event) => event.stage);
+  assert.deepEqual(stages, ['reference_uploaded', 'image_generated']);
+  const result = events.at(-1);
+  assert.equal(result?.type, 'queue-progress');
+  assert.ok(result?.type === 'queue-progress' && 'error' in result);
+  assert.equal(result.state, 'failed');
+  assert.equal(result.error.code, 'flow_credit_quote_exceeded');
+  assert.equal(result.error.notSubmitted, false);
+});
+
+test('Zzl0ze ASB video URL completes waitForVideo and triggers Chrome blob download', async (t) => {
+  const f = await fixture(t);
+  const opId = randomUUID();
+  const vidId = randomUUID();
+  const asbToken = 'ANqvLOY_test_video_token_123';
+  await f.page.unroute('https://flow.google.com/**');
+  await f.page.route('https://flow.google.com/**', (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === `/asb/${asbToken}=mm,22,15`)
+      return route.fulfill({
+        contentType: 'video/mp4',
+        body: MP4,
+        headers: {
+          'Access-Control-Allow-Origin': 'https://flow.google.com',
+          'Access-Control-Allow-Credentials': 'true',
+        },
+      });
+    if (url.pathname.endsWith('/batchexecute')) {
+      const rpcId = url.searchParams.get('rpcids') ?? '';
+      if (rpcId === 'eb1hJf') {
+        const details = Array<unknown>(14).fill(null);
+        details[8] = [3];
+        return route.fulfill({
+          contentType: 'application/json',
+          body: `)]}'\n${JSON.stringify([['wrb.fr', 'eb1hJf', JSON.stringify([[opId, PROJECT, vidId, null, null, details, null, [[]]]])]])}`,
+        });
+      }
+      if (rpcId === 'jwpduf') {
+        const clip = Array<unknown>(10).fill(null);
+        clip[8] = `https://lh3.googleusercontent.com/asb/${asbToken}`;
+        const details = Array<unknown>(10).fill(null);
+        details[8] = [3];
+        return route.fulfill({
+          contentType: 'application/json',
+          body: `)]}'\n${JSON.stringify([['wrb.fr', 'jwpduf', JSON.stringify([[], [], [[opId, PROJECT, vidId, null, null, details, null, [clip]]]])]])}`,
+        });
+      }
+      return route.fulfill({
+        contentType: 'application/json',
+        body: envelope(rpcId),
+      });
+    }
+    return route.fulfill({
+      contentType: 'text/html',
+      body: generationHtml(12, true),
+    });
+  });
+  const input = command(true);
+  const events: (QueueCheckpoint | QueueProgress)[] = [];
+  await f.executor.run(input, new AbortController().signal, (event) =>
+    events.push(event),
+  );
+  const result = events.at(-1);
+  assert.ok(
+    result?.type === 'queue-progress' && result.state === 'completed',
+    JSON.stringify(events),
+  );
+  assert.ok(!result.result?.simulated);
+  assert.equal(result.result.videoMediaId, vidId);
+  assert.deepEqual(
+    await readFile(join(f.destination, result.result.outputFile)),
+    MP4,
+  );
+});
+
+test('asset picker resolves signed flow-content image URLs containing media ID when grid uses proxy URLs', async (t) => {
+  const f = await fixture(t);
+  await f.page.evaluate((sourceId) => {
+    const gridImg = document.querySelector('#grid img[data-media-id]');
+    if (gridImg)
+      gridImg.setAttribute('src', 'https://flow.google.com/asb/opaque-proxy');
+    const originalShow = (
+      globalThis as typeof globalThis & { showPicker?: () => void }
+    ).showPicker;
+    (globalThis as typeof globalThis & { showPicker?: () => void }).showPicker =
+      (): void => {
+        originalShow?.();
+        const optImg = document.querySelector('#picker [role=option] img');
+        if (optImg)
+          optImg.setAttribute(
+            'src',
+            `https://flow-content.google/image/${sourceId}?Expires=1795659002&Signature=sig`,
+          );
+      };
+  }, SOURCE);
+  const input = command(true);
+  const events: (QueueCheckpoint | QueueProgress)[] = [];
+  await f.executor.run(input, new AbortController().signal, (event) =>
+    events.push(event),
+  );
+  const result = events.at(-1);
+  assert.ok(
+    result?.type === 'queue-progress' && result.state === 'completed',
+    JSON.stringify(events),
+  );
+});
+
+test('asset picker matches ASB thumbnails across flow.google.com and lh3.googleusercontent.com', async (t) => {
+  const f = await fixture(t);
+  await f.page.evaluate(() => {
+    const token = 'ANqvLOY_shared_token';
+    const gridImg = document.querySelector('#grid img[data-media-id]');
+    if (gridImg)
+      gridImg.setAttribute(
+        'src',
+        `https://flow.google.com/asb/${token}=s512-rw`,
+      );
+    const originalShow = (
+      globalThis as typeof globalThis & { showPicker?: () => void }
+    ).showPicker;
+    (globalThis as typeof globalThis & { showPicker?: () => void }).showPicker =
+      (): void => {
+        originalShow?.();
+        const optImg = document.querySelector('#picker [role=option] img');
+        if (optImg)
+          optImg.setAttribute(
+            'src',
+            `https://lh3.googleusercontent.com/asb/${token}=s128-rw`,
+          );
+      };
+  });
+  const input = command(true);
+  const events: (QueueCheckpoint | QueueProgress)[] = [];
+  await f.executor.run(input, new AbortController().signal, (event) =>
+    events.push(event),
+  );
+  const result = events.at(-1);
+  assert.ok(
+    result?.type === 'queue-progress' && result.state === 'completed',
+    JSON.stringify(events),
+  );
+});

@@ -9,6 +9,8 @@ import {
   resolveOmniVideoModel,
   flowDraftSchema,
   flowExecuteSchema,
+  readFlowPayload,
+  cdnUrl,
 } from '../src/index.js';
 
 test('Flow inputs bind approval to one image, one video, supported models and an immutable local reference', () => {
@@ -217,4 +219,113 @@ test('Omni Frames accepts only supported model encodings and preserves existing 
       .success,
     true,
   );
+});
+
+test('Flow RPC parser accepts lh3/flow ASB asset URLs alongside legacy flow-content URLs', () => {
+  const projectId = randomUUID();
+  const operationId = randomUUID();
+  const mediaId = randomUUID();
+  const asbToken = 'ANqvLOY_token-123';
+  const asbUrl = `https://lh3.googleusercontent.com/asb/${asbToken}`;
+  const clip = Array<unknown>(10).fill(null);
+  clip[8] = asbUrl;
+  const details = Array<unknown>(10).fill(null);
+  details[5] = asbUrl;
+  details[8] = [3];
+  const record = [
+    operationId,
+    projectId,
+    mediaId,
+    null,
+    null,
+    details,
+    null,
+    [clip],
+  ];
+
+  const reply = readFlowPayload(
+    { rpcId: 'Zzl0ze', projectId, operationId, payload: [] },
+    [[], [], [record]],
+  );
+  assert.equal(reply.ok, true);
+  if (reply.ok) {
+    assert.equal(reply.value.operationId, operationId);
+    assert.equal(reply.value.mediaId, mediaId);
+    assert.equal(reply.value.videoUrl, asbUrl);
+  }
+
+  assert.equal(
+    cdnUrl(`https://flow.google.com/asb/${asbToken}=mm,22,15`, 'video'),
+    `https://flow.google.com/asb/${asbToken}=mm,22,15`,
+  );
+  assert.equal(
+    cdnUrl(
+      `https://flow-content.google/image/${mediaId}?Expires=1795659002&Signature=sig`,
+      'image',
+    ),
+    `https://flow-content.google/image/${mediaId}?Expires=1795659002&Signature=sig`,
+  );
+  assert.equal(cdnUrl(`${asbUrl}?token=bad`, 'video'), null);
+  assert.equal(cdnUrl('https://evil.example/asb/token', 'video'), null);
+
+  const signedImgDetails = Array<unknown>(14).fill(null);
+  signedImgDetails[13] = `https://flow-content.google/image/${mediaId}?Expires=1795659002&Signature=sig`;
+  const signedImgReply = readFlowPayload(
+    { rpcId: 'ogiZ0b', projectId, payload: [] },
+    [
+      [
+        [
+          mediaId,
+          null,
+          operationId,
+          null,
+          null,
+          null,
+          [signedImgDetails, null, [756, 1344]],
+        ],
+      ],
+      [[operationId, null, null, ['Image', [1, 0]], projectId]],
+    ],
+  );
+  assert.deepEqual(signedImgReply, { ok: true, value: { mediaId } });
+
+  const asbImgDetails = Array<unknown>(14).fill(null);
+  asbImgDetails[13] = asbUrl;
+  const unscopedAsbReply = readFlowPayload(
+    { rpcId: 'ogiZ0b', projectId, payload: [] },
+    [
+      [
+        [
+          mediaId,
+          null,
+          operationId,
+          null,
+          null,
+          null,
+          [asbImgDetails, null, null],
+        ],
+      ],
+      [],
+    ],
+  );
+  assert.deepEqual(unscopedAsbReply, { ok: true, value: { mediaId } });
+
+  const foreignAsbReply = readFlowPayload(
+    { rpcId: 'ogiZ0b', projectId, payload: [] },
+    [
+      [
+        [
+          mediaId,
+          randomUUID(),
+          operationId,
+          null,
+          null,
+          null,
+          [asbImgDetails, null, [756, 1344]],
+        ],
+      ],
+      [],
+    ],
+  );
+  assert.equal(foreignAsbReply.ok, false);
 });

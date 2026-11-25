@@ -7,7 +7,10 @@ import { test } from 'node:test';
 import { executorIdentity } from '../src/executor/identity.js';
 import { AttemptReceipts } from '../src/executor/receipts.js';
 import { ExecutorControl } from '../src/executor/control.js';
-import { decodeEnvelope } from '../src/executor/response.js';
+import {
+  decodeEnvelope,
+  summarizeInvalidPayload,
+} from '../src/executor/response.js';
 import { ExecutionError } from '../src/executor/errors.js';
 import { BrowserTakeExecutor } from '../src/executor/take.js';
 import { reserveBrowser } from '../src/browser-lease.js';
@@ -190,4 +193,37 @@ test('pre-send playwright errors report sanitized diagnostics instead of hiding 
   assert.equal(last.error.notSubmitted, false);
   assert.match(last.error.message, /strict mode violation at \[url\]/);
   assert.doesNotMatch(last.error.message, /token=secret/);
+});
+
+test('invalid Flow payload summary excludes tokens and prompts while preserving structural diagnostics', () => {
+  const projectId = randomUUID();
+  const summary = summarizeInvalidPayload(
+    [
+      [
+        [
+          randomUUID(),
+          null,
+          randomUUID(),
+          null,
+          null,
+          ['secret prompt text'],
+          [
+            [
+              ...Array(13).fill(null),
+              'https://lh3.googleusercontent.com/asb/SECRET_TOKEN?token=secret',
+            ],
+            null,
+            [756, 1344],
+          ],
+        ],
+      ],
+      [],
+    ],
+    projectId,
+  );
+  assert.match(summary, /top=\[a\(1\),a\(0\)\]/);
+  assert.match(summary, /scope=null/);
+  assert.match(summary, /dims=2/);
+  assert.match(summary, /urls=lh3\.googleusercontent\.com\/asb\?q/);
+  assert.doesNotMatch(summary, /SECRET_TOKEN|token=secret|secret prompt text/);
 });

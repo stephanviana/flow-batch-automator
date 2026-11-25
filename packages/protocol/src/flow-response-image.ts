@@ -33,10 +33,13 @@ function imageAsset(record: unknown[]): ImageIdentity | undefined {
       )
   )
     return;
+  const path = new URL(url).pathname;
   return {
     mediaId: record[0],
     operationId: record[2],
-    fileId: new URL(url).pathname.slice('/image/'.length),
+    ...(path.startsWith('/image/')
+      ? { fileId: path.slice('/image/'.length) }
+      : {}),
   };
 }
 
@@ -83,19 +86,77 @@ function scopedAssets(
   });
 }
 
+function hasForeignProject(records: unknown[][], projectId: string): boolean {
+  return records.some(
+    (record) =>
+      (validId(record[1]) && !sameId(record[1], projectId)) ||
+      (Array.isArray(record[3]) &&
+        validId(record[4]) &&
+        !sameId(record[4], projectId)),
+  );
+}
+
+function hasImageCdnUrl(value: unknown, depth = 0): boolean {
+  if (depth > 6) return false;
+  if (typeof value === 'string') return cdnUrl(value, 'image') !== null;
+  if (!Array.isArray(value)) return false;
+  return value.some((entry) => hasImageCdnUrl(entry, depth + 1));
+}
+
+function fallbackGeneratedAssets(
+  records: unknown[][],
+  projectId: string,
+  allowUnscoped: boolean,
+): ImageIdentity[] {
+  const assets: ImageIdentity[] = [];
+  for (const record of records) {
+    if (
+      !validId(record[0]) ||
+      !validId(record[2]) ||
+      !(sameId(record[1], projectId) || (allowUnscoped && record[1] == null))
+    )
+      continue;
+    if (hasImageCdnUrl(record[6]) || hasImageCdnUrl(record[5]))
+      assets.push({ mediaId: record[0], operationId: record[2] });
+  }
+  return assets;
+}
+
 export function generatedImage(
   records: unknown[][],
   projectId: string,
 ): FlowRpcValue | undefined {
-  if (records.some((record) => imageAsset(record))) {
-    const image = unique(scopedAssets(records, projectId));
+  const allowUnscoped = !hasForeignProject(records, projectId);
+  const structured = records
+    .map((record) => ({ record, asset: imageAsset(record) }))
+    .filter((entry): entry is { record: unknown[]; asset: ImageIdentity } =>
+      Boolean(entry.asset),
+    );
+  if (structured.length) {
+    const scoped = scopedAssets(records, projectId);
+    const image = unique(
+      scoped.length
+        ? scoped
+        : allowUnscoped
+          ? structured
+              .filter(({ record }) => record[1] == null)
+              .map(({ asset }) => asset)
+          : [],
+    );
     return image ? { mediaId: image.mediaId } : undefined;
   }
+  const fallback = unique(
+    fallbackGeneratedAssets(records, projectId, allowUnscoped),
+  );
+  if (fallback) return { mediaId: fallback.mediaId };
   for (const record of records) {
     for (const value of record) {
       const url = cdnUrl(value, 'image');
-      if (url)
-        return { mediaId: new URL(url).pathname.slice('/image/'.length) };
+      if (url) {
+        const path = new URL(url).pathname;
+        if (path.startsWith('/image/'))
+          return { mediaId: path.slice('/image/'.length) };
+      }
     }
   }
   return undefined;
@@ -196,9 +257,11 @@ export function readProjectImage(
   const fileMatches = records.some((r) =>
     r.some((value) => {
       const url = cdnUrl(value, 'image');
+      if (!url) return false;
+      const path = new URL(url).pathname;
       return (
-        url &&
-        sameId(new URL(url).pathname.slice('/image/'.length), request.mediaId)
+        path.startsWith('/image/') &&
+        sameId(path.slice('/image/'.length), request.mediaId)
       );
     }),
   );

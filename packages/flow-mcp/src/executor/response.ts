@@ -6,6 +6,14 @@ import {
 } from '@flow-batch/protocol';
 import { ExecutionError } from './errors.js';
 
+export function flowResponseRpcIds(response: Response): string[] {
+  const url = new URL(response.url());
+  return url.origin === 'https://flow.google.com' &&
+    url.pathname === '/_/AiSandboxAngularFrontend/data/batchexecute'
+    ? (url.searchParams.get('rpcids') ?? '').split(',')
+    : [];
+}
+
 export function decodeEnvelope(text: string, rpcId: string): unknown[] {
   if (text.length > 32_000_000)
     throw new ExecutionError(
@@ -51,6 +59,59 @@ export function decodeEnvelope(text: string, rpcId: string): unknown[] {
   );
 }
 
+function describeUrlKind(value: unknown): string | null {
+  if (typeof value !== 'string' || !value.startsWith('https://')) return null;
+  try {
+    const url = new URL(value);
+    const prefix = url.pathname.split('/').slice(0, 2).join('/');
+    return `${url.hostname}${prefix}${url.search ? '?q' : ''}`;
+  } catch {
+    return null;
+  }
+}
+
+function collectUrlKinds(value: unknown, out: Set<string>, depth = 0): void {
+  if (depth > 6 || out.size >= 4) return;
+  const kind = describeUrlKind(value);
+  if (kind) {
+    out.add(kind);
+    return;
+  }
+  if (Array.isArray(value))
+    for (const item of value) collectUrlKinds(item, out, depth + 1);
+}
+
+export function summarizeInvalidPayload(
+  payload: unknown[],
+  projectId: string,
+): string {
+  const top = payload
+    .slice(0, 4)
+    .map((entry) =>
+      Array.isArray(entry) ? `a(${entry.length})` : typeof entry,
+    )
+    .join(',');
+  const urls = new Set<string>();
+  collectUrlKinds(payload, urls);
+  const firstList = payload.find(
+    (entry) => Array.isArray(entry) && entry.length > 0,
+  ) as unknown[] | undefined;
+  const rec =
+    firstList && Array.isArray(firstList[0])
+      ? (firstList[0] as unknown[])
+      : undefined;
+  const scope = rec
+    ? rec[1] === projectId
+      ? 'proj'
+      : rec[1] == null
+        ? 'null'
+        : 'other'
+    : 'none';
+  const img = rec && Array.isArray(rec[6]) ? (rec[6] as unknown[]) : undefined;
+  const dims = img && Array.isArray(img[2]) ? img[2].length : 0;
+  return `top=[${top}] scope=${scope} rLen=${rec?.length ?? 0} r2=${typeof rec?.[2] === 'string'} dims=${dims} urls=${[...urls].join('|') || 'none'}`;
+}
+
 export async function observeAction(
   page: Page,
   request: Omit<FlowRpcRequest, 'payload'>,
@@ -69,14 +130,7 @@ export async function observeAction(
         ),
       );
     const receive = (response: Response): void => {
-      const url = new URL(response.url());
-      if (
-        url.origin === 'https://flow.google.com' &&
-        url.pathname === '/_/AiSandboxAngularFrontend/data/batchexecute' &&
-        (url.searchParams.get('rpcids') ?? '')
-          .split(',')
-          .includes(request.rpcId)
-      )
+      if (flowResponseRpcIds(response).includes(request.rpcId))
         resolve(response);
     };
     const timeout = setTimeout(fail, 120000);
@@ -100,12 +154,14 @@ export async function observeAction(
         'O Flow não confirmou a operação. Confira o projeto antes de repetir.',
         false,
       );
-    const parsed = readFlowPayload(
-      { ...request, payload: [] },
-      decodeEnvelope(await response.text(), request.rpcId),
-    );
+    const payload = decodeEnvelope(await response.text(), request.rpcId);
+    const parsed = readFlowPayload({ ...request, payload: [] }, payload);
     if (!parsed.ok)
-      throw new ExecutionError(parsed.code, parsed.message, false);
+      throw new ExecutionError(
+        parsed.code,
+        `${parsed.message} (${summarizeInvalidPayload(payload, request.projectId)})`,
+        false,
+      );
     signal.throwIfAborted();
     return parsed.value;
   } finally {

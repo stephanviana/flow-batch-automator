@@ -6,6 +6,113 @@ import type { Page } from 'playwright-core';
 import { flowOutputPath, type FlowExecute } from '@flow-batch/protocol';
 import { ExecutionError } from './errors.js';
 
+function normalizeVideoDownloadUrl(rawUrl: string): {
+  url: string;
+  isAsb: boolean;
+} {
+  const parsed = new URL(rawUrl);
+  if (
+    (parsed.hostname === 'lh3.googleusercontent.com' ||
+      parsed.hostname === 'flow.google.com') &&
+    parsed.pathname.startsWith('/asb/')
+  ) {
+    const suffix = parsed.pathname.includes('=')
+      ? parsed.pathname
+      : `${parsed.pathname}=mm,22,15`;
+    return { url: `https://flow.google.com${suffix}`, isAsb: true };
+  }
+  return { url: rawUrl, isAsb: false };
+}
+
+function trustedAsbRedirectHost(hostname: string): boolean {
+  return (
+    hostname === 'flow.google.com' ||
+    hostname === 'googleusercontent.com' ||
+    hostname.endsWith('.googleusercontent.com') ||
+    hostname === 'googlevideo.com' ||
+    hostname.endsWith('.googlevideo.com')
+  );
+}
+
+async function fetchAsbBase64(page: Page, url: string): Promise<string> {
+  const response = await page.context().request.get(url, {
+    maxRedirects: 5,
+    timeout: 120000,
+  });
+  if (!response.ok()) throw new Error('Video download unavailable');
+  const finalUrl = new URL(response.url());
+  if (
+    finalUrl.protocol !== 'https:' ||
+    !trustedAsbRedirectHost(finalUrl.hostname)
+  )
+    throw new Error('Untrusted video download host');
+  const contentType = response.headers()['content-type'] ?? '';
+  if (!contentType.startsWith('video/')) throw new Error('Invalid video');
+  const body = await response.body();
+  if (body.byteLength < 12 || body.byteLength > 268435456)
+    throw new Error('Invalid video');
+  return body.toString('base64');
+}
+
+async function triggerBlobDownload(
+  page: Page,
+  videoUrl: string,
+  suggested: string,
+): Promise<string> {
+  const target = normalizeVideoDownloadUrl(videoUrl);
+  const directBlobUrl = await page.evaluate(
+    async ({ url, name }) => {
+      try {
+        const response = await fetch(url, {
+          credentials: 'include',
+          redirect: 'error',
+          signal: AbortSignal.timeout(120000),
+        });
+        if (!response.ok) throw new Error('Video download unavailable');
+        const blob = await response.blob();
+        if (
+          blob.size < 12 ||
+          blob.size > 268435456 ||
+          !blob.type.startsWith('video/')
+        )
+          throw new Error('Invalid video');
+        const objectUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = objectUrl;
+        anchor.download = name;
+        document.body.append(anchor);
+        anchor.click();
+        anchor.remove();
+        return objectUrl;
+      } catch (error) {
+        if (error instanceof TypeError) return null;
+        throw error;
+      }
+    },
+    { url: target.url, name: suggested },
+  );
+  if (directBlobUrl) return directBlobUrl;
+  if (!target.isAsb) throw new Error('Video download unavailable');
+  const base64 = await fetchAsbBase64(page, target.url);
+  return await page.evaluate(
+    ({ encoded, name }) => {
+      const binary = atob(encoded);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], { type: 'video/mp4' });
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = objectUrl;
+      anchor.download = name;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      return objectUrl;
+    },
+    { encoded: base64, name: suggested },
+  );
+}
+
 interface Begun {
   guid: string;
   url: string;
@@ -113,32 +220,7 @@ export async function downloadClip(
     );
     void finished.catch(() => {});
     signal.throwIfAborted();
-    blobUrl = await page.evaluate(
-      async ({ url, name }) => {
-        const response = await fetch(url, {
-          credentials: 'include',
-          redirect: 'error',
-          signal: AbortSignal.timeout(120000),
-        });
-        if (!response.ok) throw new Error('Video download unavailable');
-        const blob = await response.blob();
-        if (
-          blob.size < 12 ||
-          blob.size > 268435456 ||
-          !blob.type.startsWith('video/')
-        )
-          throw new Error('Invalid video');
-        const objectUrl = URL.createObjectURL(blob);
-        const anchor = document.createElement('a');
-        anchor.href = objectUrl;
-        anchor.download = name;
-        document.body.append(anchor);
-        anchor.click();
-        anchor.remove();
-        return objectUrl;
-      },
-      { url: videoUrl, name: suggested },
-    );
+    blobUrl = await triggerBlobDownload(page, videoUrl, suggested);
     const completed = await finished;
     signal.throwIfAborted();
     const source = join(staging, completed.guid);
