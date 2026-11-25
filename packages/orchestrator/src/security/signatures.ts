@@ -4,6 +4,7 @@ import type { FastifyRequest } from 'fastify';
 import {
   challengeSchema,
   extensionIdSchema,
+  BROWSER_EXECUTOR_ID,
   signaturePayload,
   type Challenge,
 } from '@flow-batch/protocol';
@@ -11,6 +12,16 @@ import type { ClientStore, Client } from '../persistence/clients.js';
 import { HttpError } from './errors.js';
 
 export function extensionIdentity(request: FastifyRequest): string {
+  if (request.headers['x-flow-executor'] !== undefined) {
+    if (
+      request.headers['x-flow-executor'] !== BROWSER_EXECUTOR_ID ||
+      request.headers['x-flow-extension'] !== undefined ||
+      (request.headers.origin &&
+        request.headers.origin !== `http://${request.headers.host}`)
+    )
+      throw new HttpError(403, 'Executor identity or Origin mismatch');
+    return BROWSER_EXECUTOR_ID;
+  }
   const extensionId = extensionIdSchema.parse(
     request.headers['x-flow-extension'],
   );

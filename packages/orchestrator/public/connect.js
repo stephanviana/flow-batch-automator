@@ -54,7 +54,13 @@ function emptyState(parent, title, description) {
 }
 function identity(parent, extensionId, key, open) {
   const line = text(parent, 'div', '', 'identity-line');
-  text(line, 'span', 'Identificador da extensão');
+  text(
+    line,
+    'span',
+    extensionId === 'flow-browser'
+      ? 'Executor local do navegador'
+      : 'Identificador da extensão',
+  );
   const details = text(line, 'details', '', 'client-identity');
   details.dataset.identityKey = key;
   details.open = open.has(key);
@@ -67,7 +73,13 @@ function pendingRequest(parent, request, open) {
   article.dataset.requestId = request.id;
   rowIcon(article, 'link');
   const content = text(article, 'div', '', 'row-content');
-  text(content, 'h3', 'Solicitação da extensão');
+  text(
+    content,
+    'h3',
+    request.extensionId === 'flow-browser'
+      ? 'Solicitação do executor local'
+      : 'Solicitação da extensão',
+  );
   text(content, 'p', request.code, 'code');
   identity(content, request.extensionId, request.id, open);
   const expiry = text(
@@ -76,7 +88,10 @@ function pendingRequest(parent, request, open) {
     `Expira às ${new Date(request.expiresAt).toLocaleTimeString()}`,
     'request-expiry',
   );
-  expiry.title = 'Compare este código com o exibido no painel da extensão.';
+  expiry.title =
+    request.extensionId === 'flow-browser'
+      ? 'Compare este código com o exibido pelo agente ou terminal.'
+      : 'Compare este código com o exibido no painel da extensão.';
   const actions = text(content, 'div', '', 'request-actions');
   button(actions, 'Confirmar conexão', () =>
     management(`/manage/requests/${request.id}`, { approve: true }),
@@ -93,7 +108,13 @@ function clientRow(parent, client, open) {
   article.dataset.clientId = client.id;
   rowIcon(article, 'puzzle');
   const content = text(article, 'div', '', 'row-content');
-  text(content, 'h3', 'Extensão do Flow Batch');
+  text(
+    content,
+    'h3',
+    client.extensionId === 'flow-browser'
+      ? 'Executor local do Flow'
+      : 'Extensão do Flow Batch',
+  );
   identity(content, client.extensionId, client.id, open);
   const state = text(
     article,
@@ -123,6 +144,13 @@ function clientRow(parent, client, open) {
 }
 function connectionState(clients) {
   const connected = clients.filter((client) => client.connected).length;
+  if (clients.some((client) => client.extensionId === 'flow-browser')) {
+    indicator.dataset.state = connected ? 'connected' : 'offline';
+    indicator.textContent = connected
+      ? `${connected} ${connected > 1 ? 'conexões ativas' : 'conexão ativa'}`
+      : 'Executores desconectados';
+    return;
+  }
   indicator.dataset.state = connected
     ? 'connected'
     : clients.length

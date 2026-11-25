@@ -4,6 +4,8 @@ import { WebSocket, WebSocketServer, type RawData } from 'ws';
 import {
   clientMessageSchema,
   extensionIdSchema,
+  BROWSER_EXECUTOR_ID,
+  BROWSER_PROTOCOL_VERSION,
   type ServerMessage,
   type Simulation,
   type QueueExecute,
@@ -27,6 +29,7 @@ interface Session {
   modernFlowCapable: boolean;
   videoFoldersCapable: boolean;
   flowRetryCapable: boolean;
+  browserExecutor: boolean;
 }
 
 export class ConnectionHub implements QueueTransport {
@@ -94,6 +97,8 @@ export class ConnectionHub implements QueueTransport {
       !session.queueCapable ||
       (message.type === 'flow-execute' && !session.flowCapable) ||
       (message.type === 'flow-execute' &&
+        (message.flow.driver === 'browser-ui') !== session.browserExecutor) ||
+      (message.type === 'flow-execute' &&
         (message.flow.imageSourceTaskKey || message.flow.output) &&
         !session.modernFlowCapable) ||
       (message.type === 'flow-execute' &&
@@ -118,12 +123,20 @@ export class ConnectionHub implements QueueTransport {
   register(app: FastifyInstance, port: number): void {
     app.server.on('upgrade', (request, socket, head): void => {
       const origin = request.headers.origin ?? '';
-      const extensionId = origin.startsWith('chrome-extension://')
-        ? origin.slice(19)
-        : '';
+      const native =
+        request.headers['x-flow-executor'] === BROWSER_EXECUTOR_ID &&
+        origin === `http://${request.headers.host}` &&
+        request.headers['x-flow-extension'] === undefined;
+      const extensionId = native
+        ? BROWSER_EXECUTOR_ID
+        : origin.startsWith('chrome-extension://')
+          ? origin.slice(19)
+          : '';
       if (
         request.url !== '/ws' ||
-        !extensionIdSchema.safeParse(extensionId).success ||
+        (!native &&
+          (!extensionIdSchema.safeParse(extensionId).success ||
+            request.headers['x-flow-executor'] !== undefined)) ||
         ![`127.0.0.1:${port}`, `localhost:${port}`].includes(
           request.headers.host ?? '',
         ) ||
@@ -211,6 +224,7 @@ export class ConnectionHub implements QueueTransport {
       modernFlowCapable: false,
       videoFoldersCapable: false,
       flowRetryCapable: false,
+      browserExecutor: extensionId === BROWSER_EXECUTOR_ID,
     };
     this.sessions.set(session.id, session);
     const deadline = setTimeout((): void => {
@@ -254,11 +268,13 @@ export class ConnectionHub implements QueueTransport {
       );
       if (session.socket.readyState !== WebSocket.OPEN) return;
       this.clients.authorized(client.id, session.extensionId);
+      const version = message.protocolVersion ?? 0;
+      if (session.browserExecutor && version !== BROWSER_PROTOCOL_VERSION)
+        throw new HttpError(409, 'Browser executor requires protocol v9');
       for (const previous of this.sessions.values())
         if (previous.clientId === client.id)
           previous.socket.close(4000, 'Replaced by reconnect');
       session.clientId = client.id;
-      const version = message.protocolVersion ?? 0;
       session.queueCapable = version >= 3;
       session.flowCapable = version >= 4;
       session.modernFlowCapable = version >= 5;
@@ -269,6 +285,21 @@ export class ConnectionHub implements QueueTransport {
       return;
     }
     this.clients.authorized(session.clientId, session.extensionId);
+    const downloadId =
+      message.type === 'queue-checkpoint' &&
+      message.stage === 'download_started'
+        ? message.downloadId
+        : message.type === 'queue-progress' &&
+            message.state === 'completed' &&
+            message.result &&
+            !message.result.simulated
+          ? message.result.downloadId
+          : undefined;
+    if (
+      downloadId !== undefined &&
+      (typeof downloadId === 'string') !== session.browserExecutor
+    )
+      throw new HttpError(400, 'Download evidence does not match the executor');
     session.lastSeen = Date.now();
     if (message.type === 'ping') this.send(session, { type: 'pong' });
     else if (message.type === 'simulation-started')

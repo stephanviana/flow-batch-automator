@@ -23,7 +23,7 @@ export async function orderExecution(
       : undefined;
   if (!selected)
     throw new Error(
-      'Conecte uma extensão autorizada ou escolha seu clientId quando houver várias extensões.',
+      'Conecte um executor autorizado ou escolha seu clientId quando houver várias conexões.',
     );
   return { clientId: selected.id, userAuthorized: true };
 }

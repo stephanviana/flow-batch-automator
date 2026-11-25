@@ -1,7 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { QueueVisibility } from '../queue/visibility.js';
-import { enqueueSchema, queueActionSchema } from '@flow-batch/protocol';
+import {
+  enqueueSchema,
+  queueActionSchema,
+  BROWSER_EXECUTOR_ID,
+} from '@flow-batch/protocol';
+import { HttpError } from '../security/errors.js';
 import type { SignatureService } from '../security/signatures.js';
 import type { ClientStore } from '../persistence/clients.js';
 import type { QueueRepository } from '../queue/repository.js';
@@ -39,6 +44,18 @@ export function registerQueueRoutes(
     const client = await signatures.http(request);
     clients.authorized(client.id, client.extensionId);
     const input = enqueueSchema.parse(request.body);
+    if (
+      input.tasks.some(
+        (task) =>
+          task.executor === 'google-flow' &&
+          (task.flow.driver === 'browser-ui') !==
+            (client.extensionId === BROWSER_EXECUTOR_ID),
+      )
+    )
+      throw new HttpError(
+        409,
+        'Task driver does not match the authorized executor',
+      );
     const tasks = repository.enqueue(client.id, input.requestId, input.tasks);
     engine.wake();
     return { tasks };
