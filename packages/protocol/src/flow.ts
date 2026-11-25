@@ -54,22 +54,32 @@ export const originalPromptsSchema = z.strictObject({
   videoPrompt: z.string().max(4096),
   copy: z.string().max(4096),
 });
-const flowSettingsBaseSchema = z.strictObject({
-  batchId: z.uuid().optional(),
-  projectId: z.uuid(),
-  imageModel: z.enum(['GEM_PIX_2', 'BELUGA', 'HARBOR_SEAL']),
-  videoModel: flowVideoModelSchema,
-  aspect: z.enum(['9:16', '16:9']),
-  seed: z.number().int().min(1).max(1_000_000_000),
-  reference: flowReferenceSchema,
-  imageSourceTaskKey: z.uuid().optional(),
-  output: flowOutputSchema.optional(),
-  approval: z.strictObject({
-    approvedAt: z.number().int().positive(),
-    imageGenerations: z.union([z.literal(0), z.literal(1)]),
-    videoGenerations: z.literal(1),
-  }),
-});
+const flowSettingsBaseSchema = z
+  .strictObject({
+    batchId: z.uuid().optional(),
+    projectId: z.uuid(),
+    imageModel: z.enum(['GEM_PIX_2', 'BELUGA', 'HARBOR_SEAL']),
+    videoModel: flowVideoModelSchema,
+    aspect: z.enum(['9:16', '16:9']),
+    seed: z.number().int().min(1).max(1_000_000_000).nullable(),
+    driver: z.literal('browser-ui').optional(),
+    maxVideoCredits: z.number().int().min(1).max(100).optional(),
+    reference: flowReferenceSchema,
+    imageSourceTaskKey: z.uuid().optional(),
+    output: flowOutputSchema.optional(),
+    approval: z.strictObject({
+      approvedAt: z.number().int().positive(),
+      imageGenerations: z.union([z.literal(0), z.literal(1)]),
+      videoGenerations: z.literal(1),
+    }),
+  })
+  .refine(
+    (flow) =>
+      flow.driver === 'browser-ui'
+        ? flow.seed === null && flow.maxVideoCredits !== undefined
+        : flow.seed !== null && flow.maxVideoCredits === undefined,
+    'Browser UI uses the native random seed; legacy RPC requires its registered seed',
+  );
 export const flowSettingsSchema = flowSettingsBaseSchema.refine(
   (flow) =>
     flow.approval.imageGenerations === (flow.imageSourceTaskKey ? 0 : 1),
@@ -111,7 +121,7 @@ export const flowDraftSchema = z
     reference: referenceFileSchema,
   })
   .refine(
-    (draft) => draft.approval.imageGenerations === 1,
+    (draft) => draft.approval.imageGenerations === 1 && draft.seed !== null,
     'Manual takes generate one image',
   );
 export type FlowDraft = z.infer<typeof flowDraftSchema>;
@@ -163,16 +173,17 @@ export const queueCheckpointSchema = z.discriminatedUnion('stage', [
   }),
   checkpointBase.extend({
     stage: z.literal('download_started'),
-    downloadId: z.number().int().min(0),
+    downloadId: z.union([z.number().int().min(0), z.uuid()]),
   }),
 ]);
 export type QueueCheckpoint = z.infer<typeof queueCheckpointSchema>;
 export const flowResultSchema = z.strictObject({
   simulated: z.literal(false),
   outputFile: flowOutputFileSchema,
-  downloadId: z.number().int().min(0),
+  downloadId: z.union([z.number().int().min(0), z.uuid()]),
   imageMediaId: flowIdSchema,
   videoMediaId: flowIdSchema,
   operationId: flowIdSchema,
   description: z.string().min(1).max(200),
 });
+export type FlowResult = z.infer<typeof flowResultSchema>;

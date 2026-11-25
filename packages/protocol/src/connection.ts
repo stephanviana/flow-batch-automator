@@ -14,6 +14,8 @@ import {
 } from './queue.js';
 
 export const extensionIdSchema = z.string().regex(/^[a-p]{32}$/);
+export const BROWSER_EXECUTOR_ID = 'flow-browser';
+export const BROWSER_PROTOCOL_VERSION = 9;
 export const publicKeySchema = z.strictObject({
   kty: z.literal('EC'),
   crv: z.literal('P-256'),
@@ -111,6 +113,7 @@ export const clientMessageSchema = z.discriminatedUnion('type', [
         z.literal(6),
         z.literal(7),
         z.literal(8),
+        z.literal(9),
       ])
       .optional(),
   }),
