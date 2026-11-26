@@ -217,6 +217,62 @@ async function verifyControls() {
     );
   }
 }
+async function verifyCleanup() {
+  const api = await localClient(base);
+  const { order } = await api('/manage/orders/1');
+  for (let index = 0; index < 8; index++)
+    await api('/manage/orders', {
+      id: randomUUID(),
+      name: `Pedido sintético ${index + 2}`,
+      products: order.products,
+      videoModel: order.videoModel,
+    });
+  const reserved = await api('/manage/orders', {
+    id: randomUUID(),
+    name: 'Pedido em preparação',
+    products: order.products,
+  });
+  await api(`/manage/orders/${reserved.id}/claim`, { worker: 'fixture' });
+  await page.getByRole('button', { name: 'Atualizar', exact: true }).click();
+  await page
+    .getByRole('heading', { name: 'Pedido em preparação', exact: true })
+    .waitFor();
+  await page
+    .getByLabel('Nome do pedido', { exact: true })
+    .fill('Rascunho preservado');
+  await page
+    .getByRole('button', { name: 'Limpar pedidos', exact: true })
+    .click();
+  await page
+    .locator('#clear-orders-feedback')
+    .getByText(/9 pedido/)
+    .waitFor();
+  assert.deepEqual(
+    (await api('/manage/orders')).orders.map(({ id }) => id),
+    [reserved.id],
+  );
+  assert.equal(
+    await page.getByLabel('Nome do pedido', { exact: true }).inputValue(),
+    'Rascunho preservado',
+  );
+  assert.equal(
+    await page
+      .getByRole('button', { name: 'Limpar pedidos', exact: true })
+      .isDisabled(),
+    true,
+  );
+  await page.reload();
+  await page
+    .getByRole('heading', { name: 'Pedido em preparação', exact: true })
+    .waitFor();
+  assert.equal(await page.locator('#orders article').count(), 1);
+  const historical = (await api(`/manage/orders/id/${order.id}`)).order;
+  assert.notEqual(historical.archivedAt, null);
+  assert.equal(
+    historical.materials.every(({ available }) => available),
+    true,
+  );
+}
 
 try {
   await app.listen({ host: '127.0.0.1', port: config.port });
@@ -235,6 +291,7 @@ try {
   await prepareFixture();
   await captureResponsive();
   await verifyControls();
+  await verifyCleanup();
   const database = new DatabaseSync(config.databasePath, { readOnly: true });
   assert.equal(
     database.prepare('SELECT count(*) AS n FROM dispatch_commands').get().n,
@@ -247,7 +304,7 @@ try {
   database.close();
   assert.deepEqual(errors, []);
   console.log(
-    'Chrome isolado: cadastro com três produtos, anexos, formatos e detalhes, sem controles da fila no painel, passou.',
+    'Chrome isolado: cadastro, anexos, formatos, detalhes e limpeza persistente de pedidos elegíveis passaram.',
   );
   console.log(`Evidências: ${directory}`);
 } catch (error) {

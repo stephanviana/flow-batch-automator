@@ -16,6 +16,13 @@
 #refresh {
   margin-top: 5px;
 }
+#clear-orders {
+  width: 100%;
+  margin-bottom: 14px;
+}
+#clear-orders-feedback:empty {
+  display: none;
+}
 #orders article {
   min-width: 0;
   margin: 16px 0 0;

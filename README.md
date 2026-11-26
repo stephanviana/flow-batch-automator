@@ -76,6 +76,9 @@ O pacote gerado fica em `packages/desktop/release/win-unpacked/Flow Batch.exe`
 4. Use **Perfil Chrome** / **+ Novo perfil** sempre que quiser alternar ou isolar contas mantendo o pareamento local.
 5. Opere a fila pelo chat. Nas próximas sessões, **Conectar Flow** também conecta o worker já autorizado. A barra oferece **Conectar executor** quando ele estiver desconectado.
 
+**Limpar pedidos** remove da lista os pedidos elegíveis, preservando materiais
+e histórico. Pedidos em preparação ou com trabalho pendente continuam disponíveis.
+
 ### Docker Compose (opcional em Linux)
 
 ```sh

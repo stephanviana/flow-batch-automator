@@ -57,6 +57,7 @@ chat controla a fila. A configuração local mantém login e confirmação de
 pareamento do executor. O Desktop conecta o worker após a confirmação do
 pareamento e pelo botão Conectar Flow, usando a autorização existente e a
 pausa persistida. Falhas de conexão são exibidas, sem repetição automática.
+O painel oferece Limpar pedidos para retirar da lista os pedidos elegíveis.
 O seletor de referências aceita várias imagens por produto, acumuladas entre
 seleções e removidas individualmente. Todas entram nos materiais do pedido;
 `referenceId` aponta a única imagem marcada como principal para a geração no

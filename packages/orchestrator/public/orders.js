@@ -16,6 +16,8 @@ for (const [value, title] of videoModels) {
 const products = [],
   container = document.querySelector('#products');
 const previewDisposers = [];
+let savedOrders = [];
+const clearOrdersButton = document.querySelector('#clear-orders');
 let draftId = crypto.randomUUID(),
   busy = false;
 function addProduct() {
@@ -84,6 +86,8 @@ form.addEventListener('submit', (event) => {
 });
 async function refresh() {
   const { orders } = await api('/manage/orders');
+  savedOrders = orders;
+  clearOrdersButton.disabled = !orders.some((order) => order.clearable);
   const list = document.querySelector('#orders');
   previewDisposers.splice(0).forEach((dispose) => dispose());
   list.replaceChildren();
@@ -101,5 +105,23 @@ function refreshOrders() {
   void refresh().catch((error) => report(error, 'refresh'));
 }
 document.querySelector('#refresh').addEventListener('click', refreshOrders);
-
+clearOrdersButton.addEventListener('click', () => {
+  void action(async () => {
+    const ids = savedOrders
+      .filter((order) => order.clearable)
+      .map((order) => order.id);
+    if (!ids.length) return;
+    clearOrdersButton.disabled = true;
+    try {
+      const result = await api('/manage/orders/clear', { ids });
+      await refresh();
+      document.querySelector('#clear-orders-feedback').textContent =
+        `${result.cleared} pedido(s) removido(s) da lista. Próximo pedido: #${result.nextNumber}.`;
+    } finally {
+      clearOrdersButton.disabled = !savedOrders.some(
+        (order) => order.clearable,
+      );
+    }
+  });
+});
 refreshOrders();
