@@ -101,6 +101,25 @@ etapas registradas. Para pausar ou retomar a fila quando o usuário pedir, use
 `flow_queue_control`. Se o processo estiver parado, use `flow_browser_start_worker`
 com as autorizações já registradas.
 
+O acompanhamento é obrigatório por padrão no mesmo chat após executar ou retomar
+trabalho autorizado: `flow_publish` com `execute=true`, `flow_approve`,
+`flow_retry_take`, `flow_prepare_take_revision` com `execute=true`,
+`flow_approve_take_revision`, `flow_resume_dispatch` e `flow_queue_control` com
+`action=resume`. Use `flow_wait_order` para cada pedido selecionado e continue pelo
+UUID retornado enquanto receber `in_progress`, inclusive após novas tentativas e
+revisões. O fim da janela de uma consulta exige outra consulta enquanto o pedido
+estiver em andamento. Não encerre a resposta apenas porque o trabalho foi enfileirado.
+
+Acompanhe as etapas reais de imagem, vídeo e download. Só informe sucesso após o
+Chrome confirmar todos os MP4s esperados, com os caminhos dos arquivos. Se houver
+pausa, falha, bloqueio, desconexão ou resultado incerto, consulte
+`flow_order_diagnostics` e `flow_queue_status`, relate a etapa, os downloads
+confirmados e a ação necessária. Preserve pausas explícitas e as autorizações.
+Só dispense a espera se o usuário pedir explicitamente só o despacho ou não
+acompanhar. Preparar sem executar não inicia acompanhamento. Se o cliente limitar
+a espera ou encerrar a sessão, informe o último estado confirmado e a interrupção
+do acompanhamento; não prometa observação nem notificação futura sem sessão ativa.
+
 Use `flow_cancel_take` para um take pendente e `flow_cancel_order` para um
 pedido sem despacho. Use `flow_clear_orders` somente para os pedidos elegíveis
 indicados pelo usuário. `flow_close_dispatch` encerra um grupo bloqueado com os
@@ -113,6 +132,14 @@ fica indisponível. Para repetir o conteúdo da última tentativa de um take, us
 quantidade de imagens indicada no diagnóstico e um vídeo. Use
 `flow_set_auto_retry` somente com autorização explícita para o orçamento
 do pedido. Preserve a pausa até o usuário pedir a retomada.
+
+Confira as evidências tanto da imagem quanto do vídeo antes de repetir. Se houver
+imagem confirmada, use `imageGenerations=0`: o executor localiza a mesma imagem
+pelo ID e para se não puder confirmá-la, sem gerar uma imagem de fallback. Vídeo
+já localizado bloqueia uma nova geração, mesmo se o download falhou. Envio sem
+resultado confirmado exige revisão; reconectar ou atingir um timeout não autoriza
+repetir imagem ou vídeo. Após autorizar outra tentativa, siga o acompanhamento
+obrigatório acima.
 
 ## Revisar um despacho bloqueado
 

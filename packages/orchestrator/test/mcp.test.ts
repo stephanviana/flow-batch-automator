@@ -126,6 +126,7 @@ test('official MCP client supports review, hashless execution and combined publi
     'flow_approve_take_revision',
     'flow_queue_status',
     'flow_order_diagnostics',
+    'flow_wait_order',
     'flow_queue_control',
     'flow_cancel_take',
     'flow_resolve_take',
@@ -247,12 +248,35 @@ test('official MCP client supports review, hashless execution and combined publi
   });
   assert.equal(diagnostics.isError, undefined, JSON.stringify(diagnostics));
   assert.match(JSON.stringify(diagnostics.content), new RegExp(order.id));
+  const awaitingExecution = await client.callTool({
+    name: 'flow_wait_order',
+    arguments: { order: order.number, waitSeconds: 0 },
+  });
+  assert.equal(
+    awaitingExecution.isError,
+    undefined,
+    JSON.stringify(awaitingExecution),
+  );
+  assert.match(JSON.stringify(awaitingExecution.content), /not_dispatched/);
   const execution = await client.callTool({
     name: 'flow_approve',
     arguments: { number: order.number, userAuthorized: true },
   });
   assert.ok(!execution.isError, JSON.stringify(execution));
   assert.equal(repository.get(order.id).state, 'dispatched');
+  const awaitingExecutor = await client.callTool({
+    name: 'flow_wait_order',
+    arguments: { order: order.id },
+  });
+  assert.equal(
+    awaitingExecutor.isError,
+    undefined,
+    JSON.stringify(awaitingExecutor),
+  );
+  assert.match(
+    JSON.stringify(awaitingExecutor.content),
+    /executor_disconnected/,
+  );
   const nextInput = draft(material.id);
   nextInput.products = [nextInput.products[1]!];
   const next = repository.create(nextInput);

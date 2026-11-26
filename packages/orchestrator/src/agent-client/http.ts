@@ -1,8 +1,18 @@
 import { PREPARATION_CONTRACT } from '@flow-batch/protocol';
 
 export interface AgentApi {
-  <T = unknown>(path: string, body?: unknown, binary?: false): Promise<T>;
-  (path: string, body: undefined, binary: true): Promise<Buffer>;
+  <T = unknown>(
+    path: string,
+    body?: unknown,
+    binary?: false,
+    signal?: AbortSignal,
+  ): Promise<T>;
+  (
+    path: string,
+    body: undefined,
+    binary: true,
+    signal?: AbortSignal,
+  ): Promise<Buffer>;
 }
 export async function localClient(
   base = 'http://127.0.0.1:4319',
@@ -24,12 +34,13 @@ export async function localClient(
   base = url.origin;
   let cookie = '',
     expiresAt = 0;
-  async function session(): Promise<void> {
+  async function session(signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted();
     if (Date.now() < expiresAt) return;
     const open = (): Promise<Response> =>
       fetch(`${base}/orders`, {
         redirect: 'error',
-        signal: AbortSignal.timeout(5000),
+        signal: requestSignal(5000, signal),
       });
     const response = await open().catch(() => open());
     await response.arrayBuffer();
@@ -43,6 +54,7 @@ export async function localClient(
     path: string,
     body?: unknown,
     binary = false,
+    signal?: AbortSignal,
   ): Promise<unknown> => {
     if (
       !path.startsWith('/manage/') ||
@@ -50,11 +62,11 @@ export async function localClient(
       path.includes('#')
     )
       throw new Error('Caminho de gestão inválido.');
-    await session();
+    await session(signal);
     const response = await fetch(`${base}${path}`, {
       method: body === undefined ? 'GET' : 'POST',
       redirect: 'error',
-      signal: AbortSignal.timeout(requestTimeoutMs),
+      signal: requestSignal(requestTimeoutMs, signal),
       headers: {
         cookie,
         origin: base,
@@ -78,6 +90,14 @@ export async function localClient(
     return binary ? Buffer.from(await response.arrayBuffer()) : response.json();
   };
   return api as AgentApi;
+}
+
+function requestSignal(
+  milliseconds: number,
+  signal?: AbortSignal,
+): AbortSignal {
+  const timeout = AbortSignal.timeout(milliseconds);
+  return signal ? AbortSignal.any([signal, timeout]) : timeout;
 }
 export async function requireContract(api: AgentApi): Promise<void> {
   let capabilities: { contract: string };

@@ -22,6 +22,22 @@ confirmação nem hash de aprovação. Use `flow_publish` com `execute=true` e
 `execute=false`. Para executar uma preparação existente, `flow_approve` usa só
 número, autorização e cliente executor opcional. Isso não autoriza gerações nesta tarefa
 de manutenção nem retomadas automáticas após falha.
+O acompanhamento pelo agente é obrigatório por padrão após execução inicial,
+nova tentativa, revisão executada ou retomada de trabalho autorizado pelo chat.
+Use `flow_wait_order` após `flow_publish` com execução, `flow_approve`,
+`flow_retry_take`, `flow_prepare_take_revision` com execução,
+`flow_approve_take_revision`, `flow_resume_dispatch` e retomada por
+`flow_queue_control`. Não encerre a resposta apenas porque o trabalho entrou na
+fila. Continue por UUID enquanto `in_progress`, inclusive quando a janela de uma
+consulta terminar, até todos os MP4s serem confirmados pelo Chrome ou até haver
+pausa, falha, bloqueio, desconexão ou resultado incerto. Acompanhe todos os pedidos
+selecionados ainda em andamento. Nessas interrupções, consulte os diagnósticos e
+informe a etapa, os arquivos confirmados e a ação necessária. Só dispense a espera
+se o usuário pedir explicitamente apenas o despacho ou não acompanhar. Preparação
+sem execução não inicia acompanhamento. A consulta é somente leitura, não autoriza
+repetições e depende da sessão ativa no chat. Se o cliente interromper a sessão ou
+limitar a espera, informe o último estado confirmado e a interrupção; não prometa
+acompanhamento ou notificações futuras.
 A biblioteca criativa versionada está em `instrucoes/`: base.md e oito arquivos
 `formatos/*.md`. `pnpm library seed [PASTA]` inicia a edição do checkout
 na pasta escolhida apenas quando nova ou com scaffold modular vazio sem capturas.

@@ -324,6 +324,7 @@ O executor continua em segundo plano enquanto o app e o Chrome dedicado estivere
 | Ferramenta do `flow-batch`                                            | Operação                                                                                             |
 | --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | `flow_queue_status`, `flow_order_diagnostics`                         | Consultam a pausa, os executores, os takes, dependências e MP4s confirmados.                         |
+| `flow_wait_order`                                                     | Acompanha a execução até os downloads confirmados ou uma situação que exija atenção.                 |
 | `flow_queue_control`                                                  | Pausa ou retoma trabalhos já autorizados.                                                            |
 | `flow_cancel_take`, `flow_cancel_order`                               | Cancelam um take pendente ou um pedido ainda sem despacho.                                           |
 | `flow_resolve_take`, `flow_retry_take`                                | Registram a revisão de um resultado ou autorizam outra tentativa com o conteúdo da última tentativa. |
@@ -333,6 +334,17 @@ O executor continua em segundo plano enquanto o app e o Chrome dedicado estivere
 A pausa fica gravada no orquestrador, inclusive após reconexão. Ela impede novos
 takes e novas reservas de criação de projeto. Uma tentativa ativa pode terminar.
 A fila executa um take por vez e espera 15 segundos após um download confirmado.
+
+Ao pedir “Prepare o pedido 12” ou autorizar a execução de uma preparação, o
+agente deve acompanhar por padrão no mesmo chat. Isso também vale para novas
+tentativas, revisões executadas e retomadas autorizadas da fila. Enfileirar o
+trabalho não encerra o acompanhamento: o agente consulta `flow_wait_order` pelo
+UUID enquanto `in_progress`, inclusive quando uma janela de consulta terminar.
+A resposta final lista os MP4s confirmados pelo Chrome ou informa a etapa da
+pausa, falha, desconexão ou resultado incerto e a ação necessária. Preparações
+sem execução não iniciam acompanhamento. Para sair após enfileirar, diga
+“Só despache o pedido 12, sem aguardar”. O executor continua em segundo plano
+se o chat fechar. A resposta de acompanhamento depende da sessão ativa.
 
 Os vídeos de cada variação ficam juntos nos downloads do Chrome:
 
@@ -362,6 +374,13 @@ confirmada, o diagnóstico mostra por que essa revisão está indisponível.
 
 Repetir o conteúdo da última tentativa exige conferir a falha no Flow e
 autorizar no chat o orçamento informado no diagnóstico.
+As proteções contra repetição abrangem imagens e vídeos: uma imagem já confirmada
+é reutilizada pelo ID, com zero novas imagens; se não for encontrada, o executor
+para sem gerar uma substituta. Um vídeo já localizado impede outra geração mesmo
+quando o download falhou. Envio sem resultado confirmado exige revisão antes de
+repetir. Essas verificações dependem das evidências registradas e da conferência
+no Flow; não garantem execução exatamente uma vez. O agente acompanha também a
+nova tentativa até os downloads confirmados ou uma interrupção que exija ação.
 `flow_set_auto_retry` concede até uma tentativa extra por take em 24 horas, somente
 para falhas comprovadas antes do envio. Resultados incertos exigem revisão e
 recusas de conteúdo exigem revisar o take.

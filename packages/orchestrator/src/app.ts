@@ -91,6 +91,8 @@ export function createApp(config: AppConfig): FastifyInstance {
     clients,
     queueMutations,
     queueEngine,
+    queueRepository,
+    hub,
   );
   registerExecutorManagement(
     app,

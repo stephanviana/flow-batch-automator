@@ -152,10 +152,16 @@ try {
     (await prepared.api('/manage/executor')).executor.pendingDispatches,
     1,
   );
+  const monitorPath = `/manage/orders/${prepared.order.id}/monitor`;
+  const pausedSnapshot = await prepared.api(monitorPath);
+  assert.equal(pausedSnapshot.status, 'paused');
+  assert.equal(pausedSnapshot.expectedDownloads, 3);
+  assert.deepEqual(pausedSnapshot.confirmedDownloads, []);
   await prepared.api('/manage/executor/control', {
     action: 'start',
     clientId: api.clientId,
   });
+  assert.equal((await prepared.api(monitorPath)).status, 'in_progress');
   let queue;
   await eventually(async () => {
     queue = await api.call('GET', '/api/queue');
@@ -208,6 +214,13 @@ try {
     'completed',
   );
   const dispatch = (await api.call('GET', '/api/dispatch')).commands[0];
+  const complete = await prepared.api(monitorPath);
+  assert.equal(complete.status, 'completed');
+  assert.equal(complete.expectedDownloads, 3);
+  assert.deepEqual(
+    complete.confirmedDownloads.map(({ outputFile }) => outputFile).sort(),
+    queue.tasks.map(({ result }) => result.outputFile).sort(),
+  );
   assert.equal(dispatch.state, 'queued');
   const ended = once(worker, 'exit');
   await prepared.api(`/manage/clients/${api.clientId}/revoke`, {});
@@ -227,7 +240,7 @@ try {
     videos: 3,
   });
   console.log(
-    'Native worker E2E: explicit /connect approval, panel order, checkout, persistent pause and explicit resume, authorized dispatch, project creation, signed API/WebSocket v9, shared image, 15s cooldown, three Chrome-confirmed MP4s, and revocation without replay passed with synthetic Flow responses.',
+    'Native worker E2E: explicit /connect approval, panel order, checkout, monitoring during pause and resume, authorized dispatch, project creation, signed API/WebSocket v9, shared image, 15s cooldown, three Chrome-confirmed MP4s reported by monitoring, and revocation without replay passed with synthetic Flow responses.',
   );
 } finally {
   await stopWorker();

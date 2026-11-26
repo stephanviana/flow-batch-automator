@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { AgentApi } from '../agent-client/http.js';
 import { result } from './result.js';
+import { ORDER_MONITORING_POLICY } from '../agent-client/workflow.js';
 
 const order = z.union([z.number().int().positive(), z.uuid()]);
 const authorize = z.literal(true);
@@ -61,7 +62,8 @@ function registerTakeControls(server: McpServer, api: AgentApi): void {
     'flow_retry_take',
     {
       description:
-        'Enfileira uma nova tentativa com o conteúdo usado na última tentativa do take. Consulte flow_order_diagnostics. Exige falha confirmada após conferir o Flow e autorização explícita do usuário para a quantidade indicada de imagens e um vídeo. Uma imagem já confirmada deve ser reutilizada pelo ID com imageGenerations=0; nunca gere uma imagem de fallback. Vídeo já localizado bloqueia nova geração, inclusive quando o download falhou. Para revisar copy e prompt, use flow_prepare_take_revision. Se o resultado for incerto, resolva o take antes.',
+        'Enfileira uma nova tentativa com o conteúdo usado na última tentativa do take. Consulte flow_order_diagnostics. Exige falha confirmada após conferir o Flow e autorização explícita do usuário para a quantidade indicada de imagens e um vídeo. Uma imagem já confirmada deve ser reutilizada pelo ID com imageGenerations=0; nunca gere uma imagem de fallback. Vídeo já localizado bloqueia nova geração, inclusive quando o download falhou. Para revisar copy e prompt, use flow_prepare_take_revision. Se o resultado for incerto, resolva o take antes. ' +
+        ORDER_MONITORING_POLICY,
       inputSchema: takeTarget.extend({
         requestId: z.uuid(),
         confirmedFailure: z.literal(true),
@@ -200,7 +202,8 @@ export function registerQueueTools(server: McpServer, api: AgentApi): void {
     'flow_queue_control',
     {
       description:
-        'Pausa o início dos próximos takes ou retoma somente trabalhos já autorizados. Use somente a pedido do usuário no chat. Uma pausa não interrompe um take ativo. Consulte flow_queue_status e informe clientId quando houver múltiplos executores. A retomada só processa a fila se o flow-browser estiver conectado.',
+        'Pausa o início dos próximos takes ou retoma somente trabalhos já autorizados. Use somente a pedido do usuário no chat. Uma pausa não interrompe um take ativo. Consulte flow_queue_status e informe clientId quando houver múltiplos executores. A retomada só processa a fila se o flow-browser estiver conectado. ' +
+        ORDER_MONITORING_POLICY,
       inputSchema: z.object({
         action: z.enum(['pause', 'resume']),
         clientId: z.uuid().optional(),

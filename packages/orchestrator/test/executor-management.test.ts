@@ -215,6 +215,14 @@ test('executor management controls queue and diagnostics resolve/cancel unblock 
     payload: { action: 'start' },
   });
   assert.equal(blockedStart.statusCode, 409);
+  const monitoring = await f.app.inject({
+    url: `/manage/orders/${order.number}/monitor`,
+    headers: manageHeaders,
+  });
+  assert.equal(monitoring.statusCode, 200, monitoring.body);
+  assert.equal(monitoring.json().status, 'needs_review');
+  assert.equal(monitoring.json().counts.uncertain, 1);
+  assert.deepEqual(monitoring.json().confirmedDownloads, []);
 
   const resolved = await f.app.inject({
     method: 'POST',

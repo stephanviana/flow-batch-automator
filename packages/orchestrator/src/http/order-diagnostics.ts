@@ -9,6 +9,9 @@ import { orderDiagnostic } from '../orders/diagnostics.js';
 import type { QueueMutations } from '../queue/mutations.js';
 import type { QueueEngine } from '../queue/engine.js';
 import { HttpError } from '../security/errors.js';
+import type { ConnectionHub } from '../communication/sockets.js';
+import type { QueueRepository } from '../queue/repository.js';
+import { monitorOrder } from '../orders/monitor.js';
 
 const orderNumber = z.object({
   number: z.union([z.uuid(), z.coerce.number().int().positive()]),
@@ -46,7 +49,14 @@ export function registerOrderDiagnostics(
   clients: ClientStore,
   mutations: QueueMutations,
   engine: QueueEngine,
+  queue: QueueRepository,
+  hub: ConnectionHub,
 ): void {
+  app.get('/manage/orders/:number/monitor', async (request) => {
+    sessions.require(request);
+    const { number } = orderNumber.parse(request.params);
+    return monitorOrder(repository, queue, hub, number);
+  });
   app.get('/manage/orders/:number/diagnostics', async (request) => {
     sessions.require(request);
     const { number } = orderNumber.parse(request.params);
