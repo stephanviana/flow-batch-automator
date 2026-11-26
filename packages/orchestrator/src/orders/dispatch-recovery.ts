@@ -55,7 +55,7 @@ export class DispatchRecovery {
     private readonly repository: OrderRepository,
     private readonly clients: ClientStore,
   ) {}
-  private inspect(number: number, id: string): RecoveryContext {
+  private inspect(number: number | string, id: string): RecoveryContext {
     const order = this.repository.get(number);
     const raw = this.repository.database
       .prepare(
@@ -143,13 +143,13 @@ export class DispatchRecovery {
       return 'A extensão original precisa estar autorizada.';
     return '';
   }
-  review(number: number, id: string): DispatchReview {
+  review(number: number | string, id: string): DispatchReview {
     const context = this.inspect(number, id),
       { order, command, record, batch, queuedTasks } = context;
     const reason = this.reason(context);
     const closeReason = this.closeReason(context);
     return {
-      orderNumber: number,
+      orderNumber: order.number,
       dispatchId: id,
       clientId: command.clientId,
       product: command.manifest.tasks[0]!.product,
@@ -179,7 +179,7 @@ export class DispatchRecovery {
     };
   }
   resume(
-    number: number,
+    number: number | string,
     id: string,
     reviewHash: string,
     preparationHash: string,

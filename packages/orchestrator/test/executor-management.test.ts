@@ -63,6 +63,7 @@ test('executor management controls queue and diagnostics resolve/cancel unblock 
   assert.equal(initial.statusCode, 200);
   assert.deepEqual(initial.json(), {
     executor: null,
+    executors: [],
     blockedByReview: false,
     counts: {
       queued: 0,
@@ -93,6 +94,7 @@ test('executor management controls queue and diagnostics resolve/cancel unblock 
   });
   assert.equal(paused.statusCode, 200);
   assert.equal(paused.json().executor.running, false);
+  assert.equal(paused.json().executor.paused, true);
 
   const materialRes = await f.app.inject({
     method: 'POST',
@@ -248,4 +250,5 @@ test('executor management controls queue and diagnostics resolve/cancel unblock 
   assert.equal(unblocked.statusCode, 200);
   assert.equal(unblocked.json().blockedByReview, false);
   assert.equal(unblocked.json().executor.running, true);
+  assert.equal(unblocked.json().executor.paused, false);
 });

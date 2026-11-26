@@ -118,7 +118,9 @@ async function refusedTake(
       notSubmitted: false,
     },
   });
-  queue.control(clientId, false);
+  f.database
+    .prepare('UPDATE queue_controls SET running=0 WHERE client_id=?')
+    .run(clientId);
   const url = `/manage/takes/${task.id}`;
   const api = async (
     path: string,
@@ -203,6 +205,7 @@ test('a confirmed video submission cannot be resolved as unsent and an older con
 
 test('diagnostics report a queued CTA waiting for its failed source and the lack of a reusable image', async (t) => {
   const f = await refusedTake(t, 'image-unconfirmed');
+  f.queue.control(f.clientId, false);
   const cta = structuredClone(f.original);
   cta.taskKey = randomUUID();
   cta.take = '03-CTA';
@@ -224,6 +227,33 @@ test('diagnostics report a queued CTA waiting for its failed source and the lack
     state: 'failed',
   });
   assert.equal((await f.api('/review')).json().canPrepare, false);
+  const retry = {
+    action: 'retry_flow',
+    taskId: f.task.id,
+    requestId: randomUUID(),
+    expectedRevision: f.database.task(f.task.id).summary.revision,
+    confirmedFailure: true,
+    approve: true,
+    startQueue: true,
+  };
+  for (const [expectedImageGenerations, status] of [
+    [0, 409],
+    [1, 200],
+    [1, 200],
+    [0, 409],
+  ]) {
+    const response = await f.f.app.inject({
+      method: 'POST',
+      url: `/manage/orders/${f.order.id}/diagnostics/retry`,
+      headers: f.headers,
+      payload: { ...retry, expectedImageGenerations },
+    });
+    assert.equal(response.statusCode, status, response.body);
+  }
+  assert.equal(f.database.task(f.task.id).summary.state, 'queued');
+  assert.equal(f.database.task(f.task.id).summary.attemptCount, 1);
+  assert.equal(f.queue.snapshot(f.clientId).running, false);
+  assert.equal(f.queue.operatorPaused(f.clientId), true);
 });
 
 test('a revision is a durable preview and only explicit approval dispatches its video with the recorded image', async (t) => {

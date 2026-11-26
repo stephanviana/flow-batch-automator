@@ -98,6 +98,33 @@ test('an unknown migration history is refused without changing it', () => {
   }
 });
 
+test('upgrading the queue preserves stopped and running executor states', (t) => {
+  const database = new DatabaseSync(':memory:');
+  t.after(() => database.close());
+  migrate(
+    database,
+    migrations.filter(({ version }) => version <= 14),
+  );
+  database.exec(`
+    INSERT INTO clients (id, extension_id, public_key, fingerprint)
+    VALUES ('running', 'fixture', '{}', '1'), ('stopped', 'fixture', '{}', '2');
+    INSERT INTO queue_controls (client_id, running) VALUES ('running', 1), ('stopped', 0);
+  `);
+  migrate(database);
+  assert.deepEqual(
+    database
+      .prepare(
+        'SELECT client_id, running, operator_paused FROM queue_controls ORDER BY client_id',
+      )
+      .all()
+      .map((row) => ({ ...row })),
+    [
+      { client_id: 'running', running: 1, operator_paused: 0 },
+      { client_id: 'stopped', running: 0, operator_paused: 1 },
+    ],
+  );
+});
+
 test('large existing order bodies upgrade without relying on temporary filesystem writes', (context) => {
   const directory = mkdtempSync(join(tmpdir(), 'flow-database-upgrade-'));
   context.after(() => rmSync(directory, { recursive: true, force: true }));

@@ -21,8 +21,8 @@ produção.
    instruções e os materiais usados.
 4. **Execute a fila.** O executor escolhido prepara o projeto do lote no Flow e processa
    um take por vez, registrando as etapas de imagem, vídeo e download.
-5. **Acompanhe e receba os arquivos.** O painel local e a barra do app desktop mostram o andamento,
-   as falhas e o histórico. Os MP4s concluídos ficam nos downloads configurados do Chrome.
+5. **Acompanhe e receba os arquivos.** Consulte pelo chat o andamento, as falhas e
+   os MP4s confirmados. Os arquivos ficam nos downloads configurados do Chrome.
 
 ### Organização da produção
 
@@ -41,15 +41,15 @@ permite selecionar Veo 3.1 Lite para todos os seus takes.
 
 ### Componentes
 
-| Componente          | Responsabilidade                                                                           |
-| ------------------- | ------------------------------------------------------------------------------------------ |
-| Painel local        | Cadastro dos pedidos, materiais, prévias, acompanhamento e diagnóstico.                    |
-| Conector MCP        | Consulta e preparação dos pedidos por um agente, com acesso às instruções e aos materiais. |
-| Orquestrador        | Validação, compilação dos prompts, autorizações, fila e persistência.                      |
-| App Desktop         | Aplicativo Electron nativo para Windows com painel, controle de perfis Chrome, fila e MCP. |
-| Executor Chrome     | Conexão CDP ao Chrome dedicado, envio na interface do Flow e confirmação dos downloads.    |
-| Biblioteca local    | Regras de copy, imagem e animação e instruções dos formatos.                               |
-| Armazenamento local | Registros em SQLite e materiais importados em arquivos identificados por hash.             |
+| Componente          | Responsabilidade                                                                                     |
+| ------------------- | ---------------------------------------------------------------------------------------------------- |
+| Painel local        | Cadastro dos pedidos e dos materiais, com a lista de pedidos salvos.                                 |
+| Conector MCP        | Preparação, acompanhamento e controle da fila pelo agente, com acesso às instruções e aos materiais. |
+| Orquestrador        | Validação, compilação dos prompts, autorizações, fila e persistência.                                |
+| App Desktop         | Aplicativo Electron nativo para Windows com painel, perfis Chrome, pareamento e instalação dos MCPs. |
+| Executor Chrome     | Conexão CDP ao Chrome dedicado, envio na interface do Flow e confirmação dos downloads.              |
+| Biblioteca local    | Regras de copy, imagem e animação e instruções dos formatos.                                         |
+| Armazenamento local | Registros em SQLite e materiais importados em arquivos identificados por hash.                       |
 
 A preparação criativa cabe ao agente. O orquestrador compila os textos com os
 templates da biblioteca e mantém os registros de execução. O executor usa a
@@ -232,8 +232,8 @@ não existe geração de substituição.
 O download precisa dos eventos de início e conclusão do Chrome, com GUID, e de
 um arquivo MP4 com tamanho correspondente. Os arquivos vão para `~/Downloads/Flow/Videos/...`
 ou para `FLOW_BROWSER_DOWNLOADS_DIR/Flow/Videos/...`, sem sobrescrever arquivos.
-As tentativas, checkpoints, autorizações, pausas e resultados incertos continuam
-na fila do painel. Uma falha não provoca novo envio automático.
+As tentativas, checkpoints, autorizações, pausas e resultados incertos ficam
+registrados no orquestrador e podem ser consultados pelo chat.
 
 Configure o cliente MCP para executar `node /CAMINHO/flow-batch-automator/packages/flow-mcp/dist/main.js`,
 com o nome de servidor `flow-browser`, ao lado do conector de pedidos `flow-batch`.
@@ -315,12 +315,24 @@ O modo **Adaptar formato** cria novas falas a partir da estrutura da referência
 variações, adaptando a direção visual. O agente analisa o áudio e o servidor
 valida a correspondência dos textos.
 
-### Acompanhamento e resultados
+### Controle da fila pelo chat
 
-O painel local e a barra do app desktop mostram as etapas registradas, pausas, falhas e resultados
-que precisam de revisão. Cada lote conserva o vínculo com seu projeto do Flow.
-A fila executa um take por vez e espera 15 segundos após um download confirmado
-antes de iniciar o próximo take.
+Use o painel para salvar o pedido e anotar seu número. Peça ao agente, por exemplo,
+“Qual é o andamento do pedido 12?”, “Pause a fila” ou “Retome a fila”.
+O executor continua em segundo plano enquanto o app e o Chrome dedicado estiverem abertos.
+
+| Ferramenta do `flow-batch`                                            | Operação                                                                                             |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `flow_queue_status`, `flow_order_diagnostics`                         | Consultam a pausa, os executores, os takes, dependências e MP4s confirmados.                         |
+| `flow_queue_control`                                                  | Pausa ou retoma trabalhos já autorizados.                                                            |
+| `flow_cancel_take`, `flow_cancel_order`                               | Cancelam um take pendente ou um pedido ainda sem despacho.                                           |
+| `flow_resolve_take`, `flow_retry_take`                                | Registram a revisão de um resultado ou autorizam outra tentativa com o conteúdo da última tentativa. |
+| `flow_review_dispatch`, `flow_resume_dispatch`, `flow_close_dispatch` | Consultam, retomam ou encerram um grupo bloqueado conforme o diagnóstico.                            |
+| `flow_set_auto_retry`, `flow_clear_orders`                            | Gerenciam a autorização de tentativa automática e removem pedidos elegíveis da lista.                |
+
+A pausa fica gravada no orquestrador, inclusive após reconexão. Ela impede novos
+takes e novas reservas de criação de projeto. Uma tentativa ativa pode terminar.
+A fila executa um take por vez e espera 15 segundos após um download confirmado.
 
 Os vídeos de cada variação ficam juntos nos downloads do Chrome:
 
@@ -336,29 +348,23 @@ as tentativas, as autorizações e as etapas de geração.
 
 ### Falhas e revisão
 
-**Ver diagnóstico** mostra a situação do pedido, seus grupos e takes.
-**Verificar resultado no Flow** consulta a operação registrada e a imagem de
-origem. Use essa consulta para conferir um resultado incerto antes de decidir
-sobre outra tentativa.
+Confira o projeto e os downloads antes de resolver um resultado incerto pelo chat.
+`flow_resolve_take` registra falha confirmada ou ausência de envio. Um envio confirmado
+pelo Flow exige revisão com resultado de falha e o histórico preserva os checkpoints.
 
-Se o envio do vídeo foi confirmado, confira o projeto e os downloads antes de
-usar **Confirmar falha após conferir no Flow**. O diagnóstico também sinaliza
-registros anteriores em que a marcação de não enviado contradiz o checkpoint.
-Takes que reutilizam imagens exibem qual take de origem ainda precisam aguardar.
-
-**Solicitar revisão no chat** copia uma solicitação identificando o take.
-Ao enviá-la ao agente, o usuário autoriza revisar a fala e o prompt e gerar uma
-única nova tentativa de vídeo com a imagem existente. O agente consulta
+Ao pedir a revisão de um take no chat, o usuário autoriza revisar a fala e o
+prompt e gerar uma única nova tentativa de vídeo com a imagem existente. O agente consulta
 `flow_review_take` e publica a revisão com `flow_prepare_take_revision`.
 Para revisar sem executar, a versão fica preparada; a execução posterior usa
 `flow_approve_take_revision`. Os parâmetros, a imagem, os materiais e a entrada
 original permanecem vinculados ao histórico. Quando a imagem ainda não foi
 confirmada, o diagnóstico mostra por que essa revisão está indisponível.
 
-**Autorizar tentativa automática** concede até uma tentativa extra por take
-por 24 horas, somente para falhas comprovadas antes do envio. O painel mostra
-o orçamento adicional e permite revogar a autorização. Resultados incertos
-exigem revisão; recusas de conteúdo exigem revisar o take.
+Repetir o conteúdo da última tentativa exige conferir a falha no Flow e
+autorizar no chat o orçamento informado no diagnóstico.
+`flow_set_auto_retry` concede até uma tentativa extra por take em 24 horas, somente
+para falhas comprovadas antes do envio. Resultados incertos exigem revisão e
+recusas de conteúdo exigem revisar o take.
 
 `flow_unusual_activity` indica que o Google Flow bloqueou a atividade.
 Quando o executor identifica bloqueio antes do envio, interrompe a etapa
@@ -369,9 +375,9 @@ Aguarde alguns minutos e confira a sessão e a conta na janela do Chrome; a
 também recomenda desativar VPN ou proxy, se estiverem em uso. Outra tentativa
 exige nova autorização no chat ou resolução explícita no diagnóstico. Isso não garante a liberação pelo Google.
 
-Grupos bloqueados podem ser encerrados quando suas condições permitirem.
-A limpeza do painel e da fila retira registros elegíveis da visualização,
-preservando os resultados e o histórico. Ao esvaziar a lista de pedidos, um novo
+Grupos bloqueados podem ser encerrados pelo chat quando suas condições permitirem.
+`flow_clear_orders` retira pedidos elegíveis da lista, preservando os materiais,
+resultados e histórico. Ao esvaziar a lista de pedidos, um novo
 ciclo de numeração começa em #1.
 
 ## Biblioteca de instruções

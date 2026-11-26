@@ -55,7 +55,7 @@ export function registerTakeRevisionTools(
     'flow_approve_take_revision',
     {
       description:
-        'Pode consumir créditos. Enfileira a versão revisada identificada por revisionId com zero imagens e um vídeo. Use a autorização do pedido de revisão e geração enviado no chat ou o pedido posterior de executar uma versão preparada. startQueue permite processar a fila se estiver pausada. ' +
+        'Pode consumir créditos. Enfileira a versão revisada identificada por revisionId com zero imagens e um vídeo. Use a autorização do pedido de revisão e geração enviado no chat ou o pedido posterior de executar uma versão preparada. A fila preserva a pausa explícita até flow_queue_control retomar. ' +
         TAKE_REVISION_EXECUTION_POLICY,
       inputSchema: task.extend(flowRevisionApprovalSchema.shape),
       annotations: { destructiveHint: true, idempotentHint: true },

@@ -125,9 +125,30 @@ export class QueueRepository {
       throw new HttpError(409, 'Resolve uncertain outcomes before starting');
     this.database.connection
       .prepare(
-        'INSERT INTO queue_controls (client_id,running) VALUES (?,?) ON CONFLICT(client_id) DO UPDATE SET running=excluded.running',
+        'INSERT INTO queue_controls (client_id,running,operator_paused) VALUES (?,?,?) ON CONFLICT(client_id) DO UPDATE SET running=excluded.running,operator_paused=excluded.operator_paused',
       )
-      .run(clientId, Number(running));
+      .run(clientId, Number(running), Number(!running));
+  }
+
+  canPrepareDispatch(clientId: string): boolean {
+    return !this.blocked() && !this.operatorPaused(clientId);
+  }
+
+  operatorPaused(clientId: string): boolean {
+    return (
+      this.database.connection
+        .prepare('SELECT operator_paused FROM queue_controls WHERE client_id=?')
+        .get(clientId)?.operator_paused === 1
+    );
+  }
+
+  startDispatch(clientId: string): void {
+    if (this.blocked()) return;
+    this.database.connection
+      .prepare(
+        'INSERT INTO queue_controls (client_id,running) VALUES (?,1) ON CONFLICT(client_id) DO UPDATE SET running=1 WHERE operator_paused=0',
+      )
+      .run(clientId);
   }
 
   blocked(): boolean {

@@ -10,6 +10,7 @@ import { FlowImages } from '../queue/flow-images.js';
 import { HttpError } from '../security/errors.js';
 import { DispatchRecovery, type DispatchReview } from './dispatch-recovery.js';
 import type { OrderRepository, ProductionOrder } from './repository.js';
+import { autoRetrySummary } from './auto-retry.js';
 
 interface TaskDiagnostic {
   revisions: TaskDetail['revisions'];
@@ -28,8 +29,12 @@ interface TaskDiagnostic {
   } | null;
 }
 export interface OrderDiagnostic {
+  orderId: string;
   number: number;
   state: OrderState;
+  partiallyClosed: boolean;
+  counts: ProductionOrder['counts'];
+  autoRetry: ReturnType<typeof autoRetrySummary>;
   preparation: { published: boolean; message: string };
   unavailableMaterials: string[];
   dispatches: {
@@ -56,9 +61,9 @@ function preparationMessage(order: ProductionOrder, expired: boolean): string {
 export function orderDiagnostic(
   repository: OrderRepository,
   clients: ClientStore,
-  number: number,
+  key: number | string,
 ): OrderDiagnostic {
-  const order = repository.get(number);
+  const order = repository.get(key);
   const lease = repository.database
     .prepare('SELECT lease_expires_at FROM production_orders WHERE id=?')
     .get(order.id);
@@ -73,8 +78,13 @@ export function orderDiagnostic(
     )
     .all(order.id);
   return {
+    orderId: order.id,
     number: order.number,
     state: order.state,
+    partiallyClosed:
+      order.state === 'failed' && Boolean(order.counts.completed),
+    counts: order.counts,
+    autoRetry: autoRetrySummary(repository.database, order),
     preparation: {
       published: order.preparation !== null,
       message: preparationMessage(order, expired),
@@ -86,7 +96,7 @@ export function orderDiagnostic(
       ...dispatch,
       review:
         dispatch.state === 'blocked'
-          ? recovery.review(number, dispatch.id)
+          ? recovery.review(order.id, dispatch.id)
           : null,
     })),
     tasks: rows.map((row) =>

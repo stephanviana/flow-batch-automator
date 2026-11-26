@@ -10,7 +10,9 @@ import type { QueueMutations } from '../queue/mutations.js';
 import type { QueueEngine } from '../queue/engine.js';
 import { HttpError } from '../security/errors.js';
 
-const orderNumber = z.object({ number: z.coerce.number().int().positive() });
+const orderNumber = z.object({
+  number: z.union([z.uuid(), z.coerce.number().int().positive()]),
+});
 const resolveSchema = z.strictObject({
   taskId: z.uuid(),
   expectedRevision: z.number().int().min(0),
@@ -53,10 +55,22 @@ export function registerOrderDiagnostics(
   app.post('/manage/orders/:number/diagnostics/retry', async (request) => {
     sessions.require(request);
     const { number } = orderNumber.parse(request.params);
-    const action = flowRetryActionSchema.parse(request.body);
+    const { expectedImageGenerations, ...action } = flowRetryActionSchema
+      .extend({
+        expectedImageGenerations: z
+          .union([z.literal(0), z.literal(1)])
+          .optional(),
+      })
+      .parse(request.body);
     const order = repository.get(number);
     const clientId = findTaskClientId(repository, order.id, action.taskId);
-    const task = mutations.action(clientId, action, Date.now(), 'orders');
+    const task = mutations.action(
+      clientId,
+      action,
+      Date.now(),
+      'orders',
+      expectedImageGenerations,
+    );
     const running =
       repository.database
         .prepare('SELECT running FROM queue_controls WHERE client_id=?')

@@ -190,11 +190,6 @@ export class ExecutorControl {
         'Conecte o executor em /connect antes de pausar sua fila.',
       );
     const api = await ExecutorApi.open(this.config.home, this.base);
-    await writeFile(
-      join(this.config.home, 'executor-paused.json'),
-      JSON.stringify(Date.now()),
-      { mode: 0o600 },
-    );
     return api.call('POST', '/api/queue/control', { action: 'pause' });
   }
 }

@@ -14,7 +14,7 @@ export function registerDispatchRecovery(
 ): void {
   const recovery = new DispatchRecovery(repository, clients);
   const target = z.object({
-    number: z.coerce.number().int().positive(),
+    number: z.union([z.uuid(), z.coerce.number().int().positive()]),
     dispatchId: z.uuid(),
   });
   app.get(

@@ -162,11 +162,14 @@ export class FlowRetries {
     now: number,
     origin: RetryOrigin,
     revisionId?: string,
+    expectedImageGenerations?: 0 | 1,
   ): void {
     const revisions = new FlowRevisionStore(this.database);
     if (revisionId) revisions.assertPending(record, revisionId);
     const reason = this.reason(record, Boolean(revisionId));
     if (reason) throw new HttpError(409, reason);
+    if (expectedImageGenerations !== undefined)
+      this.verifyRetryBudget(record, expectedImageGenerations);
     const { id, state, attemptCount } = record.summary;
     const sql = this.database.connection;
     if (state === 'uncertain')
@@ -209,8 +212,27 @@ export class FlowRetries {
       .run(attemptCount + 1, now, id);
     if (action.startQueue)
       sql
-        .prepare('UPDATE queue_controls SET running=1 WHERE client_id=?')
+        .prepare(
+          'UPDATE queue_controls SET running=1 WHERE client_id=? AND operator_paused=0',
+        )
         .run(record.clientId);
+  }
+
+  private verifyRetryBudget(record: TaskRecord, expected: 0 | 1): void {
+    if (record.summary.state !== 'failed')
+      throw new HttpError(
+        409,
+        'Confirme a falha no diagnóstico antes de autorizar outra tentativa.',
+      );
+    const image = new FlowImages(this.database.connection).forAttempt(
+      record,
+      record.summary.attemptCount + 1,
+    );
+    if ((image ? 0 : 1) !== expected)
+      throw new HttpError(
+        409,
+        'O orçamento de imagens mudou. Consulte o diagnóstico e solicite nova autorização no chat.',
+      );
   }
 
   approvalAt(

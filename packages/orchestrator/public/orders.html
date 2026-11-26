@@ -73,12 +73,14 @@
             </footer>
           </form>
         </section>
-        <aside class="order-sidebar" aria-label="Acompanhamento dos pedidos">
+        <aside class="order-sidebar" aria-label="Pedidos salvos">
           <section class="order-list" aria-labelledby="saved-orders-title">
             <div class="section-heading">
               <div>
-                <h2 id="saved-orders-title">Seus pedidos</h2>
-                <p class="section-intro">Acompanhe o preparo e a produção.</p>
+                <h2 id="saved-orders-title">Pedidos salvos</h2>
+                <p class="section-intro">
+                  Use o número do pedido para operar a fila no chat.
+                </p>
               </div>
               <button
                 id="refresh"
@@ -90,64 +92,7 @@
                 <span data-icon="refresh"></span>
               </button>
             </div>
-            <div class="executor-bar" id="executor-panel">
-              <p id="executor-summary" class="hint">
-                Verificando executor MCP…
-              </p>
-              <button
-                id="executor-toggle-queue"
-                type="button"
-                class="secondary"
-                hidden
-              >
-                Pausar fila
-              </button>
-            </div>
-            <div class="orders-cleanup-toolbar">
-              <button
-                id="clear-unsent-orders"
-                type="button"
-                class="secondary"
-                title="Remove da visualização atual os pedidos sem despacho ou encerrados, preservando histórico e materiais."
-                disabled
-              >
-                Limpar lista
-              </button>
-              <p
-                id="orders-cleanup-feedback"
-                class="hint"
-                role="status"
-                aria-live="polite"
-              ></p>
-            </div>
             <div id="orders"></div>
-          </section>
-          <section class="storage" aria-labelledby="storage-title">
-            <div class="storage-heading">
-              <span class="storage-icon" data-icon="database"></span>
-              <div>
-                <h2 id="storage-title">Armazenamento local</h2>
-                <p>Revise os arquivos disponíveis para limpeza.</p>
-              </div>
-              <button
-                id="preview-cleanup"
-                type="button"
-                class="text-button"
-                aria-expanded="false"
-                aria-controls="storage-details"
-              >
-                Gerenciar
-              </button>
-            </div>
-            <div id="storage-details" hidden>
-              <p class="hint">
-                Libere as cópias de pedidos concluídos ou cancelados. Materiais
-                compartilhados com pedidos ativos ficam protegidos. Arquivos
-                importados sem pedido ficam disponíveis para limpeza após 24
-                horas.
-              </p>
-              <div id="cleanup"></div>
-            </div>
           </section>
         </aside>
       </div>

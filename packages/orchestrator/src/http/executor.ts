@@ -15,27 +15,31 @@ interface ManagedExecutorClient {
 }
 
 function selectManagedClient(
-  clients: ClientStore,
+  active: ManagedExecutorClient[],
   requestedId?: string,
+  requireSelection = false,
 ): ManagedExecutorClient | null {
-  const active = (
-    clients.managementStatus().clients as ManagedExecutorClient[]
-  ).filter((client) => client.revokedAt === null);
   if (requestedId) {
     const match = active.find((client) => client.id === requestedId);
     if (!match) throw new HttpError(404, 'Executor autorizado não encontrado.');
     return match;
   }
+  if (requireSelection && active.length > 1)
+    throw new HttpError(
+      409,
+      'Há mais de um executor autorizado. Selecione o destino.',
+    );
   const browserClients = active.filter(
     (client) => client.extensionId === BROWSER_EXECUTOR_ID,
   );
   if (browserClients.length === 1) return browserClients[0]!;
-  if (browserClients.length > 1)
-    throw new HttpError(
-      409,
-      'Há mais de um executor MCP autorizado. Selecione o destino.',
-    );
   return active.length === 1 ? active[0]! : null;
+}
+
+function authorizedExecutors(clients: ClientStore): ManagedExecutorClient[] {
+  return (clients.managementStatus().clients as ManagedExecutorClient[]).filter(
+    (client) => client.revokedAt === null,
+  );
 }
 
 function queueCounts(repository: QueueRepository): {
@@ -75,33 +79,57 @@ function executorSnapshot(
   clients: ClientStore,
   hub: ConnectionHub,
   repository: QueueRepository,
+  clientId?: string,
 ): {
-  executor: {
-    id: string;
-    extensionId: string;
-    connected: boolean;
-    running: boolean;
-  } | null;
+  executor: ExecutorState | null;
+  executors: ExecutorState[];
   blockedByReview: boolean;
   counts: ReturnType<typeof queueCounts>;
 } {
-  const client = selectManagedClient(clients);
-  const running = client
-    ? repository.database.connection
-        .prepare('SELECT running FROM queue_controls WHERE client_id=?')
-        .get(client.id)?.running === 1
-    : false;
+  const active = authorizedExecutors(clients);
+  const client = selectManagedClient(active, clientId);
+  const executors = active.map((entry) =>
+    executorState(entry, repository, hub),
+  );
   return {
-    executor: client
-      ? {
-          id: client.id,
-          extensionId: client.extensionId,
-          connected: hub.connected(client.id),
-          running,
-        }
-      : null,
+    executor: executors.find(({ id }) => id === client?.id) ?? null,
+    executors,
     blockedByReview: repository.blocked(),
     counts: queueCounts(repository),
+  };
+}
+
+interface ExecutorState {
+  id: string;
+  extensionId: string;
+  connected: boolean;
+  running: boolean;
+  paused: boolean;
+  pendingDispatches: number;
+}
+
+function executorState(
+  client: ManagedExecutorClient,
+  repository: QueueRepository,
+  hub: ConnectionHub,
+): ExecutorState {
+  const sql = repository.database.connection;
+  return {
+    id: client.id,
+    extensionId: client.extensionId,
+    connected: hub.connected(client.id),
+    running:
+      sql
+        .prepare('SELECT running FROM queue_controls WHERE client_id=?')
+        .get(client.id)?.running === 1,
+    paused: repository.operatorPaused(client.id),
+    pendingDispatches: Number(
+      sql
+        .prepare(
+          "SELECT COUNT(*) AS total FROM dispatch_commands WHERE client_id=? AND state='pending'",
+        )
+        .get(client.id)?.total ?? 0,
+    ),
   };
 }
 
@@ -115,7 +143,10 @@ export function registerExecutorManagement(
 ): void {
   app.get('/manage/executor', async (request) => {
     sessions.require(request);
-    return executorSnapshot(clients, hub, repository);
+    const { clientId } = z
+      .strictObject({ clientId: z.uuid().optional() })
+      .parse(request.query);
+    return executorSnapshot(clients, hub, repository, clientId);
   });
 
   app.post('/manage/executor/control', async (request) => {
@@ -126,7 +157,11 @@ export function registerExecutorManagement(
         clientId: z.uuid().optional(),
       })
       .parse(request.body);
-    const client = selectManagedClient(clients, input.clientId);
+    const client = selectManagedClient(
+      authorizedExecutors(clients),
+      input.clientId,
+      true,
+    );
     if (!client)
       throw new HttpError(
         409,
@@ -134,6 +169,6 @@ export function registerExecutorManagement(
       );
     repository.control(client.id, input.action === 'start');
     engine.wake();
-    return executorSnapshot(clients, hub, repository);
+    return executorSnapshot(clients, hub, repository, client.id);
   });
 }

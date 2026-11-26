@@ -124,6 +124,16 @@ test('official MCP client supports review, hashless execution and combined publi
     'flow_review_take',
     'flow_prepare_take_revision',
     'flow_approve_take_revision',
+    'flow_queue_status',
+    'flow_order_diagnostics',
+    'flow_queue_control',
+    'flow_cancel_take',
+    'flow_resolve_take',
+    'flow_retry_take',
+    'flow_cancel_order',
+    'flow_clear_orders',
+    'flow_set_auto_retry',
+    'flow_close_dispatch',
   ])
     assert.ok(tools.tools.some((tool) => tool.name === name));
   const unauthorizedRevision = await client.callTool({
@@ -205,6 +215,38 @@ test('official MCP client supports review, hashless execution and combined publi
   assert.equal(rejected.isError, true);
   const receipt = await pair(f);
   await approve(f, receipt);
+  const missingQueueConsent = await client.callTool({
+    name: 'flow_queue_control',
+    arguments: { action: 'pause' },
+  });
+  assert.equal(missingQueueConsent.isError, true);
+  for (const action of ['pause', 'resume'] as const) {
+    const reply = await client.callTool({
+      name: 'flow_queue_control',
+      arguments: { action, clientId: receipt.clientId, userAuthorized: true },
+    });
+    assert.equal(reply.isError, undefined, JSON.stringify(reply));
+    assert.match(JSON.stringify(reply.content), /"paused/);
+    const entry = f.database
+      .prepare(
+        'SELECT running,operator_paused FROM queue_controls WHERE client_id=?',
+      )
+      .get(receipt.clientId);
+    assert.equal(entry?.operator_paused, Number(action === 'pause'));
+    assert.equal(entry?.running, Number(action === 'resume'));
+  }
+  const status = await client.callTool({
+    name: 'flow_queue_status',
+    arguments: { clientId: receipt.clientId },
+  });
+  assert.equal(status.isError, undefined, JSON.stringify(status));
+  assert.match(JSON.stringify(status.content), new RegExp(receipt.clientId));
+  const diagnostics = await client.callTool({
+    name: 'flow_order_diagnostics',
+    arguments: { order: order.id },
+  });
+  assert.equal(diagnostics.isError, undefined, JSON.stringify(diagnostics));
+  assert.match(JSON.stringify(diagnostics.content), new RegExp(order.id));
   const execution = await client.callTool({
     name: 'flow_approve',
     arguments: { number: order.number, userAuthorized: true },

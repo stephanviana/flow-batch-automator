@@ -36,7 +36,9 @@ Novas bibliotecas usam base.md com [common], [copy], [image], [animation] e
 library split mostra prévia sem efeitos; --preserve-originals aplica e arquiva
 originais, exigindo autorização explícita para backup. Import/export, convert,
 restore e layouts legados permanecem; não converter bibliotecas automaticamente.
-O painel `/orders` mantém pedidos e andamento, sem editor de instruções.
+O painel `/orders` cadastra pedidos e materiais e lista os números salvos. O
+chat controla a fila. A configuração local mantém login e confirmação de
+pareamento do executor.
 O seletor de referências aceita várias imagens por produto, acumuladas entre
 seleções e removidas individualmente. Todas entram nos materiais do pedido;
 `referenceId` aponta a única imagem marcada como principal para a geração no
@@ -115,19 +117,23 @@ Só admite falha comprovadamente anterior ao envio da criação do projeto, sem
 qualquer take registrado no lote; mantém materiais e preparações imutáveis,
 registra a autorização e preserva o corpo anterior. Resultados incertos, grupos
 já enfileirados e identidades revogadas nunca são retomados por essa operação.
-O painel oferece encerramento explícito de grupos bloqueados com um clique,
-sem campo de nota ou confirmação adicional. `dispatch_closures` registra a decisão sem alterar corpo,
+`flow_close_dispatch` encerra grupos bloqueados após solicitação explícita no
+chat. `dispatch_closures` registra a decisão sem alterar corpo,
 materiais, autorização ou falha originais. Grupos com takes pendentes, ativos ou
 incertos e criação de projeto em andamento não podem ser encerrados. Grupos
 encerrados deixam a fila e não podem receber novas gerações;
 os resultados confirmados permanecem registrados. Pedidos encerrados com parte
-dos vídeos pronta exibem “Encerrado parcialmente”. A limpeza do painel persiste
+dos vídeos pronta são informados como “Encerrado parcialmente”. `flow_clear_orders` persiste
 para pedidos sem envio ou já encerrados. Nenhuma limpeza apaga materiais,
 tentativas ou autorizações. Pedidos removidos não aceitam nova preparação ou
 despacho. Ao esvaziar a lista, um novo ciclo recomeça em #1; números consultam o
 ciclo atual e UUIDs preservam acesso histórico. Checkouts dos novos ciclos usam
 subpastas por UUID para não sobrescrever arquivos de pedidos anteriores.
-Mostrar etapas reais, pausa, falha e incerteza; não inventar percentual.
+Use `flow_queue_status` e `flow_order_diagnostics` para mostrar etapas reais,
+pausa, falha e incerteza. `flow_queue_control` pausa ou retoma trabalhos já
+autorizados. A pausa persistida impede novas reservas de projeto e novos
+takes. `flow_cancel_take` cancela somente takes pendentes, e
+`flow_resolve_take` registra a decisão do usuário após conferir o resultado.
 
 Validações devem distinguir contratos e fixtures de gerações reais. Testes
 sintéticos verificam os cenários implementados; qualidade criativa, áudio e
@@ -274,9 +280,9 @@ mudanças apenas documentais não exigem criar testes de código.
   A CLI offline não lê `.env` nem configurações de instaladores anteriores.
 - `pnpm test:browser:library`: inicialização vazia, importação local, painel de
   pedidos sem editor e download do conector em Chrome isolado.
-- `pnpm test:browser:orders-design`: layout do editor e acompanhamento, larguras
-  de 320 a 1920 px, anexos, prévia, detalhes, cancelamento e armazenamento em
-  Chrome isolado, sem despachar pedidos. Usa a porta 4359 e dados temporários.
+- `pnpm test:browser:orders-design`: layout do editor e lista em larguras de
+  320 a 1920 px, anexos e detalhes do cadastro em Chrome isolado. Verifica que
+  a fila não tem controles no painel. Usa a porta 4359 e dados temporários.
 - `pnpm test:browser:connect`: página de conexão em Chrome isolado, identidades
   sintéticas e WebSocket autenticado. Cobre códigos, confirmação, cancelamento,
   expiração, conexão/desconexão, revogação e nova autorização na porta 4369.
@@ -353,8 +359,9 @@ mudanças apenas documentais não exigem criar testes de código.
   já foi localizado e não retomar grupo encerrado ou identidade revogada.
   Recusa `flow_unsafe_generation` permite seguir os próximos takes independentes
   e exige revisão do conteúdo para repetir o take recusado.
-  As interfaces usam “Solicitar revisão no chat” para uma nova tentativa manual
-  de um take real.
+  `flow_retry_take` autoriza outra tentativa com o conteúdo existente após
+  falha confirmada no Flow e autorização explícita no chat para o orçamento
+  informado. Preserve a pausa, salvo quando o usuário também pedir retomada.
   `flow_review_take` entrega a captura da preparação e o histórico;
   `flow_prepare_take_revision` salva uma versão imutável de copy e prompt de
   vídeo ligada à tentativa anterior e à imagem confirmada. O pedido direto de

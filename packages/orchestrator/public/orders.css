@@ -179,21 +179,6 @@ textarea {
 .hint {
   font-size: 13px;
 }
-.executor-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface-inset);
-}
-.executor-bar p {
-  margin: 0;
-}
 #status:not(:empty) {
   margin: 0 0 18px;
   padding: 12px 16px;

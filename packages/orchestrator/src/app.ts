@@ -102,8 +102,14 @@ export function createApp(config: AppConfig): FastifyInstance {
   );
   registerMaterialDownloads(app, signatures, clients, orders, materials);
   registerConnectionRoutes(app, clients, signatures, simulations, hub);
-  registerBatchRoutes(app, signatures, clients, batches);
-  registerDispatchRoutes(app, signatures, clients, new DispatchStore(database));
+  registerBatchRoutes(app, signatures, clients, batches, queueRepository);
+  registerDispatchRoutes(
+    app,
+    signatures,
+    clients,
+    new DispatchStore(database),
+    queueRepository,
+  );
   registerQueueRoutes(
     app,
     signatures,

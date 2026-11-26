@@ -127,8 +127,10 @@ async function prepareReservedBatch(
   });
   if (!claim.attemptId)
     throw new ExecutionError(
-      'project_claim_failed',
-      'Não foi possível reservar a criação do projeto.',
+      claim.batch.status === 'draft'
+        ? 'queue_dispatch_paused'
+        : 'project_claim_failed',
+      'Não foi possível reservar a criação do projeto neste momento.',
       true,
     );
   let sent = false;

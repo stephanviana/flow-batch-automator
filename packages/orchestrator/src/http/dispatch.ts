@@ -1,14 +1,19 @@
 import type { FastifyInstance } from 'fastify';
-import { dispatchUpdateSchema } from '@flow-batch/protocol';
+import {
+  BROWSER_EXECUTOR_ID,
+  dispatchUpdateSchema,
+} from '@flow-batch/protocol';
 import type { SignatureService } from '../security/signatures.js';
 import type { ClientStore } from '../persistence/clients.js';
 import type { DispatchStore } from '../persistence/dispatch.js';
+import type { QueueRepository } from '../queue/repository.js';
 
 export function registerDispatchRoutes(
   app: FastifyInstance,
   signatures: SignatureService,
   clients: ClientStore,
   store: DispatchStore,
+  queue: QueueRepository,
 ): void {
   app.get('/api/dispatch', async (request) => {
     const client = await signatures.http(request);
@@ -24,7 +29,14 @@ export function registerDispatchRoutes(
           'blocked',
           'A autorização pertence a uma conexão anterior. Solicite uma nova autorização pelo chat.',
         );
-    return { commands: store.list(client.id) };
+    const commands = store.list(client.id);
+    return {
+      commands:
+        client.extensionId === BROWSER_EXECUTOR_ID &&
+        !queue.canPrepareDispatch(client.id)
+          ? commands.filter(({ state }) => state !== 'pending')
+          : commands,
+    };
   });
   app.post('/api/dispatch', async (request) => {
     const client = await signatures.http(request);

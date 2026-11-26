@@ -75,16 +75,15 @@ Para revisar uma preparação ainda não despachada, use
 `pnpm orders checkout 12 --revise`. Edite e publique novamente. A versão anterior
 fica no histórico. Consulte o resultado com `pnpm orders show 12`.
 Somente a publicação sem execução não envia geração ao Flow.
-O painel também mostra os materiais preparados.
+Use `flow_show_order` para apresentar pelo chat uma preparação publicada.
 
 ## Executar uma preparação existente
 
 Se o usuário pedir executar um pedido já preparado, use `flow_approve` com o
 número e `userAuthorized=true`, ou `pnpm orders approve 12 --approve`.
 Não peça hashes nem uma segunda confirmação do pedido de execução.
-Quando houver várias extensões autorizadas, informe `--client UUID` conforme
-escolha do usuário. A extensão recebe os materiais aprovados pela API e usa a
-fila existente; não precisa vincular pastas nem abrir o painel para executar.
+Quando houver vários executores autorizados, informe `--client UUID` conforme
+escolha do usuário. O executor recebe os materiais aprovados pela API.
 
 Consulte pedidos já despachados para acompanhar. Resultado incerto exige revisão;
 reconexão ou uma nova conversa não autorizam repetição. Arquivos removidos pela
@@ -93,6 +92,27 @@ limpeza não podem ser reconstruídos a partir dos hashes do histórico.
 O checkout e a publicação verificam o contrato do runtime. Se houver incompatibilidade,
 atualize a aplicação; não inclua `presenterImage` em Full POV/Full Vendedora para
 satisfazer um schema antigo. A API retorna os campos que falharam em `issues`.
+
+## Operar a fila pelo chat
+
+Use `flow_queue_status` para consultar o executor e `flow_order_diagnostics`
+para acompanhar takes, dependências e MP4s confirmados de um pedido. Apresente
+etapas registradas. Para pausar ou retomar a fila quando o usuário pedir, use
+`flow_queue_control`. Se o processo estiver parado, use `flow_browser_start_worker`
+com as autorizações já registradas.
+
+Use `flow_cancel_take` para um take pendente e `flow_cancel_order` para um
+pedido sem despacho. Use `flow_clear_orders` somente para os pedidos elegíveis
+indicados pelo usuário. `flow_close_dispatch` encerra um grupo bloqueado com os
+hashes atuais do diagnóstico após pedido explícito.
+
+Só use `flow_resolve_take` após conferir a evidência e obter uma decisão
+explícita do usuário. Se o envio estiver confirmado, o resultado `not_submitted`
+fica indisponível. Para repetir o conteúdo da última tentativa de um take, use
+`flow_retry_take` após confirmar a falha no Flow e obter autorização para a
+quantidade de imagens indicada no diagnóstico e um vídeo. Use
+`flow_set_auto_retry` somente com autorização explícita para o orçamento
+do pedido. Preserve a pausa até o usuário pedir a retomada.
 
 ## Revisar um despacho bloqueado
 
@@ -115,8 +135,8 @@ continuidade com os outros takes da variação e os fatos do produto.
 Use `flow_prepare_take_revision` com `requestId` novo, `expectedRevision` do
 contexto, `content` contendo `copy`, `videoPrompt` completo e `reason`,
 e `execute=true`, `userAuthorized=true`. A operação salva a versão e autoriza
-uma tentativa de zero imagens e um vídeo. `startQueue=true` permite processar
-a fila se estiver pausada.
+uma tentativa de zero imagens e um vídeo. Uma pausa explícita continua
+valendo até o usuário pedir a retomada da fila.
 O prompt deve conter a fala exata. Em `preserve-copy`, mantenha a fala conferida
 e revise somente a direção de animação. A revisão mantém a imagem e os
 parâmetros registrados. Informe o texto revisado, o motivo das alterações e

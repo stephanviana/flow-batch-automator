@@ -149,6 +149,11 @@ export const migrations: readonly Migration[] = [
     CREATE INDEX flow_revisions_task ON queue_flow_revisions(task_id,created_at);
     ALTER TABLE queue_flow_retry_authorizations ADD COLUMN revision_id TEXT REFERENCES queue_flow_revisions(id);`,
   },
+  {
+    version: 15,
+    sql: `ALTER TABLE queue_controls ADD COLUMN operator_paused INTEGER NOT NULL DEFAULT 0 CHECK(operator_paused IN (0,1));
+    UPDATE queue_controls SET operator_paused=1 WHERE running=0;`,
+  },
 ];
 
 export function migrate(

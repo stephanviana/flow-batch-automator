@@ -16,7 +16,7 @@ export class DispatchClosure {
   ) {}
 
   close(
-    number: number,
+    number: number | string,
     dispatchId: string,
     input: DispatchClosureInput,
   ): ProductionOrder {

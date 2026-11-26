@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { result } from './result.js';
 import { registerTakeRevisionTools } from './take-revisions.js';
+import { registerQueueTools } from './queue.js';
 import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import {
@@ -31,7 +32,8 @@ export function createMcpServer(api: AgentApi, workspace: string): McpServer {
         'Operação local de vídeos verticais. Use flow_checkout para obter o pedido, todos os documentos aplicáveis e os materiais reais. Crie falas e prompts nos arquivos retornados e publique. O servidor valida a preparação e compila os prompts de animação. Não leia código do aplicativo. ' +
         ORDER_EXECUTION_POLICY +
         ' ' +
-        TAKE_REVISION_EXECUTION_POLICY,
+        TAKE_REVISION_EXECUTION_POLICY +
+        ' O painel cria pedidos e importa materiais. Opere a fila pelo chat: use flow_queue_status e flow_order_diagnostics para consultar antes de agir. Pareamento e login do Chrome são manuais.',
     },
   );
   server.registerTool(
@@ -306,5 +308,6 @@ export function createMcpServer(api: AgentApi, workspace: string): McpServer {
     }),
   );
   registerTakeRevisionTools(server, api);
+  registerQueueTools(server, api);
   return server;
 }

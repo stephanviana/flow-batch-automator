@@ -18,21 +18,6 @@ import type { ExecutorApi } from './api.js';
 import { prepareBrowserBatch } from './batch.js';
 import { ExecutionError } from './errors.js';
 
-export async function dispatchPausedAt(home: string): Promise<number> {
-  try {
-    const value: unknown = JSON.parse(
-      await readFile(join(home, 'executor-paused.json'), 'utf8'),
-    );
-    return typeof value === 'number' && Number.isFinite(value)
-      ? value
-      : Number.POSITIVE_INFINITY;
-  } catch (error) {
-    return (error as NodeJS.ErrnoException).code === 'ENOENT'
-      ? 0
-      : Number.POSITIVE_INFINITY;
-  }
-}
-
 async function materials(
   api: ExecutorApi,
   home: string,
@@ -178,20 +163,14 @@ async function prepare(
       'A importação salva difere dos materiais e parâmetros aprovados.',
       true,
     );
-  if (
-    command.authorization.expiresAt <= Date.now() ||
-    (await dispatchPausedAt(home)) >= command.authorization.approvedAt
-  )
-    return;
+  if (command.authorization.expiresAt <= Date.now()) return;
   signal.throwIfAborted();
   await api.call('POST', '/api/queue', approved);
-  if ((await dispatchPausedAt(home)) < command.authorization.approvedAt)
-    await api.call('POST', '/api/queue/control', { action: 'start' });
+  await api.call('POST', '/api/queue/control', { action: 'start' });
   await api.call('POST', '/api/dispatch', {
     id: command.id,
     state: 'queued',
-    message:
-      'Pedido registrado no executor local. Acompanhe os takes no painel.',
+    message: 'Pedido registrado no executor local. Consulte os takes no chat.',
   });
 }
 
@@ -211,8 +190,6 @@ export async function processBrowserDispatch(
   );
   if (!record) return;
   const command = record.command;
-  if ((await dispatchPausedAt(home)) >= command.authorization.approvedAt)
-    return;
   const batchId = await stableImportId([
     'flow-dispatch-v1',
     api.clientId,
@@ -265,6 +242,7 @@ export async function processBrowserDispatch(
   } catch (error) {
     if (signal.aborted) return;
     const known = error instanceof ExecutionError ? error : undefined;
+    if (known?.code === 'queue_dispatch_paused') return;
     await api.call('POST', '/api/dispatch', {
       id: command.id,
       state: 'blocked',

@@ -185,10 +185,15 @@ export class QueueMutations {
     action: QueueAction,
     now = Date.now(),
     origin: RetryOrigin = 'extension',
+    expectedImageGenerations?: 0 | 1,
   ): TaskSummary {
     return this.database.transaction(() => {
       const sql = this.database.connection;
-      const hash = queueHash(action);
+      const hash = queueHash(
+        expectedImageGenerations === undefined
+          ? action
+          : { ...action, expectedImageGenerations },
+      );
       const previous = sql
         .prepare(
           'SELECT body_hash,task_id FROM queue_actions WHERE client_id=? AND request_id=?',
@@ -206,7 +211,14 @@ export class QueueMutations {
       if (record.summary.revision !== action.expectedRevision)
         throw new HttpError(409, 'Task changed; refresh before acting');
       if (action.action === 'retry_flow')
-        new FlowRetries(this.database).schedule(record, action, now, origin);
+        new FlowRetries(this.database).schedule(
+          record,
+          action,
+          now,
+          origin,
+          undefined,
+          expectedImageGenerations,
+        );
       else if (action.action === 'retry')
         this.retry(record, action.acknowledgeDuplicateRisk, now);
       else if (action.action === 'cancel')

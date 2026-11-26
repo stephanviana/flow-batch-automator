@@ -4,14 +4,10 @@ import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { chromium } from 'playwright';
-import {
-  usesSingleImage,
-  taskSummarySchema,
-} from '../packages/protocol/dist/index.js';
+import { usesSingleImage } from '../packages/protocol/dist/index.js';
 import { createApp } from '../packages/orchestrator/dist/app.js';
 import { loadConfig } from '../packages/orchestrator/dist/config.js';
 import { localClient } from './orders.mjs';
-import { validateOrdersCleanup } from './browser-orders-cleanup.mjs';
 import { installInstructions } from './test-support/instruction-package.mjs';
 
 const directory = resolve('.cache', `orders-design-${randomUUID()}`);
@@ -144,15 +140,6 @@ async function prepareFixture() {
     })),
   });
   await page.getByRole('button', { name: 'Atualizar', exact: true }).click();
-  await page.getByRole('button', { name: 'Ver prévia', exact: true }).waitFor();
-  assert.match(
-    await page.locator('.generation-counts').innerText(),
-    /21 imagens/,
-  );
-  assert.match(
-    await page.locator('.generation-counts').innerText(),
-    /36 vídeos/,
-  );
   assert.deepEqual(
     await page.locator('.order-products li').allTextContents(),
     order.products.map((product) => product.name),
@@ -210,193 +197,27 @@ async function verifyControls() {
     .last()
     .click();
   assert.equal(await page.locator('.group').count(), 1);
-  const manage = page.getByRole('button', { name: 'Gerenciar', exact: true });
-  await manage.click();
-  await page
-    .locator('#cleanup')
-    .getByText('0 arquivos elegíveis', { exact: false })
-    .waitFor();
-  assert.equal(await manage.getAttribute('aria-expanded'), 'true');
-  await manage.click();
-  assert.equal(await page.locator('#storage-details').isVisible(), false);
-  await page.getByRole('button', { name: 'Ver prévia', exact: true }).click();
-  await page.locator('.preparation-preview').waitFor();
-  assert.ok((await page.locator('.preparation-preview details').count()) > 1);
   await page.locator('.order-details > summary').click();
   await page
-    .getByRole('button', { name: 'Cancelar pedido', exact: true })
-    .click();
-  await page.waitForFunction(
-    () => document.querySelector('#orders .badge').textContent === 'Cancelado',
-  );
-}
-async function verifyReviewState() {
-  const api = await localClient(base);
-  const response = await api('/manage/orders');
-  const fixture = globalThis.structuredClone(response);
-  fixture.orders[0].state = 'blocked';
-  fixture.orders[0].clearable = false;
-  fixture.orders[0].dispatches = [
-    {
-      id: randomUUID(),
-      state: 'blocked',
-      message: 'Projeto não criado no Flow.',
-    },
-  ];
-  const route = '**/manage/orders';
-  await page.route(route, (request) => request.fulfill({ json: fixture }));
-  const diagnosisRoute = `**/manage/orders/${fixture.orders[0].number}/diagnostics`;
-  let reviewTasks = [];
-  await page.route(diagnosisRoute, (request) => {
-    assert.equal(request.request().method(), 'GET');
-    return request.fulfill({
-      json: {
-        number: fixture.orders[0].number,
-        preparation: {
-          published: true,
-          message: 'Preparação publicada e preservada.',
-        },
-        unavailableMaterials: [],
-        dispatches: [
-          {
-            ...fixture.orders[0].dispatches[0],
-            review: {
-              canResume: true,
-              canClose: true,
-              closeReason: '',
-              reviewHash: 'a'.repeat(64),
-              preparationHash: fixture.orders[0].preparationHash,
-              images: 2,
-              videos: 3,
-              reason:
-                'Falha anterior ao envio da criação e nenhum take registrado.',
-              failure: {
-                stage: 'project-creation',
-                code: 'project_wait_ready_failed',
-                sent: false,
-              },
-            },
-          },
-        ],
-        tasks: reviewTasks,
-      },
-    });
-  });
-  try {
-    await page.setViewportSize({ width: 1536, height: 1024 });
-    await page.getByRole('button', { name: 'Atualizar', exact: true }).click();
-    await page.getByText('Requer revisão', { exact: true }).waitFor();
+    .locator('.order-detail-content')
+    .getByText(/Mini ar-condicionado/)
+    .waitFor();
+  for (const name of [
+    'Pausar fila',
+    'Retomar fila',
+    'Ver diagnóstico',
+    'Revisar pedido',
+    'Ver prévia',
+    'Cancelar pedido',
+    'Autorizar tentativa automática',
+  ]) {
     assert.equal(
-      await page.locator('.order-notice').textContent(),
-      'Projeto não criado no Flow.',
-    );
-    await page
-      .getByRole('button', { name: 'Revisar pedido', exact: true })
-      .click();
-    await page.locator('.order-review[open]').waitFor();
-    assert.match(
-      await page.locator('.order-review-content').innerText(),
-      /project_wait_ready_failed/,
-    );
-    assert.match(
-      await page.locator('.order-review-content').innerText(),
-      /antes do envio/,
-    );
-    assert.match(
-      await page.locator('.order-review-content').innerText(),
-      /Nenhum take foi registrado/,
-    );
-    assert.equal(
-      await page
-        .getByRole('button', { name: 'Solicitar nova tentativa no chat' })
-        .count(),
-      1,
-    );
-    reviewTasks = [
-      {
-        task: taskSummarySchema.parse({
-          id: randomUUID(),
-          taskKey: randomUUID(),
-          executor: 'google-flow',
-          product: 'Produto de teste',
-          video: 'seller · seller 1',
-          take: '03-CTA',
-          format: '9:16',
-          state: 'failed',
-          step: 'video_submitted',
-          attemptCount: 1,
-          maxAttempts: 1,
-          revision: 1,
-          createdAt: 1,
-          updatedAt: 2,
-          nextAttemptAt: 1,
-          generationId: null,
-          safeToRetry: false,
-          result: null,
-          lastError: {
-            code: 'flow_video_lookup_failed',
-            message: 'Falha sintética.',
-            retryable: false,
-            notSubmitted: false,
-          },
-        }),
-        projectId: randomUUID(),
-        events: [],
-        checkpoints: [],
-        revisions: [],
-        retry: { images: 0, videos: 1 },
-        retryBlockedReason: null,
-      },
-    ];
-    await page
-      .getByRole('button', { name: 'Atualizar diagnóstico', exact: true })
-      .click();
-    await page
-      .getByRole('button', { name: 'Solicitar revisão no chat', exact: true })
-      .waitFor();
-    assert.equal(
-      await page
-        .getByRole('button', { name: 'Autorizar nova tentativa', exact: true })
-        .count(),
+      await page.getByRole('button', { name, exact: true }).count(),
       0,
     );
-    assert.equal(
-      await page
-        .getByRole('button', { name: 'Tentar novamente', exact: true })
-        .count(),
-      0,
-    );
-    assert.equal(await page.locator('.diagnostic-retry').count(), 0);
-    for (const width of [320, 390, 1536]) {
-      await page.setViewportSize({ width, height: 1024 });
-      assert.equal(
-        await page.evaluate(
-          () => document.documentElement.scrollWidth <= globalThis.innerWidth,
-        ),
-        true,
-      );
-    }
-    await page.screenshot({
-      path: resolve(directory, 'orders-review-fixture-1536.png'),
-      fullPage: true,
-    });
-    fixture.orders[0].state = 'completed';
-    fixture.orders[0].dispatches[0].state = 'queued';
-    fixture.orders[0].dispatches[0].message =
-      'Projeto criado e tarefas encaminhadas.';
-    await page.getByRole('button', { name: 'Atualizar', exact: true }).click();
-    await page.getByText('Concluído', { exact: true }).first().waitFor();
-    assert.equal(
-      await page.locator('.notice-info').textContent(),
-      'Projeto criado e tarefas encaminhadas.',
-    );
-  } finally {
-    await page.unroute(route);
-    await page.unroute(diagnosisRoute);
-    await page.getByRole('button', { name: 'Atualizar', exact: true }).click();
-    await page.getByText('Prévia pronta', { exact: true }).waitFor();
   }
 }
+
 try {
   await app.listen({ host: '127.0.0.1', port: config.port });
   browser = await chromium.launch({ channel: 'chromium', headless: true });
@@ -413,9 +234,7 @@ try {
   await saveOrderFromEditor();
   await prepareFixture();
   await captureResponsive();
-  await verifyReviewState();
   await verifyControls();
-  await validateOrdersCleanup(page, base);
   const database = new DatabaseSync(config.databasePath, { readOnly: true });
   assert.equal(
     database.prepare('SELECT count(*) AS n FROM dispatch_commands').get().n,
@@ -428,7 +247,7 @@ try {
   database.close();
   assert.deepEqual(errors, []);
   console.log(
-    'Chrome isolado: layout desktop/mobile, pedido com três produtos, anexos, recolhimento, formatos, prévia, detalhes, cancelamento e armazenamento passaram. Sem despacho ou geração.',
+    'Chrome isolado: cadastro com três produtos, anexos, formatos e detalhes, sem controles da fila no painel, passou.',
   );
   console.log(`Evidências: ${directory}`);
 } catch (error) {

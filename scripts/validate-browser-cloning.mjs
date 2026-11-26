@@ -391,17 +391,15 @@ async function verifyCheckoutAndPublish(api, order, secondaryImage) {
   return videoId;
 }
 async function verifyReviewAndCleanup(api, videoId) {
-  await page.getByRole('button', { name: 'Atualizar', exact: true }).click();
-  await page.getByRole('button', { name: 'Ver prévia', exact: true }).click();
-  await page
-    .getByText(/análise e adaptação do vídeo/, { exact: false })
-    .click();
-  assert.ok(
-    await page
-      .getByText(/Quadro azul sintético observado/, { exact: false })
-      .isVisible(),
+  const { order } = await api('/manage/orders/1');
+  const variations = order.preparation.products.flatMap(
+    (product) => product.variations,
   );
-  await capture('clone-review');
+  assert.match(
+    variations.find((variation) => variation.format === 'clone').cloneVideo
+      .analysis,
+    /Quadro azul sintético observado/,
+  );
   const database = new DatabaseSync(config.databasePath, { readOnly: true });
   assert.equal(
     database.prepare('SELECT count(*) AS n FROM dispatch_commands').get().n,
@@ -412,17 +410,11 @@ async function verifyReviewAndCleanup(api, videoId) {
     0,
   );
   database.close();
-  await page.locator('#orders .order-details > summary').click();
-  await page
-    .getByRole('button', { name: 'Cancelar pedido', exact: true })
-    .click();
-  await page.waitForFunction(
-    () => document.querySelector('#orders .badge').textContent === 'Cancelado',
-  );
+  await api(`/manage/orders/${order.id}/cancel`, {});
   assert.equal((await api('/manage/cleanup', { ids: [videoId] })).removed, 1);
-  const { order } = await api('/manage/orders/1');
+  const updated = (await api('/manage/orders/1')).order;
   assert.equal(
-    order.materials.find((material) => material.id === videoId).available,
+    updated.materials.find((material) => material.id === videoId).available,
     false,
   );
 }

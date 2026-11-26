@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
@@ -121,8 +122,38 @@ try {
   await eventually(
     async () => (await api.call('GET', '/api/identity')).connected,
   );
+  await prepared.api('/manage/executor/control', {
+    action: 'pause',
+    clientId: api.clientId,
+  });
   await prepared.api(`/manage/orders/${prepared.order.id}/approve`, {
     approve: true,
+    clientId: api.clientId,
+  });
+  const fixtureBatch = randomUUID();
+  await api.call('POST', '/api/batches', {
+    action: 'prepare',
+    draft: { id: fixtureBatch, name: 'Pause fixture', mode: 'new-project' },
+  });
+  const pausedClaim = await api.call('POST', '/api/batches', {
+    action: 'claim',
+    id: fixtureBatch,
+    expectedRevision: 0,
+  });
+  assert.equal(pausedClaim.attemptId, undefined);
+  assert.equal(pausedClaim.batch.status, 'draft');
+  assert.equal(
+    (await api.call('POST', '/api/queue/control', { action: 'start' })).running,
+    false,
+  );
+  assert.equal((await api.call('GET', '/api/dispatch')).commands.length, 0);
+  assert.equal((await api.call('GET', '/api/queue')).tasks.length, 0);
+  assert.equal(
+    (await prepared.api('/manage/executor')).executor.pendingDispatches,
+    1,
+  );
+  await prepared.api('/manage/executor/control', {
+    action: 'start',
     clientId: api.clientId,
   });
   let queue;
@@ -196,7 +227,7 @@ try {
     videos: 3,
   });
   console.log(
-    'Native worker E2E: explicit /connect approval, panel order, checkout, preparation, authorized dispatch, project creation, signed API/WebSocket v9, shared image, 15s cooldown, three Chrome-confirmed MP4s and revocation without replay passed with synthetic Flow responses.',
+    'Native worker E2E: explicit /connect approval, panel order, checkout, persistent pause and explicit resume, authorized dispatch, project creation, signed API/WebSocket v9, shared image, 15s cooldown, three Chrome-confirmed MP4s, and revocation without replay passed with synthetic Flow responses.',
   );
 } finally {
   await stopWorker();

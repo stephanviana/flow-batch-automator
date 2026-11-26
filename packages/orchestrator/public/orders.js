@@ -1,7 +1,6 @@
 import { api } from './management-api.js';
 export { api };
 import { element, productEditor } from './orders-editor.js';
-import { canClearOrder } from './orders-cleanup.js';
 import { renderOrder } from './orders-cards.js';
 import { icon } from './ui-icons.js';
 import { videoModels, DEFAULT_ORDER_VIDEO_MODEL } from './orders-config.js';
@@ -17,8 +16,6 @@ for (const [value, title] of videoModels) {
 const products = [],
   container = document.querySelector('#products');
 const previewDisposers = [];
-let savedOrders = [];
-let executorState = null;
 let draftId = crypto.randomUUID(),
   busy = false;
 function addProduct() {
@@ -85,94 +82,15 @@ form.addEventListener('submit', (event) => {
     await refresh();
   });
 });
-function renderSavedOrders() {
-  const orders = savedOrders;
+async function refresh() {
+  const { orders } = await api('/manage/orders');
   const list = document.querySelector('#orders');
-  document.querySelector('#clear-unsent-orders').disabled =
-    !orders.some(canClearOrder);
   previewDisposers.splice(0).forEach((dispose) => dispose());
   list.replaceChildren();
-  for (const order of orders) {
-    previewDisposers.push(
-      renderOrder(list, order, {
-        api,
-        report,
-        action,
-        refresh,
-        onClear() {
-          clearOrders([order]);
-        },
-        onCancel() {
-          status.textContent = `Pedido ${order.number} cancelado.`;
-        },
-      }),
-    );
-  }
+  for (const order of orders)
+    previewDisposers.push(renderOrder(list, order, api));
   if (!orders.length)
     element(list, 'p', 'Nenhum pedido salvo. O próximo pedido começa em #1.');
-}
-function clearOrders(orders) {
-  void action(async () => {
-    const ids = orders.filter(canClearOrder).map((order) => order.id);
-    if (!ids.length) return;
-    const result = await api('/manage/orders/clear', { ids });
-    await refresh();
-    document.querySelector('#orders-cleanup-feedback').textContent =
-      `${result.cleared} ${result.cleared === 1 ? 'pedido removido' : 'pedidos removidos'} da lista. Próximo pedido: #${result.nextNumber}.`;
-  });
-}
-document
-  .querySelector('#clear-unsent-orders')
-  .addEventListener('click', () => clearOrders(savedOrders));
-function renderExecutorState() {
-  const summary = document.querySelector('#executor-summary');
-  const toggle = document.querySelector('#executor-toggle-queue');
-  if (!executorState?.executor) {
-    summary.textContent =
-      'Nenhum executor MCP conectado. Autorize o flow-browser em Executor MCP.';
-    toggle.hidden = true;
-    return;
-  }
-  const { connected, running } = executorState.executor;
-  const { counts, blockedByReview } = executorState;
-  const parts = [
-    connected ? 'Executor MCP conectado' : 'Executor MCP desconectado',
-    blockedByReview
-      ? 'Fila bloqueada (resultado incerto)'
-      : running
-        ? 'Fila ativa'
-        : 'Fila pausada',
-  ];
-  if (counts.active) parts.push(`${counts.active} em execução`);
-  if (counts.queued) parts.push(`${counts.queued} na fila`);
-  if (counts.uncertain) parts.push(`${counts.uncertain} incerto(s)`);
-  summary.textContent = parts.join(' · ');
-  toggle.hidden = false;
-  toggle.textContent = running ? 'Pausar fila' : 'Retomar fila';
-  toggle.disabled = !running && blockedByReview;
-}
-document.querySelector('#executor-toggle-queue').addEventListener(
-  'click',
-  () =>
-    void action(async () => {
-      if (!executorState?.executor) return;
-      const nextAction = executorState.executor.running ? 'pause' : 'start';
-      executorState = await api('/manage/executor/control', {
-        action: nextAction,
-        clientId: executorState.executor.id,
-      });
-      renderExecutorState();
-    }),
-);
-async function refresh() {
-  const [{ orders }, executor] = await Promise.all([
-    api('/manage/orders'),
-    api('/manage/executor'),
-  ]);
-  savedOrders = orders;
-  executorState = executor;
-  renderExecutorState();
-  renderSavedOrders();
   if (status.dataset.errorSource === 'refresh') {
     status.textContent = '';
     status.className = '';
@@ -183,56 +101,5 @@ function refreshOrders() {
   void refresh().catch((error) => report(error, 'refresh'));
 }
 document.querySelector('#refresh').addEventListener('click', refreshOrders);
-document.querySelector('#preview-cleanup').addEventListener(
-  'click',
-  () =>
-    void action(async () => {
-      const toggle = document.querySelector('#preview-cleanup');
-      const panel = document.querySelector('#storage-details');
-      const expanded = toggle.getAttribute('aria-expanded') !== 'true';
-      toggle.setAttribute('aria-expanded', String(expanded));
-      panel.hidden = !expanded;
-      if (!expanded) return;
-      const result = await api('/manage/cleanup'),
-        area = document.querySelector('#cleanup');
-      area.replaceChildren();
-      element(
-        area,
-        'p',
-        `${result.materials.length} arquivos elegíveis · ${(result.bytes / 1024 / 1024).toFixed(1)} MB.`,
-      );
-      const list = element(area, 'ul');
-      for (const material of result.materials)
-        element(list, 'li', material.name);
-      if (result.materials.length) {
-        const remove = element(
-          area,
-          'button',
-          'Remover estas cópias importadas',
-          'danger',
-        );
-        remove.addEventListener(
-          'click',
-          () =>
-            void action(async () => {
-              remove.disabled = true;
-              const cleaned = await api('/manage/cleanup', {
-                ids: result.materials.map((material) => material.id),
-              });
-              area.replaceChildren();
-              element(area, 'p', `${cleaned.removed} cópias removidas.`);
-              await refresh();
-            }),
-        );
-      }
-    }),
-);
+
 refreshOrders();
-setInterval(() => {
-  if (
-    !document.hidden &&
-    !busy &&
-    !document.querySelector('#orders details[open]')
-  )
-    refreshOrders();
-}, 10000);

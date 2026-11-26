@@ -66,7 +66,9 @@ export function registerQueueRoutes(
     const input = z
       .strictObject({ action: z.enum(['start', 'pause']) })
       .parse(request.body);
-    repository.control(client.id, input.action === 'start');
+    if (client.extensionId === BROWSER_EXECUTOR_ID && input.action === 'start')
+      repository.startDispatch(client.id);
+    else repository.control(client.id, input.action === 'start');
     engine.wake();
     return repository.snapshot(client.id);
   });
