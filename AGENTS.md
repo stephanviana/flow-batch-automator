@@ -54,7 +54,9 @@ originais, exigindo autorização explícita para backup. Import/export, convert
 restore e layouts legados permanecem; não converter bibliotecas automaticamente.
 O painel `/orders` cadastra pedidos e materiais e lista os números salvos. O
 chat controla a fila. A configuração local mantém login e confirmação de
-pareamento do executor.
+pareamento do executor. O Desktop conecta o worker após a confirmação do
+pareamento e pelo botão Conectar Flow, usando a autorização existente e a
+pausa persistida. Falhas de conexão são exibidas, sem repetição automática.
 O seletor de referências aceita várias imagens por produto, acumuladas entre
 seleções e removidas individualmente. Todas entram nos materiais do pedido;
 `referenceId` aponta a única imagem marcada como principal para a geração no

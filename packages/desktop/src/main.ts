@@ -69,13 +69,12 @@ function registerHandlers(
   ipcMain.handle('desktop:create-profile', (_event, name: string) =>
     currentRuntime.createProfile(name),
   );
-  ipcMain.handle('desktop:start-executor', async () => {
-    const outcome = await currentRuntime.startOrPairExecutor();
+  ipcMain.handle('desktop:pair-executor', async () => {
+    const outcome = await currentRuntime.pairExecutor();
     if (outcome.navigateTo)
       void appView?.webContents.loadURL(`${apiUrl}${outcome.navigateTo}`);
     return outcome;
   });
-  ipcMain.handle('desktop:toggle-queue', () => currentRuntime.toggleQueue());
   ipcMain.handle(
     'desktop:install-mcp',
     (_event, client: 'antigravity' | 'codex') =>

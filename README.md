@@ -72,8 +72,9 @@ O pacote gerado fica em `packages/desktop/release/win-unpacked/Flow Batch.exe`
 
 1. Use **MCP Antigravity** ou **MCP Codex** na barra superior para registrar `flow-batch` e `flow-browser`.
 2. Use **Login / Trocar conta** para autenticar no Google Flow sem automação e feche o Chrome ao concluir.
-3. Clique em **Conectar Flow** e depois em **Parear executor** (confirmando o código em **Conexões**).
+3. Clique em **Conectar Flow** e depois em **Parear executor**. Após confirmar o código em **Conexões**, o app conecta o worker automaticamente.
 4. Use **Perfil Chrome** / **+ Novo perfil** sempre que quiser alternar ou isolar contas mantendo o pareamento local.
+5. Opere a fila pelo chat. Nas próximas sessões, **Conectar Flow** também conecta o worker já autorizado. A barra oferece **Conectar executor** quando ele estiver desconectado.
 
 ### Docker Compose (opcional em Linux)
 

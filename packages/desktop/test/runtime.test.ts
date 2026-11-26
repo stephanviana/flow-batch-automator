@@ -7,6 +7,8 @@ import { join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { resolveDesktopPaths } from '../src/paths.js';
 import { DesktopRuntime } from '../src/runtime.js';
+import { ExecutorControl, FlowBrowserService } from '@flow-batch/flow-mcp';
+import { setTimeout as delay } from 'node:timers/promises';
 
 async function freePort(): Promise<number> {
   const server = createServer();
@@ -47,7 +49,29 @@ test('desktop runtime seeds library, serves orders, pairs executor, switches pro
   paths.browserMcpFile = resolve('..', 'flow-mcp', 'dist', 'main.js');
 
   const runtime = new DesktopRuntime(paths);
+  t.mock.method(FlowBrowserService.prototype, 'connectSession', async () => ({
+    phase: 'project-required',
+    projectId: null,
+    language: 'en',
+    checkedAt: Date.now(),
+    message: 'Flow sintético pronto.',
+  }));
+  let finishConnection = (): void => {};
+  const connectionGate = new Promise<void>((resolveConnection) => {
+    finishConnection = resolveConnection;
+  });
+  let starts = 0;
+  t.mock.method(
+    ExecutorControl.prototype,
+    'start',
+    async function (this: ExecutorControl) {
+      starts++;
+      await connectionGate;
+      return { ...(await this.status()), connected: true };
+    },
+  );
   t.after(async () => {
+    finishConnection();
     await runtime.stop();
     await rm(home, { recursive: true, force: true });
   });
@@ -56,8 +80,11 @@ test('desktop runtime seeds library, serves orders, pairs executor, switches pro
   assert.equal(initial.activeProfile, 'default');
   assert.equal(existsSync(join(paths.libraryDir, 'base.md')), true);
   assert.equal((await fetch(`${initial.apiUrl}/orders`)).ok, true);
+  const beforePairing = await runtime.connectBrowser();
+  assert.match(beforePairing.message, /Confirme o pareamento/);
+  assert.equal(starts, 0);
 
-  const paired = await runtime.startOrPairExecutor();
+  const paired = await runtime.pairExecutor();
   assert.match(paired.navigateTo ?? '', /^\/connect\?request=/);
   const clientIdBefore = paired.snapshot.executor.clientId;
   assert.ok(clientIdBefore);
@@ -90,10 +117,41 @@ test('desktop runtime seeds library, serves orders, pairs executor, switches pro
     },
   );
   assert.equal(approved.status, 200);
+  for (let round = 0; starts === 0 && round < 100; round++) await delay(10);
+  assert.equal(starts, 1, 'approval should initiate the worker connection');
+  const repeatedConnect = [runtime.connectBrowser(), runtime.connectBrowser()];
+  assert.equal((await runtime.snapshot()).executorConnecting, true);
+  finishConnection();
+  for (const result of await Promise.all(repeatedConnect))
+    assert.match(result.message, /Executor conectado/);
+  assert.equal(
+    starts,
+    1,
+    'concurrent connection requests must share a worker startup',
+  );
 
   const afterApproval = await runtime.snapshot();
   assert.equal(afterApproval.executor.clientId, clientIdBefore);
   assert.equal(afterApproval.executor.authorized, true);
+  assert.equal(afterApproval.executorConnecting, false);
+  const failedStart = t.mock.method(
+    ExecutorControl.prototype,
+    'start',
+    async () => {
+      throw new Error('Falha sintética na conexão');
+    },
+  );
+  await assert.rejects(runtime.pairExecutor(), /Falha sintética/);
+  assert.match(
+    (await runtime.snapshot()).executorConnectionMessage ?? '',
+    /Falha sintética/,
+  );
+  await runtime.snapshot();
+  assert.equal(
+    failedStart.mock.callCount(),
+    1,
+    'status refresh must not retry a failed startup',
+  );
 
   await writeFile(
     join(home, 'antigravity.json'),

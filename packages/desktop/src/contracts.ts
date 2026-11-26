@@ -11,9 +11,8 @@ export interface DesktopSnapshot {
   chromeExecutable: string | null;
   browser: BrowserStatus;
   executor: ExecutorStatus;
-  workerRunning: boolean;
-  queueRunning: boolean;
-  blockedByReview: boolean;
+  executorConnecting: boolean;
+  executorConnectionMessage: string | null;
   videosDir: string;
   libraryDir: string;
 }
@@ -31,8 +30,7 @@ export interface DesktopBridge {
   connectBrowser: () => Promise<DesktopActionOutcome>;
   selectProfile: (name: string) => Promise<DesktopActionOutcome>;
   createProfile: (name: string) => Promise<DesktopActionOutcome>;
-  startOrPairExecutor: () => Promise<DesktopActionOutcome>;
-  toggleQueue: () => Promise<DesktopActionOutcome>;
+  pairExecutor: () => Promise<DesktopActionOutcome>;
   installMcp: (
     client: 'antigravity' | 'codex',
   ) => Promise<DesktopActionOutcome>;

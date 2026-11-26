@@ -55,6 +55,8 @@ export class DesktopRuntime {
   private browser: ProfileBrowser | undefined;
   private service: FlowBrowserService | undefined;
   private executor: ExecutorControl | undefined;
+  private executorConnection: Promise<string> | undefined;
+  private executorConnectionMessage: string | null = null;
   private apiUrl = `http://127.0.0.1:${DEFAULT_PORT}`;
 
   constructor(private readonly paths: DesktopPaths) {}
@@ -77,6 +79,17 @@ export class DesktopRuntime {
         config.libraryDirectory,
       );
     const app = createApp(config);
+    app.addHook('onResponse', async (request, reply): Promise<void> => {
+      if (
+        request.routeOptions.url === '/manage/requests/:id' &&
+        reply.statusCode === 200 &&
+        typeof request.body === 'object' &&
+        request.body !== null &&
+        'approve' in request.body &&
+        request.body.approve === true
+      )
+        void this.connectAfterApproval().catch(() => {});
+    });
     await app.listen({ host: config.host, port: config.port });
     const address = app.server.address();
     const resolvedPort =
@@ -127,38 +140,7 @@ export class DesktopRuntime {
     };
   }
 
-  private async readExecutorSummary(
-    app: OrchestratorApp,
-    executor: ExecutorControl,
-  ): Promise<{
-    executor: ExecutorStatus;
-    queueRunning: boolean;
-    blockedByReview: boolean;
-    activeCount: number;
-  }> {
-    let status: ExecutorStatus;
-    try {
-      status = await executor.status();
-    } catch {
-      status = {
-        clientId: null,
-        authorized: false,
-        connected: false,
-        needsPairing: true,
-      };
-    }
-    const stats = await this.internalQueueState(app, status.clientId);
-    return { executor: status, ...stats };
-  }
-
-  private async internalQueueState(
-    app: OrchestratorApp,
-    clientId: string | null,
-  ): Promise<{
-    queueRunning: boolean;
-    blockedByReview: boolean;
-    activeCount: number;
-  }> {
+  private async activeTakeCount(app: OrchestratorApp): Promise<number> {
     const login = await app.inject({
       method: 'GET',
       url: '/orders',
@@ -175,25 +157,17 @@ export class DesktopRuntime {
       },
     });
     if (response.statusCode !== 200)
-      return { queueRunning: false, blockedByReview: false, activeCount: 0 };
-    const body = response.json() as {
-      executor: { id: string; running: boolean } | null;
-      blockedByReview: boolean;
-      counts: { active: number };
-    };
-    const matching =
-      !clientId || body.executor?.id === clientId ? body.executor : null;
-    return {
-      queueRunning: Boolean(matching?.running),
-      blockedByReview: body.blockedByReview,
-      activeCount: body.counts.active,
-    };
+      throw new Error('Não foi possível confirmar se há takes ativos.');
+    return response.json<{ counts: { active: number } }>().counts.active;
   }
 
   private async ensureIdleForBrowserSwitch(): Promise<void> {
+    if (this.executorConnection)
+      throw new Error(
+        'Aguarde a conexão do executor antes de trocar o perfil.',
+      );
     const { app, executor, service } = this.requireReady();
-    const state = await this.readExecutorSummary(app, executor);
-    if (state.activeCount > 0)
+    if ((await this.activeTakeCount(app)) > 0)
       throw new FlowBrowserError(
         'execution_in_progress',
         'Aguarde a conclusão ou revise os takes ativos antes de trocar o navegador ou perfil.',
@@ -214,8 +188,8 @@ export class DesktopRuntime {
   }
 
   async snapshot(): Promise<DesktopSnapshot> {
-    const { app, browserConfig, service, executor } = this.requireReady();
-    const [profiles, browserStatus, summary, worker] = await Promise.all([
+    const { browserConfig, service, executor } = this.requireReady();
+    const [profiles, browserStatus, executorStatus] = await Promise.all([
       listBrowserProfiles(browserConfig),
       service.status().catch((): BrowserStatus => ({
         phase: 'browser-closed',
@@ -224,8 +198,12 @@ export class DesktopRuntime {
         checkedAt: Date.now(),
         message: 'Chrome fechado.',
       })),
-      this.readExecutorSummary(app, executor),
-      executor.workerProcess().catch(() => ({ running: false, pid: null })),
+      executor.status().catch((): ExecutorStatus => ({
+        clientId: null,
+        authorized: false,
+        connected: false,
+        needsPairing: true,
+      })),
     ]);
     return {
       apiUrl: this.apiUrl,
@@ -233,10 +211,9 @@ export class DesktopRuntime {
       profiles: profiles.profiles,
       chromeExecutable: detectedChrome(browserConfig),
       browser: browserStatus,
-      executor: summary.executor,
-      workerRunning: worker.running,
-      queueRunning: summary.queueRunning,
-      blockedByReview: summary.blockedByReview,
+      executor: executorStatus,
+      executorConnecting: Boolean(this.executorConnection),
+      executorConnectionMessage: this.executorConnectionMessage,
       videosDir: this.paths.videosDir,
       libraryDir: this.paths.libraryDir,
     };
@@ -259,15 +236,52 @@ export class DesktopRuntime {
   }
 
   async connectBrowser(): Promise<DesktopActionOutcome> {
-    const { service } = this.requireReady();
-    const status = await service.connectSession();
+    const message = await this.connectExecutor();
     return {
       snapshot: await this.snapshot(),
-      message:
-        status.phase === 'ready'
-          ? 'Chrome conectado e pronto no projeto aberto.'
-          : status.message,
+      message,
     };
+  }
+
+  private connectExecutor(): Promise<string> {
+    if (this.executorConnection) return this.executorConnection;
+    this.executorConnectionMessage = null;
+    this.executorConnection = this.connectAuthorizedExecutor()
+      .then((message) => {
+        this.executorConnectionMessage = message;
+        return message;
+      })
+      .catch((error: unknown) => {
+        this.executorConnectionMessage =
+          error instanceof Error
+            ? error.message
+            : 'Não foi possível conectar o executor.';
+        throw error;
+      })
+      .finally(() => {
+        this.executorConnection = undefined;
+      });
+    return this.executorConnection;
+  }
+
+  private async connectAfterApproval(): Promise<void> {
+    const { executor } = this.requireReady();
+    if ((await executor.status()).authorized) await this.connectExecutor();
+  }
+
+  private async connectAuthorizedExecutor(): Promise<string> {
+    const { service, executor } = this.requireReady();
+    const executorStatus = await executor.status();
+    if (executorStatus.connected) return 'Executor conectado.';
+    const browser = await service.connectSession();
+    if (!['ready', 'project-required'].includes(browser.phase))
+      return browser.message;
+    if (!executorStatus.authorized)
+      return 'Chrome conectado. Confirme o pareamento do executor em Conexões.';
+    const connected = await executor.start();
+    if (!connected.connected)
+      throw new Error('A conexão do executor ainda não foi confirmada.');
+    return 'Executor conectado e pronto para receber os pedidos autorizados.';
   }
 
   async selectProfile(name: string): Promise<DesktopActionOutcome> {
@@ -286,59 +300,14 @@ export class DesktopRuntime {
     return this.selectProfile(name);
   }
 
-  async startOrPairExecutor(): Promise<DesktopActionOutcome> {
-    const { executor, service } = this.requireReady();
-    const current = await executor.status();
-    if (current.needsPairing) {
-      const pairing = await executor.pair();
-      return {
-        snapshot: await this.snapshot(),
-        message: `Código de pareamento ${pairing.code}. Confirme a conexão na tela Conexões.`,
-        navigateTo: `/connect?request=${pairing.requestId}`,
-      };
-    }
-    await service.connectSession();
-    await executor.start();
+  async pairExecutor(): Promise<DesktopActionOutcome> {
+    const { executor } = this.requireReady();
+    if ((await executor.status()).authorized) return this.connectBrowser();
+    const pairing = await executor.pair();
     return {
       snapshot: await this.snapshot(),
-      message: 'Executor local iniciado e conectado à fila.',
-    };
-  }
-
-  async toggleQueue(): Promise<DesktopActionOutcome> {
-    const { app, executor } = this.requireReady();
-    const state = await this.readExecutorSummary(app, executor);
-    if (!state.executor.clientId || !state.executor.authorized)
-      throw new FlowBrowserError(
-        'executor_not_authorized',
-        'Pareie e autorize o executor em Conexões antes de controlar a fila.',
-      );
-    const login = await app.inject({
-      method: 'GET',
-      url: '/orders',
-      headers: { host: new URL(this.apiUrl).host },
-    });
-    const cookie = String(login.headers['set-cookie'] ?? '').split(';')[0];
-    const nextAction = state.queueRunning ? 'pause' : 'start';
-    const response = await app.inject({
-      method: 'POST',
-      url: '/manage/executor/control',
-      headers: {
-        host: new URL(this.apiUrl).host,
-        origin: this.apiUrl,
-        cookie,
-        'x-flow-management': '1',
-      },
-      payload: { action: nextAction, clientId: state.executor.clientId },
-    });
-    if (response.statusCode !== 200)
-      throw new Error(
-        (response.json() as { error?: string }).error ??
-          'Não foi possível atualizar o estado da fila.',
-      );
-    return {
-      snapshot: await this.snapshot(),
-      message: nextAction === 'pause' ? 'Fila pausada.' : 'Fila retomada.',
+      message: `Código de pareamento ${pairing.code}. Após sua confirmação em Conexões, o executor será conectado automaticamente.`,
+      navigateTo: `/connect?request=${pairing.requestId}`,
     };
   }
 
@@ -370,6 +339,7 @@ export class DesktopRuntime {
   }
 
   async stop(): Promise<void> {
+    await this.executorConnection?.catch(() => {});
     await this.executor?.stop().catch(() => {});
     await this.browser?.disconnect().catch(() => {});
     const app = this.app;

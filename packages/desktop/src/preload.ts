@@ -8,8 +8,7 @@ const bridge: DesktopBridge = {
   connectBrowser: () => ipcRenderer.invoke('desktop:connect-browser'),
   selectProfile: (name) => ipcRenderer.invoke('desktop:select-profile', name),
   createProfile: (name) => ipcRenderer.invoke('desktop:create-profile', name),
-  startOrPairExecutor: () => ipcRenderer.invoke('desktop:start-executor'),
-  toggleQueue: () => ipcRenderer.invoke('desktop:toggle-queue'),
+  pairExecutor: () => ipcRenderer.invoke('desktop:pair-executor'),
   installMcp: (client) => ipcRenderer.invoke('desktop:install-mcp', client),
   openFolder: (target) => ipcRenderer.invoke('desktop:open-folder', target),
 };

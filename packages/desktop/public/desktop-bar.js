@@ -4,11 +4,11 @@ const feedback = document.querySelector('#feedback');
 const profileSelect = document.querySelector('#profile-select');
 const createForm = document.querySelector('#create-profile-form');
 const newProfileInput = document.querySelector('#new-profile-name');
-const toggleQueueButton = document.querySelector('#toggle-queue');
-const startExecutorButton = document.querySelector('#start-executor');
+const pairExecutorButton = document.querySelector('#pair-executor');
 
 let busy = false;
 let currentSnapshot = null;
+let lastConnectionMessage = null;
 
 function setFeedback(text, tone = '') {
   feedback.textContent = text;
@@ -53,33 +53,30 @@ function render(snapshot) {
   const parts = [
     `Perfil: ${snapshot.activeProfile}`,
     browserLabel(snapshot.browser),
-    snapshot.workerRunning
+    snapshot.executor.connected
       ? 'Executor conectado'
-      : snapshot.executor.authorized
-        ? 'Executor parado'
-        : 'Executor não pareado',
-    snapshot.blockedByReview
-      ? 'Fila bloqueada (item incerto)'
-      : snapshot.queueRunning
-        ? 'Fila ativa'
-        : 'Fila pausada',
+      : snapshot.executorConnecting
+        ? 'Conectando executor…'
+        : snapshot.executor.authorized
+          ? 'Executor pareado · desconectado'
+          : 'Executor não pareado',
   ];
   if (!snapshot.chromeExecutable) parts.push('Chrome não encontrado');
   summary.textContent = parts.join(' · ');
 
-  startExecutorButton.textContent = snapshot.executor.needsPairing
-    ? 'Parear executor'
-    : snapshot.workerRunning
-      ? 'Executor ativo'
-      : 'Iniciar executor';
-  startExecutorButton.disabled =
-    busy || (snapshot.executor.authorized && snapshot.workerRunning);
-
-  toggleQueueButton.textContent = snapshot.queueRunning
-    ? 'Pausar fila'
-    : 'Retomar fila';
-  toggleQueueButton.disabled =
-    busy || !snapshot.executor.authorized || snapshot.blockedByReview;
+  pairExecutorButton.textContent = snapshot.executor.connected
+    ? 'Executor conectado'
+    : snapshot.executorConnecting
+      ? 'Conectando…'
+      : snapshot.executor.authorized
+        ? 'Conectar executor'
+        : 'Parear executor';
+  pairExecutorButton.disabled =
+    busy || snapshot.executor.connected || snapshot.executorConnecting;
+  if (!busy && snapshot.executorConnectionMessage !== lastConnectionMessage) {
+    lastConnectionMessage = snapshot.executorConnectionMessage;
+    if (lastConnectionMessage) setFeedback(lastConnectionMessage);
+  }
 }
 
 async function runAction(operation) {
@@ -125,13 +122,9 @@ document
     'click',
     () => void runAction(() => bridge.connectBrowser()),
   );
-startExecutorButton.addEventListener(
+pairExecutorButton.addEventListener(
   'click',
-  () => void runAction(() => bridge.startOrPairExecutor()),
-);
-toggleQueueButton.addEventListener(
-  'click',
-  () => void runAction(() => bridge.toggleQueue()),
+  () => void runAction(() => bridge.pairExecutor()),
 );
 document
   .querySelector('#install-antigravity')
