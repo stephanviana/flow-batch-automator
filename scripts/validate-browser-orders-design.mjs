@@ -193,6 +193,49 @@ async function captureResponsive() {
     });
   }
 }
+async function measureEditorScroll() {
+  return page.locator('.order-editor').evaluate((editor) => ({
+    pageHeight: document.documentElement.scrollHeight,
+    containerHeight: editor.clientHeight,
+    contentHeight: editor.scrollHeight,
+  }));
+}
+async function verifyExpansionScroll() {
+  for (const [width, height] of [
+    [1360, 784],
+    [1360, 640],
+    [1536, 1024],
+    [960, 640],
+    [390, 844],
+    [320, 640],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await page
+      .getByRole('button', { name: 'Recolher produto', exact: true })
+      .click();
+    const collapsed = await measureEditorScroll();
+    for (let cycle = 0; cycle < 2; cycle++) {
+      await page
+        .getByRole('button', { name: 'Expandir produto', exact: true })
+        .click();
+      const expanded = await measureEditorScroll();
+      assert.equal(
+        expanded.pageHeight,
+        collapsed.pageHeight,
+        `Expanding a product must preserve page height at ${width}×${height}`,
+      );
+      assert.equal(expanded.containerHeight, collapsed.containerHeight);
+      assert.ok(expanded.contentHeight > collapsed.contentHeight);
+      await page
+        .getByRole('button', { name: 'Recolher produto', exact: true })
+        .click();
+      assert.deepEqual(await measureEditorScroll(), collapsed);
+    }
+    await page
+      .getByRole('button', { name: 'Expandir produto', exact: true })
+      .click();
+  }
+}
 async function verifyControls() {
   await page.setViewportSize({ width: 1536, height: 1024 });
   const toggle = page.getByRole('button', {
@@ -320,6 +363,7 @@ try {
   await saveOrderFromEditor();
   await prepareFixture();
   await captureResponsive();
+  await verifyExpansionScroll();
   await verifyControls();
   await verifyCleanupAndScroll();
   const database = new DatabaseSync(config.databasePath, { readOnly: true });
@@ -334,7 +378,7 @@ try {
   database.close();
   assert.deepEqual(errors, []);
   console.log(
-    'Chrome isolado: cadastro, anexos, formatos, containers de mesma altura com rolagem interna e limpeza persistente de pedidos elegíveis passaram.',
+    'Chrome isolado: criação com três produtos, anexos, formatos, containers de mesma altura, expansão sem aumentar a rolagem externa e limpeza persistente de pedidos elegíveis passaram.',
   );
   console.log(`Evidências: ${directory}`);
 } catch (error) {
