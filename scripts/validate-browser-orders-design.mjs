@@ -152,6 +152,10 @@ async function captureResponsive() {
   await page.evaluate(() => {
     document.querySelector('#status').textContent = '';
     document.activeElement.blur();
+    for (const container of document.querySelectorAll(
+      '.order-editor, .order-list',
+    ))
+      container.scrollTop = 0;
   });
   for (const width of [1536, 1920, 1081, 960, 768, 390, 320]) {
     await page.setViewportSize({ width, height: 1024 });
@@ -164,6 +168,17 @@ async function captureResponsive() {
     );
     const editor = await page.locator('.order-editor').boundingBox();
     const sidebar = await page.locator('.order-sidebar').boundingBox();
+    const saved = await page.locator('.order-list').boundingBox();
+    assert.ok(
+      Math.abs(editor.height - saved.height) < 1,
+      'Order containers must have equal heights',
+    );
+    for (const selector of ['.order-editor', '.order-list']) {
+      const overflow = await page
+        .locator(selector)
+        .evaluate((node) => globalThis.getComputedStyle(node).overflowY);
+      assert.equal(overflow, 'scroll', selector);
+    }
     if (width > 960) {
       assert.ok(Math.abs(editor.y - sidebar.y) < 1);
       assert.ok(sidebar.x >= editor.x + editor.width);
@@ -217,7 +232,7 @@ async function verifyControls() {
     );
   }
 }
-async function verifyCleanup() {
+async function verifyCleanupAndScroll() {
   const api = await localClient(base);
   const { order } = await api('/manage/orders/1');
   for (let index = 0; index < 8; index++)
@@ -237,6 +252,21 @@ async function verifyCleanup() {
   await page
     .getByRole('heading', { name: 'Pedido em preparação', exact: true })
     .waitFor();
+  const saved = page.locator('.order-list');
+  assert.equal(
+    await saved.evaluate((node) => node.scrollHeight > node.clientHeight),
+    true,
+  );
+  assert.equal(
+    await page
+      .locator('.order-editor')
+      .evaluate((node) => node.scrollHeight > node.clientHeight),
+    true,
+  );
+  await saved.evaluate((node) => {
+    node.scrollTop = node.scrollHeight;
+  });
+  assert.ok((await saved.evaluate((node) => node.scrollTop)) > 0);
   await page
     .getByLabel('Nome do pedido', { exact: true })
     .fill('Rascunho preservado');
@@ -291,7 +321,7 @@ try {
   await prepareFixture();
   await captureResponsive();
   await verifyControls();
-  await verifyCleanup();
+  await verifyCleanupAndScroll();
   const database = new DatabaseSync(config.databasePath, { readOnly: true });
   assert.equal(
     database.prepare('SELECT count(*) AS n FROM dispatch_commands').get().n,
@@ -304,7 +334,7 @@ try {
   database.close();
   assert.deepEqual(errors, []);
   console.log(
-    'Chrome isolado: cadastro, anexos, formatos, detalhes e limpeza persistente de pedidos elegíveis passaram.',
+    'Chrome isolado: cadastro, anexos, formatos, containers de mesma altura com rolagem interna e limpeza persistente de pedidos elegíveis passaram.',
   );
   console.log(`Evidências: ${directory}`);
 } catch (error) {

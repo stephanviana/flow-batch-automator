@@ -90,10 +90,20 @@ p {
   margin: 10px 0;
 }
 .workspace {
+  --order-container-height: clamp(420px, calc(100dvh - 180px), 1000px);
   display: grid;
   grid-template-columns: minmax(0, 2.09fr) minmax(0, 1fr);
   gap: 21px;
   align-items: start;
+}
+.workspace > .order-editor,
+.workspace .order-list {
+  height: var(--order-container-height);
+  overflow-y: scroll;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #47606e var(--surface-inset);
 }
 .workspace section {
   min-width: 0;
